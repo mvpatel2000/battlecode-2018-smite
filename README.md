@@ -1,2 +1,2 @@
 # battlecode-2018-smite
-Team Smite's Battlecode Software
+Official Github repository of Team Smite for Battlecode 2018
