@@ -8,6 +8,11 @@ public class Player {
         // Connect to the manager, starting the game
         GameController gc = new GameController();
 
+        Team ally = gc.team();
+        Team enemy = Team.Red;
+        if(ally==Team.Red)
+            enemy = Team.Blue;
+
         PlanetMap map = gc.startingMap(Planet.Earth);                       //TODO: How to figure out which planet you're on??
         long width = map.getWidth();
         long height = map.getHeight(); 
@@ -17,7 +22,7 @@ public class Player {
         VecUnit initial_units = map.getInitial_units();
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
-            if(gc.team()!=unit.team()) {
+            if(ally!=unit.team()) {
                 enemy_location = unit.location().mapLocation();
                 break;
             }
@@ -34,7 +39,7 @@ public class Player {
             for (int i = 0; i < units.size(); i++) {
                 Unit unit = units.get(i);
 
-                if(unit.unitType()==UnitType.Worker) {
+                if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), (long)1.0, UnitType.Factory);
                     if(maxworkers>0 && gc.canReplicate(unit.id(),Direction.East)) { //replicate
                         gc.replicate(unit.id(),Direction.East);
@@ -49,22 +54,25 @@ public class Player {
                     else if(gc.canHarvest(unit.id(),Direction.North)) { //harvest
                         gc.harvest(unit.id(),Direction.North);
                     }
-                    else if(gc.isMoveReady(unit.id()) && gc.canMove(unit.id(), Direction.North) ) {
+                    else if(gc.isMoveReady(unit.id()) && gc.canMove(unit.id(), Direction.North) ) { //move north
                         gc.moveRobot(unit.id(), Direction.North);
                     }
-                }
-                else if(unit.unitType()==UnitType.Factory) {
-                    if(gc.canProduceRobot(unit.id(),UnitType.Ranger)) {
-                        gc.produceRobot(unit.id(),UnitType.Ranger);
-                    }
-                    if(1!=1 && gc.canUnload(unit.id(),Direction.East)) {
-                        gc.unload(unit.id(),Direction.East);
-                    }
-                }
-                else if(unit.unitType()==UnitType.Ranger) {
-                    if (gc.isMoveReady(unit.id()) && gc.canMove(unit.id(), unit.location().mapLocation().directionTo(enemy_location))) {
+                }                
+                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                    VecUnit enemies = gc.senseNearbyUnitsByTeam(unit.location().mapLocation(), unit.attackRange(), enemy);                   
+                    if(gc.isMoveReady(unit.id()) && gc.canMove(unit.id(), unit.location().mapLocation().directionTo(enemy_location)) ) {
                         gc.moveRobot(unit.id(), unit.location().mapLocation().directionTo(enemy_location));
                     }    
+                    if(enemies.size()>0 && gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), enemies.get(0).id()))
+                        gc.attack(unit.id(), enemies.get(0).id());
+                }
+                else if(unit.unitType()==UnitType.Factory) {
+                    if(gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
+                        gc.produceRobot(unit.id(),UnitType.Ranger);
+                    }
+                    if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
+                        gc.unload(unit.id(),Direction.East);
+                    }
                 }
 
                 // Most methods on gc take unit IDs, instead of the unit objects themselves.
