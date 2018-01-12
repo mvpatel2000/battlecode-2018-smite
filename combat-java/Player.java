@@ -91,17 +91,11 @@ public class Player {
                 }       
 
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {    
-
-                    // TODO: EXTENSIVE TESTING ON MOVEMENT
-                    System.out.print("Round: "+gc.round()+" | ");
-
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
-                    if(enemies_in_sight.size()>0) { //combat state
-                        System.out.print(" Combat | ");
+                    if(enemies_in_sight.size()>0) {      //combat state
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
-                        if(enemies_in_range.size()==0) {    //move towards enemy   
-                            System.out.print(" move towards enemy | ");
+                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
                             Unit nearestUnit = enemies_in_sight.get(0);
                             MapLocation nearloc = nearestUnit.location().mapLocation();
                             int mindist = (int)nearloc.distanceSquaredTo(myloc);
@@ -120,10 +114,9 @@ public class Player {
                         enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
                         if(enemies_in_range.size()>0) {
-                            if(gc.isAttackReady(unit.id())) { //attacks nearest enemy
+                            if(gc.isAttackReady(unit.id())) { //attacks enemy in range by random
                                 for(int i=0; i<enemies_in_range.size(); i++) {
                                     if(gc.canAttack(unit.id(), enemies_in_range.get(i).id())) {
-                                        System.out.print(" shoot | ");
                                         gc.attack(unit.id(), enemies_in_range.get(i).id());
                                         break;
                                     }
@@ -138,8 +131,7 @@ public class Player {
                             //In each tier: mages > rangers > healers > knights > workers
                             //Tiebreaker again: closest
 
-                            if(gc.isMoveReady(unit.id())) {
-                                System.out.print(" move away from enemy | ");
+                            if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
                                 Unit nearestUnit = enemies_in_range.get(0);
                                 MapLocation nearloc = nearestUnit.location().mapLocation();
                                 int mindist = (int)nearloc.distanceSquaredTo(myloc);
@@ -157,11 +149,9 @@ public class Player {
                             }
                         }
                     }
-                    else {
-                        System.out.print(" vectorfield | ");
+                    else { //non-combat state
                         moveOnVectorField(unit, myloc);
                     }                                     
-                    System.out.println();   
                 }
 
                 else if(unit.unitType()==UnitType.Factory) {
