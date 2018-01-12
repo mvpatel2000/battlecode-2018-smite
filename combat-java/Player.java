@@ -96,19 +96,8 @@ public class Player {
                     if(enemies_in_sight.size()>0) {      //combat state
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
                         if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
-                            Unit nearestUnit = enemies_in_sight.get(0);
+                            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
                             MapLocation nearloc = nearestUnit.location().mapLocation();
-                            int mindist = (int)nearloc.distanceSquaredTo(myloc);
-                            for(int i=1; i<enemies_in_sight.size(); i++) {
-                                Unit testUnit = enemies_in_sight.get(i);
-                                MapLocation testloc = testUnit.location().mapLocation();
-                                int testdist = (int)testloc.distanceSquaredTo(myloc);
-                                if(testdist<mindist) {
-                                    nearestUnit = testUnit;
-                                    nearloc = testloc;
-                                    mindist = testdist;
-                                }
-                            }
                             fuzzyMove(unit, myloc.directionTo(nearloc));
                         }
                         enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
@@ -132,19 +121,8 @@ public class Player {
                             //Tiebreaker again: closest
 
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
-                                Unit nearestUnit = enemies_in_range.get(0);
+                                Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
                                 MapLocation nearloc = nearestUnit.location().mapLocation();
-                                int mindist = (int)nearloc.distanceSquaredTo(myloc);
-                                for(int i=1; i<enemies_in_range.size(); i++) {
-                                    Unit testUnit = enemies_in_range.get(i);
-                                    MapLocation testloc = testUnit.location().mapLocation();
-                                    int testdist = (int)testloc.distanceSquaredTo(myloc);
-                                    if(testdist<mindist) {
-                                        nearestUnit = testUnit;
-                                        nearloc = testloc;
-                                        mindist = testdist;
-                                    }
-                                }
                                 fuzzyMove(unit, nearloc.directionTo(myloc));
                             }
                         }
@@ -173,6 +151,45 @@ public class Player {
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //1. anything that can hit u and u can kill
+    //2. anything that can hit u (by default rangers will be in here for obvious reasons)
+    //3. anything you can kill
+    //4. Other units
+    //5. Buildings
+    //In each tier: mages > rangers > healers > knights > workers
+    //Tiebreaker again: closest
+    public static Unit rangerAttack(Unit unit, VecUnit enemies_in_range) {
+        MapLocation myloc = unit.location().mapLocation();
+        int[] heuristics = new int[enemies_in_range.size()];
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            int hval = 0;
+            Unit enemy = enemies_in_range.get(i);
+            int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
+
+            heuristics[i] = hval;
+        }
+    }
+
+    //Takes MapLocation and a VecUnit
+    //Finds unit from VecUnit closest to MapLocation
+    //Typically used to find enemy unit from array closest to your unit
+    public static Unit getNearestUnit(MapLocation myloc, VecUnit other_units) {
+        Unit nearestUnit = other_units.get(0);
+        MapLocation nearloc = nearestUnit.location().mapLocation();
+        int mindist = (int)nearloc.distanceSquaredTo(myloc);
+        for(int i=1; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            MapLocation testloc = testUnit.location().mapLocation();
+            int testdist = (int)testloc.distanceSquaredTo(myloc);
+            if(testdist<mindist) {
+                nearestUnit = testUnit;
+                nearloc = testloc;
+                mindist = testdist;
+            }
+        }
+        return nearestUnit;
     }
 
     //Attempts to move unit in direction as best as possible
