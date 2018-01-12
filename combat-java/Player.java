@@ -90,14 +90,60 @@ public class Player {
                         moveOnVectorField(unit, myloc);
                 }       
 
-                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {                    
+                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {    
+
+                    // TODO: EXTENSIVE TESTING ON MOVEMENT
+
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
                     if(enemies_in_sight.size()>0) { //combat state
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
+                        if(enemies_in_range.size()==0) {    //move towards enemy                            
+                            Unit nearestUnit = enemies_in_sight.get(0);
+                            MapLocation nearloc = nearestUnit.location().mapLocation();
+                            int mindist = (int)nearloc.distanceSquaredTo(myloc);
+                            for(int i=1; i<enemies_in_sight.size(); i++) {
+                                Unit testUnit = enemies_in_sight.get(i);
+                                MapLocation testloc = testUnit.location().mapLocation();
+                                int testdist = (int)testloc.distanceSquaredTo(myloc);
+                                if(testdist<mindist) {
+                                    nearestUnit = testUnit;
+                                    nearloc = testloc;
+                                    mindist = testdist;
+                                }
+                            }
+                            fuzzyMove(unit, myloc.directionTo(nearloc));
+                        }
+                        enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+
                         if(enemies_in_range.size()>0) {
                             if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), enemies_in_range.get(0).id())) //attacks nearest enemy
                                 gc.attack(unit.id(), enemies_in_range.get(0).id());
+                            //attack                            
+                            //1. anything that can hit u and u can kill
+                            //2. anything that can hit u (by default rangers will be in here for obvious reasons)
+                            //3. anything you can kill
+                            //4. Other units
+                            //5. Buildings
+                            //In each tier: mages > rangers > healers > knights > workers
+                            //Tiebreaker again: closest
+
+                            if(gc.isMoveReady(unit.id())) {
+                                Unit nearestUnit = enemies_in_range.get(0);
+                                MapLocation nearloc = nearestUnit.location().mapLocation();
+                                int mindist = (int)nearloc.distanceSquaredTo(myloc);
+                                for(int i=1; i<enemies_in_range.size(); i++) {
+                                    Unit testUnit = enemies_in_range.get(i);
+                                    MapLocation testloc = testUnit.location().mapLocation();
+                                    int testdist = (int)testloc.distanceSquaredTo(myloc);
+                                    if(testdist<mindist) {
+                                        nearestUnit = testUnit;
+                                        nearloc = testloc;
+                                        mindist = testdist;
+                                    }
+                                }
+                                fuzzyMove(unit, myloc.directionTo(nearloc));
+                            }
                         }
                     }
                     else {
@@ -123,6 +169,29 @@ public class Player {
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //Attempts to move unit in direction as best as possible
+    //Scans 45 degree offsets, then 90
+    public static void fuzzyMove(Unit unit, Direction dir) {
+        if(!gc.isMoveReady(unit.id()))
+            return;
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                gc.moveRobot(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+                return;
+            }
         }
     }
 
