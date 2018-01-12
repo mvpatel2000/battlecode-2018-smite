@@ -58,8 +58,9 @@ public class Player {
         buildFieldBFS(enemy_location_queue);
 
 
-        int maxworkers = 5;
-        int maxfactory = 3;
+        int maxworkers = 1-1; //starting
+        int maxfactory = 1;
+        int maxrangers = 1;
 
         while (true) {
             if(gc.round()%50==0)
@@ -87,9 +88,6 @@ public class Player {
                     }
                     else
                         moveOnVectorField(unit, myloc);
-                    // else if(gc.isMoveReady(unit.id()) && gc.canMove(unit.id(), Direction.North) ) { //move north
-                    //     gc.moveRobot(unit.id(), Direction.North);
-                    // }
                 }       
 
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {                    
@@ -103,7 +101,11 @@ public class Player {
                 }
 
                 else if(unit.unitType()==UnitType.Factory) {
-                    if(gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
+                    int rangers = 0;
+                    for(int i=0; i<units.size(); i++)
+                        if(units.get(i).unitType()==UnitType.Ranger)
+                            rangers++;
+                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }
                     if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
