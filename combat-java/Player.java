@@ -58,9 +58,9 @@ public class Player {
         buildFieldBFS(enemy_location_queue);
 
 
-        int maxworkers = 1-1; //starting
-        int maxfactory = 1;
-        int maxrangers = 1;
+        int maxworkers = 10-1; //starting
+        int maxfactory = 4;
+        int maxrangers = 1000;
 
         while (true) {
             if(gc.round()%50==0)
@@ -93,12 +93,15 @@ public class Player {
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {    
 
                     // TODO: EXTENSIVE TESTING ON MOVEMENT
+                    System.out.print("Round: "+gc.round()+" | ");
 
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
                     if(enemies_in_sight.size()>0) { //combat state
+                        System.out.print(" Combat | ");
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
-                        if(enemies_in_range.size()==0) {    //move towards enemy                            
+                        if(enemies_in_range.size()==0) {    //move towards enemy   
+                            System.out.print(" move towards enemy | ");
                             Unit nearestUnit = enemies_in_sight.get(0);
                             MapLocation nearloc = nearestUnit.location().mapLocation();
                             int mindist = (int)nearloc.distanceSquaredTo(myloc);
@@ -117,8 +120,15 @@ public class Player {
                         enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
                         if(enemies_in_range.size()>0) {
-                            if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), enemies_in_range.get(0).id())) //attacks nearest enemy
-                                gc.attack(unit.id(), enemies_in_range.get(0).id());
+                            if(gc.isAttackReady(unit.id())) { //attacks nearest enemy
+                                for(int i=0; i<enemies_in_range.size(); i++) {
+                                    if(gc.canAttack(unit.id(), enemies_in_range.get(i).id())) {
+                                        System.out.print(" shoot | ");
+                                        gc.attack(unit.id(), enemies_in_range.get(i).id());
+                                        break;
+                                    }
+                                }
+                            }
                             //attack                            
                             //1. anything that can hit u and u can kill
                             //2. anything that can hit u (by default rangers will be in here for obvious reasons)
@@ -129,6 +139,7 @@ public class Player {
                             //Tiebreaker again: closest
 
                             if(gc.isMoveReady(unit.id())) {
+                                System.out.print(" move away from enemy | ");
                                 Unit nearestUnit = enemies_in_range.get(0);
                                 MapLocation nearloc = nearestUnit.location().mapLocation();
                                 int mindist = (int)nearloc.distanceSquaredTo(myloc);
@@ -142,13 +153,15 @@ public class Player {
                                         mindist = testdist;
                                     }
                                 }
-                                fuzzyMove(unit, myloc.directionTo(nearloc));
+                                fuzzyMove(unit, nearloc.directionTo(myloc));
                             }
                         }
                     }
                     else {
+                        System.out.print(" vectorfield | ");
                         moveOnVectorField(unit, myloc);
-                    }                                        
+                    }                                     
+                    System.out.println();   
                 }
 
                 else if(unit.unitType()==UnitType.Factory) {

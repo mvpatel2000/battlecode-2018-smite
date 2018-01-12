@@ -59,8 +59,8 @@ public class Player {
 
 
         int maxworkers = 10-1; //starting
-        int maxfactory = 1;
-        int maxrangers = 1;
+        int maxfactory = 4;
+        int maxrangers = 1000;
 
         while (true) {
             if(gc.round()%50==0)
@@ -100,13 +100,23 @@ public class Player {
                         gc.attack(unit.id(), enemies.get(0).id());
                 }
 
+                else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {                    
+                    MapLocation myloc = unit.location().mapLocation();
+                    VecUnit enemies = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);      
+
+                    moveOnVectorField(unit, myloc);
+
+                    if(enemies.size()>0 && gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), enemies.get(0).id())) //attacks nearest enemy
+                        gc.attack(unit.id(), enemies.get(0).id());
+                }
+
                 else if(unit.unitType()==UnitType.Factory) {
                     int rangers = 0;
                     for(int i=0; i<units.size(); i++)
-                        if(units.get(i).unitType()==UnitType.Ranger)
+                        if(units.get(i).unitType()==UnitType.Mage)
                             rangers++;
-                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
-                        gc.produceRobot(unit.id(),UnitType.Ranger);
+                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Mage)) {  //TODO: check to see queue is empty
+                        gc.produceRobot(unit.id(),UnitType.Mage);
                     }
                     if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
                         gc.unload(unit.id(),Direction.East);
