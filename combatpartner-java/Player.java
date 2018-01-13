@@ -123,10 +123,10 @@ public class Player {
                 else if(unit.unitType()==UnitType.Factory) {
                     int rangers = 0;
                     for(int i=0; i<units.size(); i++)
-                        if(units.get(i).unitType()==UnitType.Knight)
+                        if(units.get(i).unitType()==UnitType.Ranger)
                             rangers++;
-                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Knight)) {  //TODO: check to see queue is empty
-                        gc.produceRobot(unit.id(),UnitType.Knight);
+                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
+                        gc.produceRobot(unit.id(),UnitType.Ranger);
                     }
                     if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
                         gc.unload(unit.id(),Direction.East);
