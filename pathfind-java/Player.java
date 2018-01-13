@@ -49,13 +49,7 @@ public class Player {
         //distance_field[x][y]: tells you how far away you are from the destination on your current path
         //movement_field[x][y]: gives you ArrayList of Directions that are equally optimal for reaching destination
         distance_field = new int[width][height];
-        movement_field = new ArrayList[width][height];
-        for(int w=0; w<width; w++) {
-            for(int h=0; h<height; h++) {
-                distance_field[w][h] = (50*50+1);
-                movement_field[w][h] = new ArrayList<Direction>();                
-            }
-        }
+        movement_field = new ArrayList[width][height];        
         buildFieldBFS(enemy_locations);
 
         int maxworkers = 10-1; //starting
@@ -236,22 +230,22 @@ public class Player {
     public static void moveOnVectorField(Unit unit, MapLocation mapLocation) {
         if(!gc.isMoveReady(unit.id())) //checks if can move
             return;
+        UnitType myUnitType = unit.unitType();
         int x = mapLocation.getX();
         int y = mapLocation.getY();
         for(int movedir=0; movedir<movement_field[x][y].size(); movedir++) { //loops over all possible move directions
             Direction dir = movement_field[x][y].get(movedir);
-            if(dir == Direction.Center) { //update vector field
+            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location
                 for(int eloc=0; eloc<enemy_locations.size(); eloc++) {
                     int[] elocinfo = enemy_locations.get(eloc);
                     if(x==elocinfo[0] && y==elocinfo[1]) {
                         enemy_locations.remove(eloc);
                         break;
                     }
-                }
-                System.out.println(enemy_locations.size());
+                }                
                 buildFieldBFS(enemy_locations);
                 moveOnVectorField(unit, mapLocation);
-                return;
+                return;                            
             }
             else if(movedir==movement_field[x][y].size()-1) { //fuzzy moves last possible direction
                 fuzzyMove(unit, dir);
@@ -268,12 +262,18 @@ public class Player {
     //distance_field tells you how far from current path destination
     //movement_field gives ArrayList of equally optimal Directions to move in
     public static void buildFieldBFS(ArrayList<int[]> enemy_locations) {
-        Queue<int[]> queue = new LinkedList<int[]>();
-        for(int i=0; i<enemy_locations.size(); i++)
-            queue.add(enemy_locations.get(i));        
-
         Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<enemy_locations.size(); i++)
+            queue.add(enemy_locations.get(i));
+        for(int w=0; w<width; w++) {
+            for(int h=0; h<height; h++) {
+                distance_field[w][h] = (50*50+1);
+                movement_field[w][h] = new ArrayList<Direction>();                
+            }
+        }    
 
         while(queue.peek()!=null) {
             int[] lcc = queue.poll();
