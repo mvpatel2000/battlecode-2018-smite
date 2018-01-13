@@ -36,10 +36,9 @@ public class Helpers {
 				return Direction.Center;
 		}
 	}
-	public static ArrayList<Direction> astar(GameController gc, int robot_id, MapLocation location) {
-		Unit me = gc.unit(robot_id);
-		PlanetMap planet = gc.startingMap(gc.planet());
-		VecUnit units = gc.senseNearbyUnits(me.location().mapLocation(), me.visionRange());
+	public static ArrayList<Direction> astar(Unit me, MapLocation location) {
+		PlanetMap planet = Player.gc.startingMap(Player.gc.planet());
+		VecUnit units = Player.gc.senseNearbyUnits(me.location().mapLocation(), me.visionRange());
 		HashSet<MapLocation> unitLocations = new HashSet<>();
 		for(int x=0; x<units.size(); x++) {
 			unitLocations.add(units.get(x).location().mapLocation());
