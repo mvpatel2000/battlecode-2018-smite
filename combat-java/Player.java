@@ -103,24 +103,7 @@ public class Player {
                         enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
                         if(enemies_in_range.size()>0) {
-                            // if(gc.isAttackReady(unit.id())) { //attacks enemy in range by random
-                            //     for(int i=0; i<enemies_in_range.size(); i++) {
-                            //         if(gc.canAttack(unit.id(), enemies_in_range.get(i).id())) {
-                            //             gc.attack(unit.id(), enemies_in_range.get(i).id());
-                            //             break;
-                            //         }
-                            //     }
-                            // }
-
-                            rangerAttack(unit, enemies_in_range);
-                            //attack                           
-                            //1. anything that can hit u and u can kill
-                            //2. anything that can hit u (by default rangers will be in here for obvious reasons)
-                            //3. anything you can kill
-                            //4. Other units
-                            //5. Buildings
-                            //In each tier: mages > rangers > healers > knights > workers
-                            //Tiebreaker again: closest
+                            rangerAttack(unit, enemies_in_range); //attack based on heuristic
 
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
                                 Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
@@ -155,12 +138,10 @@ public class Player {
         }
     }
 
-    //1. anything that can hit u and u can kill
-    //2. anything you can kill
-    //3. anything that can hit u
-    //4. Other units
-    //In each tier: rangers > mages > healers > knights > workers > factory > rocket
-    //Tiebreaker again: weakest
+    //1. anything that u can kill
+    //2. anything that can hit u
+    //Tiebreaker weakest
+    //Tiebreaker again: rangers > mages > healers > knights > workers > factory > rocket
     public static void rangerAttack(Unit unit, VecUnit enemies_in_range) {
         if(!gc.isAttackReady(unit.id()))
             return;
@@ -172,17 +153,18 @@ public class Player {
             UnitType enemyType = enemy.unitType();
             int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
             if(unit.damage()>(int)enemy.health()) //can kill
-                hval+=10000;
+                hval+=10000;            
             try {
                 if(distance<(int)enemy.attackRange()) //can be hit
                     hval+=1000;
             }
             catch(Exception e) {} //if unit has no attack range
+            hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit        
             UnitType[] priorities = {UnitType.Rocket, UnitType.Factory, UnitType.Worker, UnitType.Knight, 
                                         UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
-                    hval+=100+utctr;
+                    hval+=10*utctr;
                     break;
                 }
             }
@@ -194,16 +176,15 @@ public class Player {
                 return b[0] - a[0];
             }
         });
-        for(int i=0; i<heuristics.length; i++)      //TODO: Verify this stuff works right here (sort)
-            System.out.print("("+heuristics[i][0]+" "+enemies_in_range.get(heuristics[i][1]).health()+") ");
+        // for(int i=0; i<heuristics.length; i++)
+        //     System.out.print("("+heuristics[i][0]+" "+enemies_in_range.get(heuristics[i][1]).health()+") ");
+        // System.out.println("|");
         for(int i=0; i<heuristics.length; i++) {            
             if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
                 gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
                 return;
             }
-        }
-        System.out.println();
-        System.out.println();
+        }        
     }
 
     //Takes MapLocation and a VecUnit

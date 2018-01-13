@@ -58,9 +58,9 @@ public class Player {
         buildFieldBFS(enemy_location_queue);
 
 
-        int maxworkers = 1-1; //starting
-        int maxfactory = 1;
-        int maxrangers = 1;
+        int maxworkers = 10-1; //starting
+        int maxfactory = 4;
+        int maxrangers = 1000;
 
         while (true) {
             if(gc.round()%50==0)
@@ -90,14 +90,31 @@ public class Player {
                         moveOnVectorField(unit, myloc);
                 }       
 
-                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {                    
+                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {    
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);      
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
+                    if(enemies_in_sight.size()>0) {      //combat state
+                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
+                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
+                            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
+                            MapLocation nearloc = nearestUnit.location().mapLocation();
+                            fuzzyMove(unit, myloc.directionTo(nearloc));
+                        }
+                        enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
-                    moveOnVectorField(unit, myloc);
+                        if(enemies_in_range.size()>0) {
+                            rangerAttack(unit, enemies_in_range); //attack based on heuristic
 
-                    if(enemies.size()>0 && gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), enemies.get(0).id())) //attacks nearest enemy
-                        gc.attack(unit.id(), enemies.get(0).id());
+                            if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
+                                Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
+                                MapLocation nearloc = nearestUnit.location().mapLocation();
+                                fuzzyMove(unit, nearloc.directionTo(myloc));
+                            }
+                        }
+                    }
+                    else { //non-combat state
+                        moveOnVectorField(unit, myloc);
+                    }                                     
                 }
 
                 else if(unit.unitType()==UnitType.Factory) {
@@ -121,20 +138,116 @@ public class Player {
         }
     }
 
+    //1. anything that u can kill
+    //2. anything that can hit u
+    //Tiebreaker weakest
+    //Tiebreaker again: rangers > mages > healers > knights > workers > factory > rocket
+    public static void rangerAttack(Unit unit, VecUnit enemies_in_range) {
+        if(!gc.isAttackReady(unit.id()))
+            return;
+        MapLocation myloc = unit.location().mapLocation();
+        int[][] heuristics = new int[(int)enemies_in_range.size()][2];
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            int hval = 0;
+            Unit enemy = enemies_in_range.get(i);
+            UnitType enemyType = enemy.unitType();
+            int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
+            if(unit.damage()>(int)enemy.health()) //can kill
+                hval+=10000;            
+            try {
+                if(distance<(int)enemy.attackRange()) //can be hit
+                    hval+=1000;
+            }
+            catch(Exception e) {} //if unit has no attack range
+            hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit        
+            UnitType[] priorities = {UnitType.Rocket, UnitType.Factory, UnitType.Worker, UnitType.Knight, 
+                                        UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            for(int utctr=0; utctr<priorities.length; utctr++) {
+                if(enemyType == priorities[utctr]) {
+                    hval+=10*utctr;
+                    break;
+                }
+            }
+            heuristics[i][0] = hval;
+            heuristics[i][1] = i;
+        }
+        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
+            public int compare(int[] a, int[] b) {
+                return b[0] - a[0];
+            }
+        });
+        // for(int i=0; i<heuristics.length; i++)
+        //     System.out.print("("+heuristics[i][0]+" "+enemies_in_range.get(heuristics[i][1]).health()+") ");
+        // System.out.println("|");
+        for(int i=0; i<heuristics.length; i++) {            
+            if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+                gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
+                return;
+            }
+        }        
+    }
+
+    //Takes MapLocation and a VecUnit
+    //Finds unit from VecUnit closest to MapLocation
+    //Typically used to find enemy unit from array closest to your unit
+    public static Unit getNearestUnit(MapLocation myloc, VecUnit other_units) {
+        Unit nearestUnit = other_units.get(0);
+        MapLocation nearloc = nearestUnit.location().mapLocation();
+        int mindist = (int)nearloc.distanceSquaredTo(myloc);
+        for(int i=1; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            MapLocation testloc = testUnit.location().mapLocation();
+            int testdist = (int)testloc.distanceSquaredTo(myloc);
+            if(testdist<mindist) {
+                nearestUnit = testUnit;
+                nearloc = testloc;
+                mindist = testdist;
+            }
+        }
+        return nearestUnit;
+    }
+
+    //Attempts to move unit in direction as best as possible
+    //Scans 45 degree offsets, then 90
+    public static void fuzzyMove(Unit unit, Direction dir) {
+        if(!gc.isMoveReady(unit.id()))
+            return;
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                gc.moveRobot(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+                return;
+            }
+        }
+    }
+
     //Moves unit on vector field
     //Should be used if no enemies in sight
-    //If no optimal move is available (all blocked) or there exists no path, unit will not move
+    //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
     public static void moveOnVectorField(Unit unit, MapLocation mapLocation) {
+        if(!gc.isMoveReady(unit.id())) //checks if can move
+            return;
         int x = mapLocation.getX();
         int y = mapLocation.getY();
-        if(gc.isMoveReady(unit.id())) { //checks if can move
-            for(int movedir=0; movedir<movement_field[x][y].size(); movedir++) { //loops over all possible move Directions
-                if(gc.canMove(unit.id(), movement_field[x][y].get(movedir))) { //verifies can move in selected direction
-                    gc.moveRobot(unit.id(), movement_field[x][y].get(movedir));
-                    return;
-                }
-            }                        
-        }  
+        for(int movedir=0; movedir<movement_field[x][y].size(); movedir++) { //loops over all possible move Directions
+            if(movedir==movement_field[x][y].size()-1) {
+                fuzzyMove(unit, movement_field[x][y].get(movedir));
+                return;
+            }
+            else if(gc.canMove(unit.id(), movement_field[x][y].get(movedir))) { //verifies can move in selected direction
+                gc.moveRobot(unit.id(), movement_field[x][y].get(movedir));
+                return;
+            }
+        }                        
     }
 
     //Takes a queue of starting enemy locations and builds vector fields
