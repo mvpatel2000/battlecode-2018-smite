@@ -15,6 +15,7 @@ public class Player {
     public static int height;
 
     //Stuff we create
+    public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
 
@@ -34,14 +35,14 @@ public class Player {
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
 
-        Queue<int[]> enemy_location_queue = new LinkedList<int[]>();  //starting enemy location queue for generating vector field
+        enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
         VecUnit initial_units = map.getInitial_units();
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
             if(ally!=unit.team()) {      
                 MapLocation enemy_location = unit.location().mapLocation();
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
-                enemy_location_queue.add(enemy_info);
+                enemy_locations.add(enemy_info);
             }
         }
 
@@ -55,8 +56,7 @@ public class Player {
                 movement_field[w][h] = new ArrayList<Direction>();                
             }
         }
-        buildFieldBFS(enemy_location_queue);
-
+        buildFieldBFS(enemy_locations);
 
         int maxworkers = 10-1; //starting
         int maxfactory = 4;
@@ -210,7 +210,7 @@ public class Player {
     //Attempts to move unit in direction as best as possible
     //Scans 45 degree offsets, then 90
     public static void fuzzyMove(Unit unit, Direction dir) {
-        if(!gc.isMoveReady(unit.id()))
+        if(!gc.isMoveReady(unit.id()) || dir==Direction.Center)
             return;
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
@@ -238,13 +238,27 @@ public class Player {
             return;
         int x = mapLocation.getX();
         int y = mapLocation.getY();
-        for(int movedir=0; movedir<movement_field[x][y].size(); movedir++) { //loops over all possible move Directions
-            if(movedir==movement_field[x][y].size()-1) {
-                fuzzyMove(unit, movement_field[x][y].get(movedir));
+        for(int movedir=0; movedir<movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //update vector field
+                for(int eloc=0; eloc<enemy_locations.size(); eloc++) {
+                    int[] elocinfo = enemy_locations.get(eloc);
+                    if(x==elocinfo[0] && y==elocinfo[1]) {
+                        enemy_locations.remove(eloc);
+                        break;
+                    }
+                }
+                System.out.println(enemy_locations.size());
+                buildFieldBFS(enemy_locations);
+                moveOnVectorField(unit, mapLocation);
                 return;
             }
-            else if(gc.canMove(unit.id(), movement_field[x][y].get(movedir))) { //verifies can move in selected direction
-                gc.moveRobot(unit.id(), movement_field[x][y].get(movedir));
+            else if(movedir==movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                fuzzyMove(unit, dir);
+                return;
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                gc.moveRobot(unit.id(), dir);
                 return;
             }
         }                        
@@ -253,7 +267,11 @@ public class Player {
     //Takes a queue of starting enemy locations and builds vector fields
     //distance_field tells you how far from current path destination
     //movement_field gives ArrayList of equally optimal Directions to move in
-    public static void buildFieldBFS(Queue<int[]> queue) {
+    public static void buildFieldBFS(ArrayList<int[]> enemy_locations) {
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<enemy_locations.size(); i++)
+            queue.add(enemy_locations.get(i));        
+
         Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
