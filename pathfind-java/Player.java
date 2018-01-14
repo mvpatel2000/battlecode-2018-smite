@@ -29,7 +29,7 @@ public class Player {
         if(ally==Team.Red)
             enemy = Team.Blue;
 
-        myPlanet = Planet.Earth;     //TODO: How to figure out which planet you're on??
+        myPlanet = gc.planet();
 
         map = gc.startingMap(myPlanet);                   
         width = (int)map.getWidth();
