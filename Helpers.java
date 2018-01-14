@@ -54,7 +54,7 @@ public class Helpers {
 					else return 0;
 				}
 			});
-		pq.add(new Tuple4<Long,Long,MapLocation,Direction>(new Long(0), new Long(0), me.location().mapLocation(), null));
+		pq.add(new Tuple4<Long,Long,MapLocation,Direction>(0L, 0L, me.location().mapLocation(), null));
 		Map<MapLocation, Direction> vis = new TreeMap<>(new Comparator<MapLocation>() {
 			public int compare(MapLocation m1, MapLocation m2) {
 				if(m1.getX() < m2.getX()) return -1;
