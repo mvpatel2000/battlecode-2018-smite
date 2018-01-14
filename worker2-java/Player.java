@@ -18,25 +18,22 @@ public class Player {
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
 
-    class KarbDir implements Comparable {
+    static class KarbDir implements Comparable {
         Direction dir;
         long karb;
-
         // Constructor
-        public karbDir(Direction dir, long karb)
-        {
+        public KarbDir(Direction dir, long karb) {
             this.dir = dir;
             this.karb = karb;
         }
-
-        // Used to print student details in main()
-        public String toString()
-        {
+        public String toString() {
             return this.dir + " " + this.karb;
         }
-
-        public int compareTo(KarbDir other) {
-            return this.karb - other.karb;
+        public int compareTo(Object other) {
+            if (!(other instanceof KarbDir))
+                throw new ClassCastException("A Karbdir object expected.");
+            long otherkarb = ((KarbDir) other).karb;
+            return (int)(this.karb - otherkarb);
         }
     }
 
@@ -67,7 +64,7 @@ public class Player {
                 enemy_location_queue.add(enemy_info);
             }
             if(ally==unit.team()) {
-                if(unit.UnitType()==UnitType.WORKER) {
+                if(unit.unitType()==UnitType.Worker) {
                     initial_workers+=1;
                 }
             }
@@ -89,7 +86,7 @@ public class Player {
         int maxworkers = 1; //starting
         int maxfactory = 1;
         int maxrangers = 1;
-        boolean buildingFactory = False;
+        boolean buildingFactory = false;
         int current_workers=initial_workers;
         int centerid=0;
         int replicatorid = 0;
@@ -107,14 +104,14 @@ public class Player {
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    KarbDir[] mykarbs = karboniteSort(unit)
+                    ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(current_workers==3) {
-                        if(buildingFactory==False && unit.id()==centerid) {
+                        if(buildingFactory==false && unit.id()==centerid) {
                             //blueprint factory
-                            Direction buildDirection = leastKarboniteDirection(unit.id(), unit.location());
+                            Direction buildDirection = leastKarboniteDirection(unit, unit.location());
                             if(gc.canBlueprint(unit.id(), UnitType.Factory, buildDirection)) {
                                 gc.blueprint(unit.id(), UnitType.Factory, buildDirection);
-                                buildingFactory=True;
+                                buildingFactory=true;
                             }
                         } else {
                             buildFactory(unit, mykarbs);
@@ -130,34 +127,9 @@ public class Player {
                             workerharvest(unit, mykarbs);
                             workermove(unit, mykarbs);
                         }
-                    }
-                    MapLocation myloc = unit.location().mapLocation();
-                    Direction movedir = greedyKarboniteMove(unit, myloc);
-                    boolean tookAction = makeAttack(unit, units, firstFactory);
-                    if(!tookAction) {
-                        //mine karbonite
-                        if(gc.karboniteAt(myloc)>0L) {
-                            if(gc.isAttackReady(unit.id())) {
-                                if(gc.canHarvest(unit.id(), Direction.Center)){
-                                    gc.harvest(unit.id(), Direction.Center);
-                                }
-                            }
-                        } else {
-                            //move
-                            if(gc.isMoveReady(unit.id())) {
-                                if(gc.canMove(unit.id(), movedir)) {
-                                    gc.moveRobot(unit.id(), movedir);
-                                } else {
-                                    //movedir=center because edgecase: we reach the other starting location
-                                    //and 0 karbonite around us
-                                    Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
-                                                            Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-                                    int rnd = new Random().nextInt(dirs.length);
-                                    System.out.println(gc.karbonite());
-                                    fuzzyMove(unit, dirs[rnd]);
-                                }
-                            }
-                        }
+                    } else {
+                        workerharvest(unit, mykarbs);
+                        workermove(unit, mykarbs);
                     }
                     // ****************************************
                     // WORKER LOGIC
@@ -232,7 +204,6 @@ public class Player {
                 }
 
                 else if(unit.unitType()==UnitType.Factory) {
-                    firstFactory=False;
                     int rangers = 0;
                     for(int i=0; i<units.size(); i++)
                         if(units.get(i).unitType()==UnitType.Ranger)
@@ -254,7 +225,7 @@ public class Player {
     }
     //For Workers
     //Return the central of three workers, the center one will build the factory
-    public static boolean centralworker(VecUnit units) {
+    public static int centralworker(VecUnit units) {
         long smalldistsum=100000000000L;
         int centralworkerid = 0;
         for (int i = 0; i < units.size(); i++) {
@@ -265,7 +236,7 @@ public class Player {
                 for (int j = i; j < units.size(); j++) {
                     Unit secondunit = units.get(j);
                     if(secondunit.unitType()==UnitType.Worker && !secondunit.location().isInGarrison() && !secondunit.location().isInSpace()) {
-                        mydistsum += unit.location().distanceSquaredTo(secondunit.location());
+                        mydistsum += unit.location().mapLocation().distanceSquaredTo(secondunit.location().mapLocation());
                     }
                 }
             }
@@ -277,45 +248,47 @@ public class Player {
         return centralworkerid;
     }
 
-    public static void buildFactory(Unit unit) {
-        VecUnit nearbyFactories = gc.senseNearbyUnitsByType(myloc, unit.UnitType.visionRange, UnitType.Factory);
+    public static void buildFactory(Unit unit, ArrayList<KarbDir> mykarbs) {
+        VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), unit.visionRange(), UnitType.Factory);
         if(nearbyFactories.size()>0) {
             if(gc.canBuild(unit.id(), nearbyFactories.get(0).id())) {
-                gc.build(unit.id(), nearbyFactories.get(0).id);
+                gc.build(unit.id(), nearbyFactories.get(0).id());
             } else {
-                workerharvest(unit);
-                Direction toFactory = unit.location().directionTo(nearbyFactories.get(0).location);
-                fuzzyMove(unit.id(), toFactory);
+                workerharvest(unit, mykarbs);
+                Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
+                fuzzyMove(unit, toFactory);
             }
         }
     }
     //harvest in the optimal direction
-    public static void workerharvest(Unit unit, KarbDir mykarbs) {
-        MapLocation myLoc = unit.location();
+    public static void workerharvest(Unit unit, ArrayList<KarbDir> mykarbs) {
+        MapLocation myLoc = unit.location().mapLocation();
         for (KarbDir k : mykarbs) {
-            MapLocation newLoc = myLoc.add(k.dir)
+            MapLocation newLoc = myLoc.add(k.dir);
             if(gc.karboniteAt(newLoc)>0L) {
                 if(gc.canHarvest(unit.id(), k.dir)){
                     gc.harvest(unit.id(), k.dir);
                     break;
                 }
             }
+        }
         return;
     }
-    public static void workermove(Unit unit, KarbDir mykarbs) {
-        MapLocation myLoc = unit.location();
+    public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs) {
+        MapLocation myLoc = unit.location().mapLocation();
         for (KarbDir k : mykarbs) {
-            MapLocation newLoc = myLoc.add(k.dir)
+            MapLocation newLoc = myLoc.add(k.dir);
             if(gc.karboniteAt(newLoc)>0L) {
-                if(gc.canMove(unit.id(), k.dir)){
-                    gc.move(unit.id(), k.dir);
+                if(gc.canMove(unit.id(), k.dir)) {
+                    gc.moveRobot(unit.id(), k.dir);
                     break;
                 }
             }
+        }
         return;
     }
     //find the optimal replicator
-    public static in optimalreplicator(VecUnit units){
+    public static int optimalreplicator(VecUnit units) {
         long largestkarbonite=0L;
         int replicatorid = 0;
         int cooldown=0;
@@ -325,7 +298,7 @@ public class Player {
             if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                 mykarb = sumKarb(unit);
                 //factor in abilitycooldown when determining best replicator
-                if((mykarb-unit.abilityCooldown()*3)>(largestkarbonite-abilityCooldown()*3)) {
+                if((mykarb-unit.abilityCooldown()*3)>(largestkarbonite-cooldown*3)) {
                     largestkarbonite=mykarb;
                     replicatorid=unit.id();
                     cooldown = unit.id();
@@ -336,13 +309,14 @@ public class Player {
     }
     //sum karbonite over viewing radius
     public static long sumKarb(Unit unit) {
-        long totalkarb = 0L
-        int x = mapLocation.getX();
-        int y = mapLocation.getY();
-        for (int i=x-7; i<x+8; i++) {
-            for (int j=y-7; y<y+8; j++) {
+        long totalkarb = 0L;
+        MapLocation myLoc = unit.location().mapLocation();
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.min(x-7, 0); i<Math.max(x+8,(int)map.getWidth()+1); i++) {
+            for (int j=Math.min(0,y-7); y<Math.max(y+8,(int)map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(myPlanet, i, j);
-                if(()(x-i)*(x-i) + (y-j*(y-j))<Unit.visionRange) {
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
                     totalkarb+=gc.karboniteAt(m);
                 }
             }
@@ -350,26 +324,27 @@ public class Player {
         return totalkarb;
     }
     public static boolean makeAttack(Unit unit, VecUnit myUnits[], boolean firstFactory) {
-        if(firstFactory==True) {
-            Direction = leastKarboniteDirection(unit.id(), unit.location());
-            if(canBlueprint(unit.id(), UnitType.Factory, buildDirection)) {
+        if(firstFactory==true) {
+            Direction buildDirection = leastKarboniteDirection(unit, unit.location());
+            if(gc.canBlueprint(unit.id(), UnitType.Factory, buildDirection)) {
                 gc.blueprint(unit.id(), UnitType.Factory, buildDirection);
-                return True;
+                return true;
             }
         } else {
-            Direction rdir = greedyKarboniteMove(unit.id(), unit.location());
-            if(sumkarb(unit)>100L) {
+            Direction rdir = greedyKarboniteMove(unit, unit.location());
+            if(sumKarb(unit)>100L) {
                 if(gc.canReplicate(unit.id(), rdir)) {
                     gc.replicate(unit.id(), rdir);
-                    return True;
+                    return true;
                 }
             }
         }
-        return False; //took action, cannot mine
+        return false; //took action, cannot mine
     }
     //
 
-    public static Direction leastKarboniteDirection(Unit unit, MapLocation myloc) {
+    public static Direction leastKarboniteDirection(Unit unit, Location theloc) {
+        MapLocation myloc = theloc.mapLocation();
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         long mykarb = 0L;
@@ -388,26 +363,25 @@ public class Player {
     }
 
     //sort directions by karbonite content
-    public static KarbDir[] karboniteSort(Unit unit, Maplocation myloc) {
-        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center;
+    public static ArrayList<KarbDir> karboniteSort(Unit unit, Location theloc) {
+        MapLocation myLoc = theloc.mapLocation();
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-        KarbDir[] karboniteDirections = new KarbDir[9];
+        ArrayList<KarbDir> karboniteDirections = new ArrayList<KarbDir>();
         long mykarb = 0L;
         for (int i=0; i<dirs.length; i++) {
-            MapLocation newloc = myloc.add(dirs[i]);
+            MapLocation newloc = myLoc.add(dirs[i]);
             if(gc.canMove(unit.id(), dirs[i])) {
                 long thiskarb = gc.karboniteAt(newloc);
-                karboniteDirections[i] = new KarbDir(dirs[i], thiskarb);
+                karboniteDirections.add(new KarbDir(dirs[i], thiskarb));
             }
         }
-        Arrays.sort(data, Collections.reverseOrder()); //sort high to low
-        for (KarbDir kd : karboniteDirections) {
-            System.out.println(kd.dir + " " + kd.karb);
-        }
+        Collections.sort(karboniteDirections, Collections.reverseOrder()); //sort high to low
         return karboniteDirections;
     }
     //Move in the direction of the most Karbonite
-    public static Direction greedyKarboniteMove(Unit unit, MapLocation myloc) {
+    public static Direction greedyKarboniteMove(Unit unit, Location thisloc) {
+        MapLocation myloc = thisloc.mapLocation();
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         long mykarb = 0L;
