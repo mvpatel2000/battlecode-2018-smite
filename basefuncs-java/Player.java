@@ -103,6 +103,7 @@ public class Player {
                         }
                     }
                     else { //non-combat state
+                        //snipe some shit!
                         moveOnVectorField(unit, myloc);
                     }                                     
                 }
@@ -129,7 +130,8 @@ public class Player {
     }
 
     //1. anything that u can kill
-    //2. anything that can hit u
+    //2. attack factories then rockets
+    //3. anything that can hit u
     //Tiebreaker weakest
     //Tiebreaker again: rangers > mages > healers > knights > workers > factory > rocket
     public static void rangerAttack(Unit unit, VecUnit enemies_in_range) {
@@ -143,15 +145,17 @@ public class Player {
             UnitType enemyType = enemy.unitType();
             int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
             if(unit.damage()>(int)enemy.health()) //can kill
-                hval+=10000;            
+                hval+=10000;
+            if(enemyType==UnitType.Rocket)
+                hval+=8000;
+            if(enemyType==UnitType.Factory)
+                hval+=7000;
             try {
                 if(distance<(int)enemy.attackRange()) //can be hit
                     hval+=1000;
-            }
-            catch(Exception e) {} //if unit has no attack range
+            } catch(Exception e) {} //if unit has no attack range
             hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit        
-            UnitType[] priorities = {UnitType.Rocket, UnitType.Factory, UnitType.Worker, UnitType.Knight, 
-                                        UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr;
