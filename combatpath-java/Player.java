@@ -16,6 +16,8 @@ public class Player {
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
+    public static ArrayList<int[]> enemy_buildings = new ArrayList<int[]>();
+    public static boolean canSnipe = false;
 
     public static void main(String[] args) {
 
@@ -57,9 +59,12 @@ public class Player {
         int maxfactory = 4;
         int maxrangers = 1000;
 
-        while (true) {
+        while (true) {            
             if(gc.round()%50==0)
-                System.out.println("Current round: "+gc.round());            
+                System.out.println("Current round: "+gc.round());
+            if(canSnipe==false && gc.round()>350) //activate snipe
+                canSnipe = true;
+            buildSnipeTargets();
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
@@ -84,7 +89,7 @@ public class Player {
                         moveOnVectorField(unit, myloc);
                 }       
 
-                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace()) {    
+                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
                     if(enemies_in_sight.size()>0) {      //combat state
@@ -107,8 +112,18 @@ public class Player {
                         }
                     }
                     else { //non-combat state
-                        //snipe some shit!
                         moveOnVectorField(unit, myloc);
+                        if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
+                            int[] target = enemy_buildings.get(0);
+                            MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
+                            if(gc.canBeginSnipe(unit.id(), snipetarget))
+                                gc.beginSnipe(unit.id(), snipetarget);
+                            target[0]--;
+                            if(target[0]==0)
+                                enemy_buildings.remove(0);
+                            else
+                                enemy_buildings.set(0,target);
+                        }                        
                     }                                     
                 }
 
@@ -130,6 +145,41 @@ public class Player {
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //updates snipe list to contain all buildings
+    public static void buildSnipeTargets() {
+        VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy); //all enemies
+        for(int i = 0; i<total_enemies.size(); i++) {
+            Unit enemy_unit = total_enemies.get(i);
+            boolean isDuplicate = false;
+            if(enemy_unit.unitType()==UnitType.Factory) { //if factory
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {8, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Rocket) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {5, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
         }
     }
 
@@ -248,7 +298,7 @@ public class Player {
                     }
                 }
                 if(enemy_locations.size()==0) {
-                    VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*width/2, enemy);
+                    VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
                     for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
                         MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
                         int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
