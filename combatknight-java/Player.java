@@ -149,7 +149,7 @@ public class Player {
                         if(enemies_in_range.size()>0) {
 							if(gc.canAttack(unit.id(), attackUnit.id())) {
 								gc.attack(unit.id(), attackUnit.id());
-							} else {
+							} else if(gc.canAttack(unit.id(), enemies_in_range.get(0).id())) {
 								gc.attack(unit.id(), enemies_in_range.get(0).id());
 							}
                         }
