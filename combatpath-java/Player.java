@@ -62,8 +62,19 @@ public class Player {
         while (true) {            
             if(gc.round()%50==0)
                 System.out.println("Current round: "+gc.round());
-            if(canSnipe==false && gc.round()>350) //activate snipe
+            if(canSnipe==false && gc.round()>350) {//activate snipe
                 canSnipe = true;
+                int[] badthing = {8,0,0,12};
+                enemy_buildings.add(badthing);
+                int[] badthinga = {8,2,0,12};
+                enemy_buildings.add(badthinga);
+                int[] badthinbg = {8,0,2,12};
+                enemy_buildings.add(badthinbg);
+                int[] bdadthing = {8,1,1,12};
+                enemy_buildings.add(bdadthing);
+                //Unit targ = gc.senseUnitAtLocation(new MapLocation(myPlanet, 1,1));
+                //System.out.println(targ.unitType()+" "+targ.health());
+            }
             buildSnipeTargets();
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
@@ -114,10 +125,14 @@ public class Player {
                     else { //non-combat state
                         moveOnVectorField(unit, myloc);
                         if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
+                            System.out.println("SNIP SNIP");
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
-                            if(gc.canBeginSnipe(unit.id(), snipetarget))
+                            System.out.println(target[1]+" "+target[2]);
+                            if(gc.canBeginSnipe(unit.id(), snipetarget)) {
                                 gc.beginSnipe(unit.id(), snipetarget);
+                                System.out.println("SNIP READY");
+                            }
                             target[0]--;
                             if(target[0]==0)
                                 enemy_buildings.remove(0);
