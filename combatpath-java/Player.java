@@ -45,9 +45,13 @@ public class Player {
         }
 
         distance_field = new int[width][height];
-        movement_field = new ArrayList[width][height];
-         
-        buildFieldBFS(enemy_locations);        
+        movement_field = new ArrayList[width][height];         
+        buildFieldBFS(enemy_locations);       
+
+        UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
+                                 UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker};
+        for(int i=0; i<rarray.length; i++)
+            gc.queueResearch(rarray[i]); 
 
         int maxworkers = 10-1; //starting
         int maxfactory = 4;
