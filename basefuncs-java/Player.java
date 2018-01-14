@@ -46,11 +46,10 @@ public class Player {
             }
         }
 
-        //distance_field[x][y]: tells you how far away you are from the destination on your current path
-        //movement_field[x][y]: gives you ArrayList of Directions that are equally optimal for reaching destination
         distance_field = new int[width][height];
-        movement_field = new ArrayList[width][height];        
-        buildFieldBFS(enemy_locations);
+        movement_field = new ArrayList[width][height];
+         
+        buildFieldBFS(enemy_locations);        
 
         int maxworkers = 10-1; //starting
         int maxfactory = 4;
@@ -58,8 +57,7 @@ public class Player {
 
         while (true) {
             if(gc.round()%50==0)
-                System.out.println("Current round: "+gc.round());
-            
+                System.out.println("Current round: "+gc.round());            
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
@@ -242,7 +240,15 @@ public class Player {
                         enemy_locations.remove(eloc);
                         break;
                     }
-                }                
+                }
+                if(enemy_locations.size()==0) {
+                    VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*width/2, enemy);
+                    for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
+                        MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
+                        int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
+                        enemy_locations.add(enemy_info);
+                    }
+                }
                 buildFieldBFS(enemy_locations);
                 moveOnVectorField(unit, mapLocation);
                 return;                            
