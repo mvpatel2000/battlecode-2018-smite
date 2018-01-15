@@ -13,6 +13,35 @@ public class Helpers {
 			this.c = c; this.d = d;
 		}
 	}
+	
+	// random integer between i and j, inclusive
+	public static int randInt(int i, int j) { 
+		return (int)(Math.random()*(j-i+1)+i);
+	}
+
+	// random direction, including Center
+	public static Direction randDir() {
+		switch(randInt(0, 8)) {
+			case 0:
+				return Direction.North;
+			case 1:
+				return Direction.Northeast;
+			case 2:
+				return Direction.East;
+			case 3:
+				return Direction.Southeast;
+			case 4:
+				return Direction.South;
+			case 5:
+				return Direction.Southwest;
+			case 6:
+				return Direction.West;
+			case 7:
+				return Direction.Northwest;
+			default:
+				return Direction.Center;
+		}
+	}
 
 	public static Direction opposite(Direction d) {
 		switch(d) {
