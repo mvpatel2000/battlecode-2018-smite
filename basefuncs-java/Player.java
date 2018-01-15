@@ -16,8 +16,9 @@ public class Player {
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
-    public static ArrayList<int[]> enemy_buildings = new ArrayList<int[]>();
-    public static boolean canSnipe = false;
+    public static ArrayList<int[]> enemy_buildings;
+    public static boolean canSnipe;
+    public static boolean doesPathExist;
 
     public static void main(String[] args) {
 
@@ -55,6 +56,8 @@ public class Player {
         for(int i=0; i<rarray.length; i++)
             gc.queueResearch(rarray[i]); 
 
+        canSnipe = false;
+
         int maxworkers = 10-1; //starting
         int maxfactory = 4;
         int maxrangers = 1000;
@@ -64,8 +67,10 @@ public class Player {
                 System.out.println("Current round: "+gc.round());
             if(canSnipe==false && gc.round()>350) {//activate snipe
                 canSnipe = true;
+                enemy_buildings = new ArrayList<int[]>();
             }
-            buildSnipeTargets();
+            if(canSnipe)
+                buildSnipeTargets();
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
