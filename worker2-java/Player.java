@@ -69,7 +69,7 @@ public class Player {
                 }
             }
         }
-        System.out.println(initial_workers);
+
         //distance_field[x][y]: tells you how far away you are from the destination on your current path
         //movement_field[x][y]: gives you ArrayList of Directions that are equally optimal for reaching destination
         distance_field = new int[width][height];
@@ -96,7 +96,7 @@ public class Player {
             }
             VecUnit units = gc.myUnits();
 
-            if(current_workers==3) {
+            if(current_workers==4) {
                 centerid = centralworker(units);
             } else if (current_workers<3) {
                 replicatorid = optimalreplicator(units);
@@ -105,7 +105,7 @@ public class Player {
                 Unit unit = units.get(unit_counter);
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(current_workers==3) {
+                    if(current_workers>3) {
                         if(buildingFactory==false && unit.id()==centerid) {
                             //blueprint factory
                             Direction buildDirection = leastKarboniteDirection(unit, unit.location());
@@ -114,19 +114,15 @@ public class Player {
                                 buildingFactory=true;
                             }
                         } else {
-                            buildFactory(unit, mykarbs);
+                            buildingFactory = buildFactory(unit, mykarbs);
                         }
-                    } else if (current_workers<3) {
-                        if(unit.id()==replicatorid) {
-                            for (KarbDir k : mykarbs) {
-                                if(gc.canReplicate(unit.id(), k.dir)) {
-                                    gc.replicate(unit.id(), k.dir);
-                                    current_workers+=1;
-                                }
+                    } else if (current_workers<=3) {
+                        for (KarbDir k : mykarbs) {
+                            if(gc.canReplicate(unit.id(), k.dir)) {
+                                gc.replicate(unit.id(), k.dir);
+                                current_workers+=1;
+                                break;
                             }
-                        } else {
-                            workerharvest(unit, mykarbs);
-                            workermove(unit, mykarbs);
                         }
                     } else {
                         workerharvest(unit, mykarbs);
@@ -237,11 +233,14 @@ public class Player {
                 for (int j = i; j < units.size(); j++) {
                     Unit secondunit = units.get(j);
                     if(secondunit.unitType()==UnitType.Worker && !secondunit.location().isInGarrison() && !secondunit.location().isInSpace()) {
-                        mydistsum += unit.location().mapLocation().distanceSquaredTo(secondunit.location().mapLocation());
+                        long tempdist = unit.location().mapLocation().distanceSquaredTo(secondunit.location().mapLocation());
+                        if(tempdist<49L) { //really far away workers arent counted
+                            mydistsum+=tempdist;
+                        }
                     }
                 }
             }
-            if(mydistsum<smalldistsum) {
+            if(mydistsum<smalldistsum && mydistsum>0L) {
                 smalldistsum=mydistsum;
                 centralworkerid=myworkerid;
             }
@@ -249,16 +248,34 @@ public class Player {
         return centralworkerid;
     }
 
-    public static void buildFactory(Unit unit, ArrayList<KarbDir> mykarbs) {
+    public static boolean buildFactory(Unit unit, ArrayList<KarbDir> mykarbs) {
         VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), unit.visionRange(), UnitType.Factory);
         if(nearbyFactories.size()>0) {
-            if(gc.canBuild(unit.id(), nearbyFactories.get(0).id())) {
-                gc.build(unit.id(), nearbyFactories.get(0).id());
+            Unit myFactory = nearbyFactories.get(0);
+            if(gc.canBuild(unit.id(), myFactory.id())) {
+                //factory needs to be built, and worker is close enought to build
+                gc.build(unit.id(), myFactory.id());
+                return true;
             } else {
-                workerharvest(unit, mykarbs);
-                Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
-                fuzzyMove(unit, toFactory);
+                if(myFactory.health() == myFactory.maxHealth()) {
+                    //the factory is fully built, so workers can continue default harvest/move operations
+                    workerharvest(unit, mykarbs);
+                    workermove(unit, mykarbs);
+                    return false; //factory has been built
+                } else {
+                    //the workers are within vision range of the factory but not close enough to help build
+                    //move workers towards factory
+                    workerharvest(unit, mykarbs);
+                    Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
+                    fuzzyMove(unit, toFactory);
+                    return true;
+                }
             }
+        } else {
+            //no blueprints exist
+            workerharvest(unit, mykarbs);
+            workermove(unit, mykarbs);
+            return false;
         }
     }
     //harvest in the optimal direction
@@ -329,7 +346,8 @@ public class Player {
             if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                 mykarb = sumKarb(unit);
                 //factor in abilitycooldown when determining best replicator
-                if((mykarb-unit.abilityCooldown()*3)>(largestkarbonite-cooldown*3)) {
+                //System.out.println("Amount of Karbonite: " + mykarb);
+                if((mykarb-unit.abilityCooldown()*3)>=(largestkarbonite-cooldown*3)) {
                     largestkarbonite=mykarb;
                     replicatorid=unit.id();
                     cooldown = unit.id();
