@@ -32,9 +32,9 @@ public class Player {
         if(ally==Team.Red)
             enemy = Team.Blue;
 
-        myPlanet = gc.planet();
+        myPlanet = gc.planet(); //this planet
 
-        map = gc.startingMap(myPlanet);                   
+        map = gc.startingMap(myPlanet); //map characteristics             
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
 
@@ -49,15 +49,15 @@ public class Player {
             }
         }
 
-        distance_field = new int[width][height];
+        distance_field = new int[width][height]; //generate movement field
         movement_field = new ArrayList[width][height];         
         buildFieldBFS(); 
 
-        random_distance_field = new int[width][height];
+        random_distance_field = new int[width][height]; //generate random movement field
         random_movement_field = new ArrayList[width][height];         
         buildRandomField();
 
-        doesPathExist = false;
+        doesPathExist = false; //determine if a path exists
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
             if(ally==unit.team()) {      
@@ -70,18 +70,17 @@ public class Player {
         }     
 
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
-                                 UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker};
+                                 UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
         for(int i=0; i<rarray.length; i++)
             gc.queueResearch(rarray[i]); 
-
         canSnipe = false;
 
-        int maxworkers = 10-1; //starting
+        int maxworkers = 10-1; //unit limits
         int maxfactory = 4;
         int maxrangers = 1000;
 
         while (true) {            
-            if(gc.round()%50==0) {
+            if(gc.round()%50==0) { //print round number and update random field
                 System.out.println("Current round: "+gc.round());                
                 buildRandomField();
             }
@@ -89,7 +88,7 @@ public class Player {
                 canSnipe = true;
                 enemy_buildings = new ArrayList<int[]>();
             }
-            if(canSnipe)
+            if(canSnipe) //build snipe targets
                 buildSnipeTargets();
             
             VecUnit units = gc.myUnits();
@@ -229,6 +228,8 @@ public class Player {
             int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
             enemy_locations.add(enemy_info);
         }
+        if(enemy_locations.size()>0)
+            buildFieldBFS();
     }
 
     //updates snipe list to contain all buildings
@@ -393,7 +394,7 @@ public class Player {
     //random_movement_field gives ArrayList of equally optimal Directions to move in
     public static void buildRandomField() {
         MapLocation clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height)); //random movement target for cluster
-        for(int i=0; i<20; i++) {
+        for(int i=0; i<100; i++) {
             if(gc.canSenseLocation(clustertarget)==true) //target already within sight range
                 break;
             clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height));
