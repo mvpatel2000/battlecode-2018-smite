@@ -50,6 +50,7 @@ public class Player {
         distance_field = new int[width][height];
         movement_field = new ArrayList[width][height];         
         buildFieldBFS(enemy_locations);       
+        doesPathExist = true;
 
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                  UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker};
