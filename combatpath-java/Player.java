@@ -11,6 +11,7 @@ public class Player {
     public static PlanetMap map;
     public static int width;
     public static int height;
+    public static int[][] mars_landing;
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -37,6 +38,10 @@ public class Player {
         map = gc.startingMap(myPlanet); //map characteristics             
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
+
+        if(myPlanet==Planet.Earth) {
+            //build mars map
+        }
 
         enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
         VecUnit initial_units = map.getInitial_units();
@@ -151,6 +156,7 @@ public class Player {
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
+                                System.out.println("Sniping: "+snipetarget.toString());
                                 gc.beginSnipe(unit.id(), snipetarget);
                             }
                             target[0]--;
