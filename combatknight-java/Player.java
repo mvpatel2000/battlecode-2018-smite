@@ -139,7 +139,8 @@ public class Player {
 								attackUnit = getNearestUnit(myloc, enemies_in_sight);
 							}
 						} else {
-							gc.attack(unit.id(), nearestFactory.id());
+							if(gc.isAttackReady(unit.id()))
+									gc.attack(unit.id(), nearestFactory.id());
 							continue;
 						}
 						if(gc.isMoveReady(unit.id()))
@@ -147,7 +148,7 @@ public class Player {
 						VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 						enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
-                        if(enemies_in_range.size()>0) {
+                        if(enemies_in_range.size()>0 && gc.isAttackReady(unit.id())) {
 							if(gc.canAttack(unit.id(), attackUnit.id())) {
 								gc.attack(unit.id(), attackUnit.id());
 							} else if(gc.canAttack(unit.id(), enemies_in_range.get(0).id())) {
