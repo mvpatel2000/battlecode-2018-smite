@@ -16,6 +16,8 @@ public class Player {
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
+    public static int[][] random_distance_field;
+    public static ArrayList<Direction>[][] random_movement_field;
     public static ArrayList<int[]> enemy_buildings;
     public static boolean canSnipe;
     public static boolean doesPathExist;
@@ -49,7 +51,11 @@ public class Player {
 
         distance_field = new int[width][height];
         movement_field = new ArrayList[width][height];         
-        buildFieldBFS(enemy_locations);  
+        buildFieldBFS(); 
+
+        random_distance_field = new int[width][height];
+        random_movement_field = new ArrayList[width][height];         
+        buildRandomField();
 
         doesPathExist = false;
         for(int i=0; i<initial_units.size(); i++) {
@@ -75,14 +81,17 @@ public class Player {
         int maxrangers = 1000;
 
         while (true) {            
-            if(gc.round()%50==0)
-                System.out.println("Current round: "+gc.round());
+            if(gc.round()%50==0) {
+                System.out.println("Current round: "+gc.round());                
+                buildRandomField();
+            }
             if(canSnipe==false && gc.round()>350) {//activate snipe
                 canSnipe = true;
                 enemy_buildings = new ArrayList<int[]>();
             }
             if(canSnipe)
                 buildSnipeTargets();
+            
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
@@ -111,6 +120,9 @@ public class Player {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
                     if(enemies_in_sight.size()>0) {      //combat state
+                        if(enemy_locations.size()==0) { //add enemy locations
+                            updateEnemies();
+                        }
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
                         if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
                             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
@@ -121,7 +133,6 @@ public class Player {
 
                         if(enemies_in_range.size()>0) {
                             rangerAttack(unit, enemies_in_range); //attack based on heuristic
-
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
                                 Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
                                 MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -130,8 +141,13 @@ public class Player {
                         }
                     }
                     else { //non-combat state
-                        //if(doesPathExist || enemy_locations.size()>0)
-                        moveOnVectorField(unit, myloc);
+                        if(doesPathExist==false || enemy_locations.size()==0) {
+                            moveOnRandomField(unit, myloc);
+                        }
+                        else {
+                            moveOnVectorField(unit, myloc);
+                        }
+
                         if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
@@ -166,10 +182,6 @@ public class Player {
                     else { //non-combat state
                         if(enemy_locations.size()>0)
                             moveOnVectorField(unit, myloc);
-                        else {
-                            //add corners and center to move directoins (inset inward by 10 vision range) 
-                            //and have it clear/reset whenever a unit is spotted with some boolean marker
-                        }
                     }                                     
                 }
 
@@ -206,6 +218,16 @@ public class Player {
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //adds all spotted enemies to enemy_locations
+    public static void updateEnemies() {
+        VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
+        for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
+            MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
+            int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
+            enemy_locations.add(enemy_info);
         }
     }
 
@@ -342,6 +364,97 @@ public class Player {
     //Moves unit on vector field
     //Should be used if no enemies in sight
     //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
+    public static void moveOnRandomField(Unit unit, MapLocation mapLocation) {        
+        if(!gc.isMoveReady(unit.id())) //checks if can move
+            return;
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location             
+                buildRandomField();
+                moveOnRandomField(unit, mapLocation);
+                return;                            
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                fuzzyMove(unit, dir);
+                return;
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                gc.moveRobot(unit.id(), dir);
+                return;
+            }
+        }                        
+    }
+
+    //Takes a random llocation and builds vector fields
+    //random_distance_field tells you how far from current path destination
+    //random_movement_field gives ArrayList of equally optimal Directions to move in
+    public static void buildRandomField() {
+        MapLocation clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height)); //random movement target for cluster
+        for(int i=0; i<20; i++) {
+            if(gc.canSenseLocation(clustertarget)==true) //target already within sight range
+                break;
+            clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height));
+        }
+        int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
+
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        queue.add(randtarget);
+
+        for(int w=0; w<width; w++) {
+            for(int h=0; h<height; h++) {
+                random_distance_field[w][h] = (50*50+1);
+                random_movement_field[w][h] = new ArrayList<Direction>();                
+            }
+        }    
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+                    map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0 || //is not passable
+                    random_distance_field[x][y]<depth) { //is an inferior move
+                continue;
+            }
+            else if(random_distance_field[x][y]==depth) { //add equivalently optimal Direction
+                random_movement_field[x][y].add(dirs[dir]);
+            }
+            else if(random_distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                random_distance_field[x][y] = depth;
+                random_movement_field[x][y] = new ArrayList<Direction>();
+                random_movement_field[x][y].add(dirs[dir]);
+                int[] lc2 = {x+1,y,  5,depth+1}; 
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1}; 
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1}; 
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1}; 
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1}; 
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1}; 
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1}; 
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1}; 
+                queue.add(lc9);
+            }         
+        }
+    }
+
+    //Moves unit on vector field
+    //Should be used if no enemies in sight
+    //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
     public static void moveOnVectorField(Unit unit, MapLocation mapLocation) {
         if(!gc.isMoveReady(unit.id())) //checks if can move
             return;
@@ -359,14 +472,9 @@ public class Player {
                     }
                 }
                 if(enemy_locations.size()==0) { //add more targets
-                    VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
-                    for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
-                        MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
-                        int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
-                        enemy_locations.add(enemy_info);
-                    }
+                    updateEnemies();
                 }
-                buildFieldBFS(enemy_locations);
+                buildFieldBFS();
                 moveOnVectorField(unit, mapLocation);
                 return;                            
             }
@@ -381,10 +489,10 @@ public class Player {
         }                        
     }
 
-    //Takes a queue of starting enemy locations and builds vector fields
+    //Takes an arraylist of starting enemy locations and builds vector fields
     //distance_field tells you how far from current path destination
     //movement_field gives ArrayList of equally optimal Directions to move in
-    public static void buildFieldBFS(ArrayList<int[]> enemy_locations) {
+    public static void buildFieldBFS() {
         Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
