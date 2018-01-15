@@ -206,21 +206,35 @@ public class Player {
                     if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }
-                    if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
-                        gc.unload(unit.id(),Direction.East);
+                    if(gc.canUnload(unit.id(),Direction.Northeast)) { //unload to east
+                        gc.unload(unit.id(),Direction.Northeast);
                     }
-                    else if(gc.canUnload(unit.id(),Direction.South)) { //unload to east
-                        gc.unload(unit.id(),Direction.South);
+                    else if(gc.canUnload(unit.id(),Direction.Southwest)) { //unload to east
+                        gc.unload(unit.id(),Direction.Southwest);
                     }
-                }       
+                }
 
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace()) {
-                    Direction dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West
+                    Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
+                    MapLocation myloc = unit.location().mapLocation();
                     if(myPlanet==Planet.Earth) {
-                        //load everything ASAP
-
-                        //figure out where / how to launch
+                        VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
+                        VecUnitID garrison = unit.structureGarrison();
+                        int maxcapacity = (int)unit.structureMaxCapacity();                        
+                        int num_in_garrison = (int)garrison.size();
+                        int allyctr = 0;
+                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all rangers while space
+                            Unit ally_to_load = allies_to_load.get(allyctr);
+                            if(ally_to_load.unitType()==UnitType.Ranger && gc.canLoad(unit.id(), ally_to_load.id())) {
+                                gc.load(unit.id(), ally_to_load.id());
+                                num_in_garrison++;
+                            }
+                            allyctr++;
+                        }
+                        if(num_in_garrison==maxcapacity) {
+                            //lift off bitch
+                        }
                     }
                     else if(myPlanet==Planet.Mars) { //unload everything ASAP
                         int dirctr = 0;
@@ -321,7 +335,7 @@ public class Player {
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
-                    hval+=10*utctr;
+                    hval+=10*utctr; //later units have higher priorities because weight based on index
                     break;
                 }
             }
