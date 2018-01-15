@@ -49,8 +49,19 @@ public class Player {
 
         distance_field = new int[width][height];
         movement_field = new ArrayList[width][height];         
-        buildFieldBFS(enemy_locations);       
-        doesPathExist = true;
+        buildFieldBFS(enemy_locations);  
+
+        doesPathExist = false;
+        for(int i=0; i<initial_units.size(); i++) {
+            Unit unit = initial_units.get(i);
+            if(ally==unit.team()) {      
+                MapLocation ally_location = unit.location().mapLocation();
+                if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
+                    doesPathExist = true;
+                    break;
+                }
+            }
+        }     
 
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                  UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker};
