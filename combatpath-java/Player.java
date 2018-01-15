@@ -130,6 +130,7 @@ public class Player {
                         }
                     }
                     else { //non-combat state
+                        //if(doesPathExist || enemy_locations.size()>0)
                         moveOnVectorField(unit, myloc);
                         if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
                             int[] target = enemy_buildings.get(0);
@@ -163,7 +164,12 @@ public class Player {
                         }
                     }
                     else { //non-combat state
-                        moveOnVectorField(unit, myloc);                
+                        if(enemy_locations.size()>0)
+                            moveOnVectorField(unit, myloc);
+                        else {
+                            //add corners and center to move directoins (inset inward by 10 vision range) 
+                            //and have it clear/reset whenever a unit is spotted with some boolean marker
+                        }
                     }                                     
                 }
 
@@ -352,7 +358,7 @@ public class Player {
                         break;
                     }
                 }
-                if(enemy_locations.size()==0) {
+                if(enemy_locations.size()==0) { //add more targets
                     VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
                     for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
                         MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
