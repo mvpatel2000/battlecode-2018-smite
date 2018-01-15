@@ -150,7 +150,6 @@ public class Player {
                         if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
-                            System.out.println(target[1]+" "+target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
                                 gc.beginSnipe(unit.id(), snipetarget);
                             }
@@ -214,6 +213,32 @@ public class Player {
                         gc.unload(unit.id(),Direction.South);
                     }
                 }       
+
+                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace()) {
+                    Direction dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West
+                                        Direction.Southwest, Direction.South, Direction.Southeast};
+                    if(myPlanet==Planet.Earth) {
+                        //load everything ASAP
+
+                        //figure out where / how to launch
+                    }
+                    else if(myPlanet==Planet.Mars) { //unload everything ASAP
+                        int dirctr = 0;
+                        VecUnitID garrison = unit.structureGarrison();
+                        for(int i=0; i<garrison.size(); i++) {
+                            while(dirctr<8) {
+                                if(gc.canUnload(unit.id(), dirs[dirctr])) {
+                                    gc.unload(unit.id(), dirs[dirctr]);
+                                    dirctr++;
+                                    break;
+                                }
+                                dirctr++;
+                            }
+                            if(dirctr>=8)
+                                break;
+                        }
+                    }
+                }
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
@@ -308,9 +333,6 @@ public class Player {
                 return b[0] - a[0];
             }
         });
-        // for(int i=0; i<heuristics.length; i++)
-        //     System.out.print("("+heuristics[i][0]+" "+enemies_in_range.get(heuristics[i][1]).health()+") ");
-        // System.out.println("|");
         for(int i=0; i<heuristics.length; i++) {            
             if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
                 gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
