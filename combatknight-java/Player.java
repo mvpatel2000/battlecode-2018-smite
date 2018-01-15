@@ -142,7 +142,8 @@ public class Player {
 							gc.attack(unit.id(), nearestFactory.id());
 							continue;
 						}
-						fuzzyMove(unit, myloc.directionTo(attackUnit.location().mapLocation()));
+						if(gc.isMoveReady(unit.id()))
+							fuzzyMove(unit, myloc.directionTo(attackUnit.location().mapLocation()));
 						VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 						enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
