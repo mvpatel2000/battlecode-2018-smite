@@ -69,7 +69,7 @@ public class Player {
                 }
             }
         }
-
+        System.out.println(initial_workers);
         //distance_field[x][y]: tells you how far away you are from the destination on your current path
         //movement_field[x][y]: gives you ArrayList of Directions that are equally optimal for reaching destination
         distance_field = new int[width][height];
@@ -98,7 +98,7 @@ public class Player {
 
             if(current_workers==3) {
                 centerid = centralworker(units);
-            } else if (current_workers<=3) {
+            } else if (current_workers<3) {
                 replicatorid = optimalreplicator(units);
             }
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
@@ -121,6 +121,7 @@ public class Player {
                             for (KarbDir k : mykarbs) {
                                 if(gc.canReplicate(unit.id(), k.dir)) {
                                     gc.replicate(unit.id(), k.dir);
+                                    current_workers+=1;
                                 }
                             }
                         } else {
@@ -268,11 +269,11 @@ public class Player {
             if(gc.karboniteAt(newLoc)>0L) {
                 if(gc.canHarvest(unit.id(), k.dir)){
                     gc.harvest(unit.id(), k.dir);
-                    break;
+                    return;
                 }
             }
         }
-        return;
+
     }
     public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs) {
         MapLocation myLoc = unit.location().mapLocation();
@@ -280,12 +281,42 @@ public class Player {
             MapLocation newLoc = myLoc.add(k.dir);
             if(gc.karboniteAt(newLoc)>0L) {
                 if(gc.canMove(unit.id(), k.dir)) {
-                    gc.moveRobot(unit.id(), k.dir);
-                    break;
+                    if(gc.isMoveReady(unit.id())) {
+                        gc.moveRobot(unit.id(), k.dir);
+                        return;
+                    }
                 }
             }
         }
+        Direction tonearkarb = nearestKarboniteDir(unit, myLoc, 4);
+        if(tonearkarb!=null) {
+            fuzzyMove(unit, tonearkarb);
+        } else {
+            fuzzyMove(unit, getVectorFieldDirection(unit, myLoc));
+        }
         return;
+    }
+
+    //returns direction of nearest karbonite, in case there is no karbonite immediately around worker
+    //Computationally inefficient, O(n^2), n=visionradius
+    public static Direction nearestKarboniteDir(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        if(gc.karboniteAt(m)>0L) {
+                            return myLoc.directionTo(m);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
     //find the optimal replicator
     public static int optimalreplicator(VecUnit units) {
@@ -313,11 +344,13 @@ public class Player {
         MapLocation myLoc = unit.location().mapLocation();
         int x = myLoc.getX();
         int y = myLoc.getY();
-        for (int i=Math.min(x-7, 0); i<Math.max(x+8,(int)map.getWidth()+1); i++) {
-            for (int j=Math.min(0,y-7); y<Math.max(y+8,(int)map.getHeight()+1); j++) {
+        for (int i=Math.max(x-7, 0); i<Math.min(x+8,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-7); j<Math.min(y+8,(int)map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(myPlanet, i, j);
                 if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
-                    totalkarb+=gc.karboniteAt(m);
+                    if(gc.canSenseLocation(m)) {
+                        totalkarb+=gc.karboniteAt(m);
+                    }
                 }
             }
         }
@@ -371,7 +404,7 @@ public class Player {
         long mykarb = 0L;
         for (int i=0; i<dirs.length; i++) {
             MapLocation newloc = myLoc.add(dirs[i]);
-            if(gc.canMove(unit.id(), dirs[i])) {
+            if(gc.canMove(unit.id(), dirs[i]) || dirs[i]==Direction.Center) {
                 long thiskarb = gc.karboniteAt(newloc);
                 karboniteDirections.add(new KarbDir(dirs[i], thiskarb));
             }
