@@ -86,33 +86,30 @@ public class Player {
         int maxworkers = 1; //starting
         int maxfactory = 1;
         int maxrangers = 1;
-        boolean buildingFactory = false;
         int current_workers=initial_workers;
         int centerid=0;
         int replicatorid = 0;
         int num_factories = 0;
+        int minworkers=8;
         while (true) {
             if(gc.round()%50==0) {
                 System.out.println("Current round: "+gc.round());
             }
             VecUnit units = gc.myUnits();
 
-            if(current_workers==4) {
+            if(current_workers==minworkers) {
                 centerid = centralworker(units);
-            } else if (current_workers<3) {
-                replicatorid = optimalreplicator(units);
             }
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(current_workers>3) {
-                        if(unit.id()==centerid && num_factories<=(gc.round()/30) + width) {
+                    if(current_workers>=minworkers) {
+                        if(num_factories<=(gc.round()/20)) {
                             //blueprint factory
                             Direction buildDirection = leastKarboniteDirection(unit, unit.location());
                             if(gc.canBlueprint(unit.id(), UnitType.Factory, buildDirection)) {
                                 gc.blueprint(unit.id(), UnitType.Factory, buildDirection);
-                                buildingFactory=true;
                                 num_factories+=1;
                             }
                         } else buildFactory(unit, mykarbs, units);
@@ -218,9 +215,9 @@ public class Player {
         }
     }
 
-    public static long passability(Unit myUnit, long width, long height) {
+    public static long passability(Unit myUnit) {
         MapLocation myLoc = myUnit.location().mapLocation();
-        MapLocation enemyLoc = new MapLocation(width - myLoc.x, height-myLoc.y);
+        MapLocation enemyLoc = new MapLocation(myPlanet, width-myLoc.getX(), height-myLoc.getY());
         long distSquared = myLoc.distanceSquaredTo(enemyLoc);
         ArrayList<Direction> myList = Helpers.astar(myUnit, enemyLoc);
         long passability_factor = distSquared/(myList.size()*myList.size());//1 = completely clear, closer to 0=not clear at all.
@@ -327,7 +324,7 @@ public class Player {
                 }
             }
         }
-        Direction tonearkarb = nearestKarboniteDir(unit, myLoc, 4);
+        Direction tonearkarb = nearestKarboniteDir(unit, myLoc, 7);
         if(tonearkarb!=null) {
             fuzzyMove(unit, tonearkarb);
         } else {
