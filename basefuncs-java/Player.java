@@ -1,3 +1,6 @@
+//How to steal replays!
+//https://s3.amazonaws.com/battlecode-2018/replays/1.bc18
+
 import bc.*;
 import java.util.*;
 
