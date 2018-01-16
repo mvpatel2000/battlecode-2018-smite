@@ -17,6 +17,8 @@ public class Player {
     //Stuff we create
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
+    public static int[][] random_distance_field;
+    public static ArrayList<Direction>[][] random_movement_field;
 
     static class KarbDir implements Comparable {
         Direction dir;
@@ -80,7 +82,12 @@ public class Player {
                 movement_field[w][h] = new ArrayList<Direction>();
             }
         }
+
         buildFieldBFS(enemy_location_queue);
+
+        random_distance_field = new int[width][height]; //generate random movement field
+        random_movement_field = new ArrayList[width][height];
+        buildRandomField();
 
 
         int maxworkers = 1; //starting
@@ -114,12 +121,18 @@ public class Player {
                             }
                         } else buildFactory(unit, mykarbs, units);
                     } else {
+                        boolean replicate=false;
                         for (KarbDir k : mykarbs) {
                             if(gc.canReplicate(unit.id(), k.dir)) {
                                 gc.replicate(unit.id(), k.dir);
                                 current_workers+=1;
+                                replicate=true;
                                 break;
                             }
+                        }
+                        if(!replicate) {
+                            workerharvest(unit, mykarbs);
+                            workermove(unit, mykarbs, units);
                         }
                     }
                     // ****************************************
@@ -238,7 +251,7 @@ public class Player {
             int r = Helpers.randInt(0,myFactories.size()-1);
             return myUnit.location().mapLocation().directionTo(myFactories.get(r).location().mapLocation());
         } else {
-            return Helpers.opposite(getVectorFieldDirection(myUnit, myUnit.location().mapLocation()));
+            return getRandomFieldDirection(myUnit, myUnit.location().mapLocation());
         }
     }
     //For Workers
@@ -328,9 +341,7 @@ public class Player {
         if(tonearkarb!=null) {
             fuzzyMove(unit, tonearkarb);
         } else {
-            Direction d = Direction.Center;
-            while(d == Direction.Center) d = Helpers.randDir();
-            fuzzyMove(unit, d);
+            moveOnRandomField(unit, myLoc);
         }
         return;
     }
@@ -522,6 +533,117 @@ public class Player {
         return Direction.Center;
     }
 
+
+    //Finds random field direction
+    public static Direction getRandomFieldDirection(Unit unit, MapLocation mapLocation) {
+        if(!gc.isMoveReady(unit.id())) //checks if can move
+            return Direction.Center;
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location
+                buildRandomField();
+                return getRandomFieldDirection(unit, mapLocation);
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                return dir;
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                return dir;
+            }
+        }
+        return Direction.Center;
+    }
+    //Moves unit on vector field
+    //Should be used if no enemies in sight
+    //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
+    public static void moveOnRandomField(Unit unit, MapLocation mapLocation) {
+        if(!gc.isMoveReady(unit.id())) //checks if can move
+            return;
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location
+                buildRandomField();
+                moveOnRandomField(unit, mapLocation);
+                return;
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                fuzzyMove(unit, dir);
+                return;
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                gc.moveRobot(unit.id(), dir);
+                return;
+            }
+        }
+    }
+
+
+    public static void buildRandomField() {
+        MapLocation clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height)); //random movement target for cluster
+        for(int i=0; i<100; i++) {
+            if(gc.canSenseLocation(clustertarget)==true) //target already within sight range
+                break;
+            clustertarget = new MapLocation(myPlanet, (int)(Math.random()*width), (int)(Math.random()*height));
+        }
+        int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
+
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        queue.add(randtarget);
+
+        for(int w=0; w<width; w++) {
+            for(int h=0; h<height; h++) {
+                random_distance_field[w][h] = (50*50+1);
+                random_movement_field[w][h] = new ArrayList<Direction>();
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+                    map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0 || //is not passable
+                    random_distance_field[x][y]<depth) { //is an inferior move
+                continue;
+            }
+            else if(random_distance_field[x][y]==depth) { //add equivalently optimal Direction
+                random_movement_field[x][y].add(dirs[dir]);
+            }
+            else if(random_distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                random_distance_field[x][y] = depth;
+                random_movement_field[x][y] = new ArrayList<Direction>();
+                random_movement_field[x][y].add(dirs[dir]);
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
     //Takes a queue of starting enemy locations and builds vector fields
     //distance_field tells you how far from current path destination
     //movement_field gives ArrayList of equally optimal Directions to move in
