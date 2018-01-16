@@ -14,6 +14,7 @@ public class Player {
     public static int height; 
     public static int mars_width;
     public static int mars_height;       
+    public static int current_round;
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -43,6 +44,7 @@ public class Player {
         map = gc.startingMap(myPlanet); //map characteristics             
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
+        int initial_workers = 0; //TODO: Make global?
 
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
             generateLandingPriorities();
@@ -71,15 +73,14 @@ public class Player {
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
             if(ally==unit.team()) {      
+                initial_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
                     break;
                 }
             }
-        }     
-
-        rocket_homing = 0; //are rockets built
+        }         
 
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                  UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
@@ -87,16 +88,22 @@ public class Player {
             gc.queueResearch(rarray[i]); 
         canSnipe = false;
 
-        int maxworkers = 9-1; //unit limits
-        int maxfactory = 1;
-        int maxrocket = 20;
+        current_round = 0;
+        rocket_homing = 0; //are rockets built
+
+        int current_workers=initial_workers; //TODO: make global?
+        int num_factories = 0;
+        int num_rockets = 0;
+        int minworkers=initial_workers*4; //replicate each dude *4 before creating factories        
 
         while (true) {            
-            if(gc.round()%50==0) { //print round number and update random field
-                System.out.println("Current round: "+gc.round());                
+            current_round = (int)gc.round();
+            int factories_active = 0; //tracks amount of factories producing units
+            if(current_round%50==0) { //print round number and update random field
+                System.out.println("Current round: "+current_round);                
                 buildRandomField();
             }
-            if(canSnipe==false && gc.round()>350) {//activate snipe
+            if(canSnipe==false && current_round>350) {//activate snipe
                 canSnipe = true;
                 enemy_buildings = new ArrayList<int[]>();
             }
@@ -107,40 +114,52 @@ public class Player {
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
 
+                //TODO:                
+                // - update factory function based on karbonite levels
+                // - worker replication late game for pure harvesting / navigation
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit nearbyFactories = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Factory);
-                    VecUnit nearbyRockets = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Rocket);
-                    if(maxworkers>0 && gc.canReplicate(unit.id(),Direction.East)) { //replicate
-                        gc.replicate(unit.id(),Direction.East);
-                        maxworkers--;
+                    ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
+                    if(current_workers>=minworkers && myPlanet==Planet.Earth) {
+                        //execute build order
+                        if(buildRocket(unit, mykarbs, units, 20l)==true) {
+                            continue;
+                        }
+                        else if(buildFactory(unit, mykarbs, units, 20l)==true){
+                            continue;
+                        } 
+                        else {
+                            if(num_rockets<=(current_round/10) && current_round>450) { //rocket cap
+                                //blueprint rocket or (replicate or moveharvest)
+                                int val = blueprintRocket(unit, mykarbs, units, 20l);
+                                if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
+                                    current_workers+=(val-2);
+                                } else { //did not degenerate
+                                    num_rockets+=val;
+                                }
+                            } 
+                            else if(num_factories<4 || (doesPathExist==false && num_factories<1)) { //factory cap
+                                //blueprint factory or (replicate or moveharvest)
+                                int val = blueprintFactory(unit, mykarbs, units, 20l);
+                                if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
+                                    current_workers+=(val-2);
+                                } else { //did not degenerate
+                                    num_factories+=val;
+                                }
+                            } 
+                            else {
+                                workerharvest(unit, mykarbs);
+                                workermove(unit, mykarbs);
+                            }
+                        }
+                    } else {
+                        //replicate or move harvest
+                        current_workers += replicateOrMoveHarvest(unit, mykarbs);
                     }
-                    else if(nearbyRockets.size()>0 && gc.canBuild(unit.id(), nearbyRockets.get(0).id())) //build rocket
-                        gc.build(unit.id(),nearbyRockets.get(0).id());
-                    else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.East)) { //blueprint Rocket 
-                        gc.blueprint(unit.id(), UnitType.Rocket, Direction.East);
-                        maxrocket--;
-                    }
-                    else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.North)) { //blueprint Rocket 
-                        gc.blueprint(unit.id(), UnitType.Rocket, Direction.North);
-                        maxrocket--;
-                    }
-                    else if(nearbyFactories.size()>0 && gc.canBuild(unit.id(), nearbyFactories.get(0).id())) //build factory
-                        gc.build(unit.id(),nearbyFactories.get(0).id());
-                    else if(maxfactory>0 && gc.canBlueprint(unit.id(), UnitType.Factory, Direction.South)) { //blueprint factory 
-                        gc.blueprint(unit.id(), UnitType.Factory, Direction.South);
-                        maxfactory--;
-                    }
-                    else if(gc.canHarvest(unit.id(),Direction.North)) { //harvest
-                        gc.harvest(unit.id(),Direction.North);
-                    }
-                    else
-                        moveOnVectorField(unit, myloc);
                 }       
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
-                //TODO: Don't walk into range of another ranger
-                //TODO!: Move to rockets by adding to vector field
+                //TODO: Don't walk into range of another ranger--verify this is how it works
+                //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
@@ -148,6 +167,7 @@ public class Player {
                         if(enemy_locations.size()==0) { //add enemy locations
                             updateEnemies();
                         }
+                        checkVectorField(unit, myloc);
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
                         if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
                             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
@@ -177,7 +197,6 @@ public class Player {
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
-                                System.out.println("Sniping: "+snipetarget.toString());
                                 gc.beginSnipe(unit.id(), snipetarget);
                             }
                             target[0]--;
@@ -226,8 +245,11 @@ public class Player {
                 }
 
                 //TODO: Heuristic to shut off production
-                else if(unit.unitType()==UnitType.Factory) {                                                 
-                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.round()<725) {  //Autochecks if queue empty / no production in final rounds
+                else if(unit.unitType()==UnitType.Factory) {   
+                    factories_active++;
+                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
+                        (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
+                        (current_round<725 || current_round<700 && doesPathExist==false)) {  //no production in final rounds
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }    
                     Direction unload_dir = Direction.East;
@@ -238,6 +260,7 @@ public class Player {
                     fuzzyUnload(unit, unload_dir);
                 }
 
+                //TODO: imrpove land priority to accuont for nearby karbonite in decimal place
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
@@ -283,6 +306,289 @@ public class Player {
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //Only called when no factories are within range
+    //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
+    //Else, replicate (or moveHarvest, if replication not possible).
+    // Return 2(if moveharvest) or 3(if replication succesful)
+    public static int blueprintRocket(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+        MapLocation myLoc = unit.location().mapLocation();
+        ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
+        if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
+            Direction blueprintDirection = optimalDirectionRocket(unit, myLoc, closeWorkers);
+            if(blueprintDirection!=null) {
+                gc.blueprint(unit.id(), UnitType.Rocket, blueprintDirection);
+                return 1;
+            } else {
+                //cannot build blueprint
+                workerharvest(unit, mykarbs);
+                workermove(unit, mykarbs);
+                return 0;
+            }
+        } else {
+            //not enough close workers
+            return (2+replicateOrMoveHarvest(unit, mykarbs)); //2+ lets parent method determine whether we replicated or not
+        }
+    }
+
+    //Helper Method for blueprintFactory: Determine nearbyWorkers (includes myUnit)
+    public static ArrayList<Unit> nearbyWorkersRocket(Unit myUnit, MapLocation myLoc, long rad) {
+        VecUnit myWorkers = gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+        ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
+        for(int i=0; i<myWorkers.size(); i++) {
+            Unit k = myWorkers.get(i);
+            if(k.team()==ally) {
+                siceWorkers.add(k);
+            }
+        }
+        return siceWorkers;
+    }
+
+    //Helper Method for blueprintFactory: Determine location of blueprint
+    //Determine location closest to all the workers within range
+    public static Direction optimalDirectionRocket(Unit myUnit, MapLocation myLoc, ArrayList<Unit> closeWorkers) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        long shortestdist = 10000000000000L;
+        Direction bestdir=null;
+        for (Direction dir: dirs) {
+            if(gc.canBlueprint(myUnit.id(), UnitType.Rocket, dir)) {
+                MapLocation newLoc = myLoc.add(dir);
+                long mydist = 0L;
+                for (int j = 0; j < closeWorkers.size(); j++) {
+                    Unit otherworker = closeWorkers.get(j);
+                    if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
+                        mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                    }
+                }
+                if(mydist<shortestdist) {
+                    shortestdist=mydist;
+                    bestdir=dir;
+                }
+            }
+        }
+        return bestdir;
+    }
+
+    //If a factory is within range, and it is not at maximum health, then build it
+    //If you cannot build it because it needs repairing, repair it
+    //If you cannot do either, harvest+move towards the factory, since you are out of range
+    //If either of these three above scenarious occur, return true
+    //If there are no factories within range, then return false
+    public static boolean buildRocket(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+        VecUnit nearbyRockets = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Rocket);
+
+        for(int i=0; i<nearbyRockets.size(); i++) {
+            Unit k = nearbyRockets.get(i);
+            if(k.team()!=ally) {
+                continue;
+            }
+            if(k.health()!=k.maxHealth()) {
+                if(gc.canBuild(unit.id(), k.id())) {
+                    gc.build(unit.id(), k.id());
+                    return true;
+                } else if(gc.canRepair(unit.id(), k.id())){
+                    gc.repair(unit.id(), k.id());
+                    return true;
+                } else {
+                    workerharvest(unit, mykarbs);
+                    Direction toRocket = unit.location().mapLocation().directionTo(nearbyRockets.get(0).location().mapLocation());
+                    fuzzyMove(unit, toRocket);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    //Only called when no factories are within range
+    //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
+    //Else, replicate (or moveHarvest, if replication not possible).
+    // Return 2(if moveharvest) or 3(if replication succesful)
+    public static int blueprintFactory(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+        MapLocation myLoc = unit.location().mapLocation();
+        ArrayList<Unit> closeWorkers = nearbyWorkersFactory(unit, myLoc, rad);
+        if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
+            Direction blueprintDirection = optimalDirectionFactory(unit, myLoc, closeWorkers);
+            if(blueprintDirection!=null) {
+                gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
+                return 1;
+            } else {
+                //cannot build blueprint
+                workerharvest(unit, mykarbs);
+                workermove(unit, mykarbs);
+                return 0;
+            }
+        } else {
+            //not enough close workers
+            return (2+replicateOrMoveHarvest(unit, mykarbs)); //2+ lets parent method determine whether we replicated or not
+        }
+    }
+
+    //Helper Method for blueprintFactory: Determine nearbyWorkers (includes myUnit)
+    public static ArrayList<Unit> nearbyWorkersFactory(Unit myUnit, MapLocation myLoc, long rad) {
+        VecUnit myWorkers = gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+        ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
+        for(int i=0; i<myWorkers.size(); i++) {
+            Unit k = myWorkers.get(i);
+            if(k.team()==ally) {
+                siceWorkers.add(k);
+            }
+        }
+        return siceWorkers;
+    }
+
+    //Helper Method for blueprintFactory: Determine location of blueprint
+    //Determine location closest to all the workers within range
+    public static Direction optimalDirectionFactory(Unit myUnit, MapLocation myLoc, ArrayList<Unit> closeWorkers) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        long shortestdist = 10000000000000L;
+        Direction bestdir=null;
+        for (Direction dir: dirs) {
+            if(gc.canBlueprint(myUnit.id(), UnitType.Factory, dir)) {
+                MapLocation newLoc = myLoc.add(dir);
+                long mydist = 0L;
+                for (int j = 0; j < closeWorkers.size(); j++) {
+                    Unit otherworker = closeWorkers.get(j);
+                    if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
+                        mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                    }
+                }
+                if(mydist<shortestdist) {
+                    shortestdist=mydist;
+                    bestdir=dir;
+                }
+            }
+        }
+        return bestdir;
+    }
+
+    //Replicate if you can, perform harvsestmove if not
+    //Returns a number (1 or 0) to indicate number of workers gained
+    public static int replicateOrMoveHarvest(Unit unit, ArrayList<KarbDir> mykarbs) {
+        for (KarbDir k : mykarbs) {
+            if(gc.canReplicate(unit.id(), k.dir)) {
+                gc.replicate(unit.id(), k.dir);
+                return 1;
+            }
+        }
+        workerharvest(unit, mykarbs);
+        workermove(unit, mykarbs);
+        return 0;
+    }
+
+    //If a factory is within range, and it is not at maximum health, then build it
+    //If you cannot build it because it needs repairing, repair it
+    //If you cannot do either, harvest+move towards the factory, since you are out of range
+    //If either of these three above scenarious occur, return true
+    //If there are no factories within range, then return false
+    public static boolean buildFactory(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+        VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Factory);
+
+        for(int i=0; i<nearbyFactories.size(); i++) {
+            Unit k = nearbyFactories.get(i);
+            if(k.team()!=ally) {
+                continue;
+            }
+            if(k.health()!=k.maxHealth()) {
+                if(gc.canBuild(unit.id(), k.id())) {
+                    gc.build(unit.id(), k.id());
+                    return true;
+                } else if(gc.canRepair(unit.id(), k.id())){
+                    gc.repair(unit.id(), k.id());
+                    return true;
+                } else {
+                    workerharvest(unit, mykarbs);
+                    Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
+                    fuzzyMove(unit, toFactory);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    //harvest in the optimal direction
+    public static void workerharvest(Unit unit, ArrayList<KarbDir> mykarbs) {
+        MapLocation myLoc = unit.location().mapLocation();
+        for (KarbDir k : mykarbs) {
+            MapLocation newLoc = myLoc.add(k.dir);
+            if(gc.karboniteAt(newLoc)>0L) {
+                if(gc.canHarvest(unit.id(), k.dir)){
+                    gc.harvest(unit.id(), k.dir);
+                    return;
+                }
+            }
+        }
+    }
+
+    public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs) {
+        MapLocation myLoc = unit.location().mapLocation();
+        for (KarbDir k : mykarbs) {
+            MapLocation newLoc = myLoc.add(k.dir);
+            if(gc.karboniteAt(newLoc)>0L) {
+                if(gc.canMove(unit.id(), k.dir)) {
+                    if(gc.isMoveReady(unit.id())) {
+                        gc.moveRobot(unit.id(), k.dir);
+                        return;
+                    }
+                }
+            }
+        }
+        Direction tonearkarb = nearestKarboniteDir(unit, myLoc, 7);
+        if(tonearkarb!=null) {
+            fuzzyMove(unit, tonearkarb);
+        } else {
+            if(current_round<(width+height)/2) {
+                fuzzyMove(unit, myLoc.directionTo(new MapLocation(myPlanet, (int)width/2, (int)height/2)));
+            } else {
+                moveOnRandomField(unit, myLoc);
+            }
+        }
+        return;
+    }
+
+    //helper method for workermove
+    //returns direction of nearest karbonite, in case there is no karbonite immediately around worker
+    //Computationally inefficient, O(n^2), n=visionradius
+    public static Direction nearestKarboniteDir(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        if(gc.karboniteAt(m)>0L) {
+                            return myLoc.directionTo(m);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    //sort directions by karbonite content
+    public static ArrayList<KarbDir> karboniteSort(Unit unit, Location theloc) {
+        MapLocation myLoc = theloc.mapLocation();
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        ArrayList<KarbDir> karboniteDirections = new ArrayList<KarbDir>();
+        long mykarb = 0L;
+        for (int i=0; i<dirs.length; i++) {
+            MapLocation newloc = myLoc.add(dirs[i]);
+            if(gc.canMove(unit.id(), dirs[i]) || dirs[i]==Direction.Center) {
+                long thiskarb = gc.karboniteAt(newloc);
+                karboniteDirections.add(new KarbDir(dirs[i], thiskarb));
+            }
+        }
+        Collections.sort(karboniteDirections, Collections.reverseOrder()); //sort high to low
+        return karboniteDirections;
     }
 
     //Attempts to unload unit in direction as best as possible from factory
@@ -642,6 +948,27 @@ public class Player {
         }
     }
 
+    //Checks if current location is a destination in vector field
+    //Used when in combat mode to verify not blocked into enemy initial location
+    public static void checkVectorField(Unit unit, MapLocation mapLocation) {
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        if(movement_field[x][y].size()==1 && movement_field[x][y].get(0)==Direction.Center) {
+            for(int eloc=0; eloc<enemy_locations.size(); eloc++) {
+                int[] elocinfo = enemy_locations.get(eloc);
+                if(x==elocinfo[0] && y==elocinfo[1]) {
+                    enemy_locations.remove(eloc);
+                    break;
+                }
+            }
+            if(enemy_locations.size()==0) { //add more targets
+                updateEnemies();
+            }
+            buildFieldBFS();
+        }                      
+    }
+
     //Moves unit on vector field
     //Should be used if no enemies in sight
     //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
@@ -732,6 +1059,25 @@ public class Player {
                 int[] lc9 = {x+1,y-1,4,depth+1}; 
                 queue.add(lc9);
             }            
+        }
+    }
+
+    static class KarbDir implements Comparable {
+        Direction dir;
+        long karb;
+        // Constructor
+        public KarbDir(Direction dir, long karb) {
+            this.dir = dir;
+            this.karb = karb;
+        }
+        public String toString() {
+            return this.dir + " " + this.karb;
+        }
+        public int compareTo(Object other) {
+            if (!(other instanceof KarbDir))
+                throw new ClassCastException("A Karbdir object expected.");
+            long otherkarb = ((KarbDir) other).karb;
+            return (int)(this.karb - otherkarb);
         }
     }
 }
