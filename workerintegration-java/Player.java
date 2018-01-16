@@ -166,6 +166,7 @@ public class Player {
                         if(enemy_locations.size()==0) { //add enemy locations
                             updateEnemies();
                         }
+                        checkVectorField(unit, myloc);
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
                         if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
                             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
@@ -188,6 +189,8 @@ public class Player {
                             moveOnRandomField(unit, myloc);
                         }
                         else {
+                            if(Math.random()<.05)
+                                System.out.println(enemy_locations.get(0)[0]+" "+enemy_locations.get(0)[1] +" "+enemy_locations.size());
                             moveOnVectorField(unit, myloc);
                         }
 
@@ -195,7 +198,6 @@ public class Player {
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
-                                System.out.println("Snipe! "+snipetarget.toString());
                                 gc.beginSnipe(unit.id(), snipetarget);
                             }
                             target[0]--;
@@ -944,6 +946,27 @@ public class Player {
                 queue.add(lc9);
             }         
         }
+    }
+
+    //Checks if current location is a destination in vector field
+    //Used when in combat mode to verify not blocked into enemy initial location
+    public static void checkVectorField(Unit unit, MapLocation mapLocation) {
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        if(movement_field[x][y].size()==1 && movement_field[x][y].get(0)==Direction.Center) {
+            for(int eloc=0; eloc<enemy_locations.size(); eloc++) {
+                int[] elocinfo = enemy_locations.get(eloc);
+                if(x==elocinfo[0] && y==elocinfo[1]) {
+                    enemy_locations.remove(eloc);
+                    break;
+                }
+            }
+            if(enemy_locations.size()==0) { //add more targets
+                updateEnemies();
+            }
+            buildFieldBFS();
+        }                      
     }
 
     //Moves unit on vector field
