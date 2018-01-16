@@ -84,8 +84,9 @@ public class Player {
             gc.queueResearch(rarray[i]); 
         canSnipe = false;
 
-        int maxworkers = 10-1; //unit limits
-        int maxfactory = 3;
+        int maxworkers = 20-1; //unit limits
+        int maxfactory = 2;
+        int maxrocket = 3;
 
         while (true) {            
             if(gc.round()%50==0) { //print round number and update random field
@@ -106,9 +107,16 @@ public class Player {
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit nearbyFactories = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Factory);
+                    VecUnit nearbyRockets = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Rocket);
                     if(maxworkers>0 && gc.canReplicate(unit.id(),Direction.East)) { //replicate
                         gc.replicate(unit.id(),Direction.East);
                         maxworkers--;
+                    }
+                    else if(nearbyRockets.size()>0 && gc.canBuild(unit.id(), nearbyRockets.get(0).id())) //build factory
+                        gc.build(unit.id(),nearbyRockets.get(0).id());
+                    else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.East)) { //blueprint Rocket 
+                        gc.blueprint(unit.id(), UnitType.Rocket, Direction.East);
+                        maxrocket--;
                     }
                     else if(nearbyFactories.size()>0 && gc.canBuild(unit.id(), nearbyFactories.get(0).id())) //build factory
                         gc.build(unit.id(),nearbyFactories.get(0).id());
@@ -125,6 +133,7 @@ public class Player {
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
                 //TODO: Don't walk into range of another ranger
+                //TODO: Move to rockets by adding to vector field
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
@@ -231,9 +240,9 @@ public class Player {
                         int maxcapacity = (int)unit.structureMaxCapacity();                        
                         int num_in_garrison = (int)garrison.size();
                         int allyctr = 0;
-                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all rangers while space
+                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                             Unit ally_to_load = allies_to_load.get(allyctr);
-                            if(ally_to_load.unitType()==UnitType.Ranger && gc.canLoad(unit.id(), ally_to_load.id())) {
+                            if(gc.canLoad(unit.id(), ally_to_load.id())) {
                                 gc.load(unit.id(), ally_to_load.id());
                                 num_in_garrison++;
                             }
@@ -294,16 +303,19 @@ public class Player {
                 if(mars_landing[w][h]==landing_spaces) { //one of the max space squares
                     if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, w, h))) {
                         gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, w, h)); //launch rocket
-                        int[] shifts = {-1, 0, 1}; //update available squares
-                        for(int xsi=0; xsi<3; xsi++) {
-                            for(int ysi=0; ysi<3; ysi++) {
+                        int[] shifts = {-2, -1, 0, 1, 2}; //update available squares
+                        for(int xsi=0; xsi<shifts.length; xsi++) {
+                            for(int ysi=0; ysi<shifts.length; ysi++) {
                                 int shifted_x = w+shifts[xsi];
                                 int shifted_y = h+shifts[ysi];
-                                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height)
-                                    mars_landing[shifted_x][shifted_y]--;
+                                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
+                                    if(xsi>0 && xsi<4 && ysi>0 && ysi<4)
+                                        mars_landing[shifted_x][shifted_y]=-1;
+                                    else
+                                        mars_landing[shifted_x][shifted_y]--;
+                                }                                    
                             }
                         }
-                        mars_landing[w][h] = -1;
                     }
                     return;
                 }
@@ -504,7 +516,7 @@ public class Player {
         int y = mapLocation.getY();
         for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
             Direction dir = random_movement_field[x][y].get(movedir);
-            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location             
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location             
                 buildRandomField();
                 moveOnRandomField(unit, mapLocation);
                 return;                            
