@@ -1,6 +1,3 @@
-//How to steal replays!
-//https://s3.amazonaws.com/battlecode-2018/replays/1.bc18
-
 import bc.*;
 import java.util.*;
 
@@ -14,9 +11,9 @@ public class Player {
     public static PlanetMap map;
     public static PlanetMap mars_map;
     public static int width;
-    public static int height; 
+    public static int height;
     public static int mars_width;
-    public static int mars_height;       
+    public static int mars_height;
     public static int current_round;
 
     //Stuff we create
@@ -44,20 +41,22 @@ public class Player {
 
         myPlanet = gc.planet(); //this planet
 
-        map = gc.startingMap(myPlanet); //map characteristics             
+        map = gc.startingMap(myPlanet); //map characteristics
         width = (int)map.getWidth();
-        height = (int)map.getHeight(); 
+        height = (int)map.getHeight();
         int initial_workers = 0; //TODO: Make global?
-
+        long initial_karbonite = countKarbonite();
+        System.out.println(width);
+        System.out.println(initial_karbonite);
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
             generateLandingPriorities();
         }
 
-        enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
+        enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
         VecUnit initial_units = map.getInitial_units();
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
-            if(ally!=unit.team()) {      
+            if(ally!=unit.team()) {
                 MapLocation enemy_location = unit.location().mapLocation();
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
                 enemy_locations.add(enemy_info);
@@ -65,17 +64,17 @@ public class Player {
         }
 
         distance_field = new int[width][height]; //generate movement field
-        movement_field = new ArrayList[width][height];         
-        buildFieldBFS(); 
+        movement_field = new ArrayList[width][height];
+        buildFieldBFS();
 
         random_distance_field = new int[width][height]; //generate random movement field
-        random_movement_field = new ArrayList[width][height];         
+        random_movement_field = new ArrayList[width][height];
         buildRandomField();
 
         doesPathExist = false; //determine if a path exists
         for(int i=0; i<initial_units.size(); i++) {
             Unit unit = initial_units.get(i);
-            if(ally==unit.team()) {      
+            if(ally==unit.team()) {
                 initial_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
@@ -83,12 +82,12 @@ public class Player {
                     break;
                 }
             }
-        }         
+        }
 
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                  UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
         for(int i=0; i<rarray.length; i++)
-            gc.queueResearch(rarray[i]); 
+            gc.queueResearch(rarray[i]);
         canSnipe = false;
 
         current_round = 0;
@@ -97,13 +96,14 @@ public class Player {
         int current_workers=initial_workers; //TODO: make global?
         int num_factories = 0;
         int num_rockets = 0;
-        int minworkers=initial_workers*4; //replicate each dude *4 before creating factories        
+        int minworkers=initial_workers*4; //replicate each dude *4 before creating factories
 
-        while (true) {            
+        //TODO: optimize how we go thorugh units
+        while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
             if(current_round%50==0) { //print round number and update random field
-                System.out.println("Current round: "+current_round);                
+                System.out.println("Current round: "+current_round);
                 buildRandomField();
             }
             if(canSnipe==false && current_round>350) {//activate snipe
@@ -112,12 +112,12 @@ public class Player {
             }
             if(canSnipe) //build snipe targets
                 buildSnipeTargets();
-            
+
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
 
-                //TODO:                
+                //TODO:
                 // - update factory function based on karbonite levels
                 // - worker replication late game for pure harvesting / navigation
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
@@ -129,7 +129,7 @@ public class Player {
                         }
                         else if(buildFactory(unit, mykarbs, units, 20l)==true){
                             continue;
-                        } 
+                        }
                         else {
                             if(num_rockets<=(current_round/10) && current_round>450) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
@@ -139,8 +139,8 @@ public class Player {
                                 } else { //did not degenerate
                                     num_rockets+=val;
                                 }
-                            } 
-                            else if(num_factories<4 || (doesPathExist==false && num_factories<1)) { //factory cap
+                            }
+                            else if(num_factories<4 || (width>25 && (gc.karbonite()>200+(50-width))) || (doesPathExist==false && num_factories<1)) { //factory cap
                                 //blueprint factory or (replicate or moveharvest)
                                 int val = blueprintFactory(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
@@ -148,7 +148,7 @@ public class Player {
                                 } else { //did not degenerate
                                     num_factories+=val;
                                 }
-                            } 
+                            }
                             else {
                                 workerharvest(unit, mykarbs);
                                 workermove(unit, mykarbs);
@@ -158,21 +158,21 @@ public class Player {
                         //replicate or move harvest
                         current_workers += replicateOrMoveHarvest(unit, mykarbs);
                     }
-                }       
+                }
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
                 //TODO: Don't walk into range of another ranger--verify this is how it works
                 //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
                         if(enemy_locations.size()==0) { //add enemy locations
                             updateEnemies();
                         }
                         checkVectorField(unit, myloc);
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);  
-                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range   
+                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range
                             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
                             MapLocation nearloc = nearestUnit.location().mapLocation();
                             fuzzyMove(unit, myloc.directionTo(nearloc));
@@ -207,19 +207,19 @@ public class Player {
                                 enemy_buildings.remove(0);
                             else
                                 enemy_buildings.set(0,target);
-                        }                        
-                    }                                     
+                        }
+                    }
                 }
 
                 else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
                         Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
                         MapLocation nearloc = nearestUnit.location().mapLocation();
                         fuzzyMove(unit, myloc.directionTo(nearloc));
 
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);     
+                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
                         if(enemies_in_range.size()>0) {
                             nearestUnit = enemies_in_range.get(0);
                             if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), nearestUnit.id()))
@@ -229,12 +229,12 @@ public class Player {
                     else { //non-combat state
                         if(enemy_locations.size()>0)
                             moveOnVectorField(unit, myloc);
-                    }                                     
+                    }
                 }
 
                 else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
                         Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
                         MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -243,35 +243,36 @@ public class Player {
                             gc.attack(unit.id(), nearestUnit.id());
                     }
                     else { //non-combat state
-                        moveOnVectorField(unit, myloc);                
-                    }                                     
+                        moveOnVectorField(unit, myloc);
+                    }
                 }
 
                 //TODO: Heuristic to shut off production
-                else if(unit.unitType()==UnitType.Factory) {   
+                else if(unit.unitType()==UnitType.Factory) {
                     factories_active++;
                     if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
                         (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
                         (current_round<725 || current_round<700 && doesPathExist==false)) {  //no production in final rounds
                         gc.produceRobot(unit.id(),UnitType.Ranger);
-                    }    
+                    }
                     Direction unload_dir = Direction.East;
                     if(enemy_locations.size()>0) {
                         int[] enemy_direction = enemy_locations.get(0);
                         unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
-                    }       
+                    }
                     fuzzyUnload(unit, unload_dir);
                 }
 
+                //TODO: imrpove land priority to accuont for nearby karbonite in decimal place
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
-                    MapLocation myloc = unit.location().mapLocation();                    
+                    MapLocation myloc = unit.location().mapLocation();
                     if(myPlanet==Planet.Earth) { //on earth load/lift
                         addRocketLocation(unit, myloc);
                         VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
                         VecUnitID garrison = unit.structureGarrison();
-                        int maxcapacity = (int)unit.structureMaxCapacity();                        
+                        int maxcapacity = (int)unit.structureMaxCapacity();
                         int num_in_garrison = (int)garrison.size();
                         int allyctr = 0;
                         while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
@@ -305,11 +306,22 @@ public class Player {
                     }
                 }
             }
-            
+
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
 
+
+    //count number of karbonites on map initially
+    public static long countKarbonite() {
+        long totalkarb = 0L;
+        for (int i=0; i<width; i++) {
+            for(int j=0; j<width; j++) {
+                totalkarb += map.initialKarboniteAt(new MapLocation(myPlanet, i,j));
+            }
+        }
+        return totalkarb;
+    }
     //Only called when no factories are within range
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
@@ -595,7 +607,7 @@ public class Player {
 
     //Attempts to unload unit in direction as best as possible from factory
     public static void fuzzyUnload(Unit unit, Direction dir) {
-        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         int[] shifts = {0, -1, 1, -2, 2, -3, 3, 4};
         int dirindex = 0;
@@ -620,8 +632,8 @@ public class Player {
         for(int i=0; i<enemy_locations.size(); i++) { //search through list
             int[] enem_loc = enemy_locations.get(i);
             if(x==enem_loc[0] && y==enem_loc[1]) {
-                enemy_locations.remove(i);        
-                rocket_homing--;        
+                enemy_locations.remove(i);
+                rocket_homing--;
                 return;
             }
         }
@@ -667,7 +679,7 @@ public class Player {
                                         mars_landing[shifted_x][shifted_y]=-1;
                                     else
                                         mars_landing[shifted_x][shifted_y]--;
-                                }                                    
+                                }
                             }
                         }
                     }
@@ -681,8 +693,8 @@ public class Player {
 
     //generates count of open adjacent spaces for locations on mars
     //used to land rockets
-    public static void generateLandingPriorities() {   
-        mars_map = gc.startingMap(Planet.Mars); 
+    public static void generateLandingPriorities() {
+        mars_map = gc.startingMap(Planet.Mars);
         mars_width = (int)mars_map.getWidth();
         mars_height = (int)mars_map.getHeight();
         mars_landing = new int[mars_width][mars_height];
@@ -696,11 +708,11 @@ public class Player {
         for(int h=0; h<mars_height; h++) { //correct for borders vertically
             mars_landing[0][h]--;
             mars_landing[mars_width-1][h]--;
-        }        
+        }
         int[] shifts = {-1, 0, 1};
         for(int w=0; w<mars_width; w++) {
             for(int h=0; h<mars_height; h++) {
-                if(mars_map.isPassableTerrainAt(new MapLocation(Planet.Mars, w, h))==0) { //not passable 
+                if(mars_map.isPassableTerrainAt(new MapLocation(Planet.Mars, w, h))==0) { //not passable
                     for(int xsi=0; xsi<3; xsi++) {
                         for(int ysi=0; ysi<3; ysi++) {
                             int shifted_x = w+shifts[xsi];
@@ -712,7 +724,7 @@ public class Player {
                     mars_landing[w][h] = -1;
                 }
             }
-        }        
+        }
         landing_spaces = -1;
         for(int w=0; w<mars_width; w++)
             for(int h=0; h<mars_height; h++)
@@ -792,7 +804,7 @@ public class Player {
                 if(distance<(int)enemy.attackRange()) //can be hit
                     hval+=1000;
             } catch(Exception e) {} //if unit has no attack range
-            hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit        
+            hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
@@ -808,12 +820,12 @@ public class Player {
                 return b[0] - a[0];
             }
         });
-        for(int i=0; i<heuristics.length; i++) {            
+        for(int i=0; i<heuristics.length; i++) {
             if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
                 gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
                 return;
             }
-        }        
+        }
     }
 
     //Takes MapLocation and a VecUnit
@@ -841,7 +853,7 @@ public class Player {
     public static void fuzzyMove(Unit unit, Direction dir) {
         if(!gc.isMoveReady(unit.id()) || dir==Direction.Center)
             return;
-        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         int[] shifts = {0, -1, 1, -2, 2};
         int dirindex = 0;
@@ -862,7 +874,7 @@ public class Player {
     //Moves unit on vector field
     //Should be used if no enemies in sight
     //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
-    public static void moveOnRandomField(Unit unit, MapLocation mapLocation) {        
+    public static void moveOnRandomField(Unit unit, MapLocation mapLocation) {
         if(!gc.isMoveReady(unit.id())) //checks if can move
             return;
         UnitType myUnitType = unit.unitType();
@@ -870,10 +882,10 @@ public class Player {
         int y = mapLocation.getY();
         for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
             Direction dir = random_movement_field[x][y].get(movedir);
-            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location             
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location
                 buildRandomField();
                 moveOnRandomField(unit, mapLocation);
-                return;                            
+                return;
             }
             else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
                 fuzzyMove(unit, dir);
@@ -883,7 +895,7 @@ public class Player {
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
-        }                        
+        }
     }
 
     //Takes a random llocation and builds vector fields
@@ -898,7 +910,7 @@ public class Player {
         }
         int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
 
-        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
         Queue<int[]> queue = new LinkedList<int[]>();
@@ -907,9 +919,9 @@ public class Player {
         for(int w=0; w<width; w++) {
             for(int h=0; h<height; h++) {
                 random_distance_field[w][h] = (50*50+1);
-                random_movement_field[w][h] = new ArrayList<Direction>();                
+                random_movement_field[w][h] = new ArrayList<Direction>();
             }
-        }    
+        }
 
         while(queue.peek()!=null) {
             int[] lcc = queue.poll();
@@ -930,23 +942,23 @@ public class Player {
                 random_distance_field[x][y] = depth;
                 random_movement_field[x][y] = new ArrayList<Direction>();
                 random_movement_field[x][y].add(dirs[dir]);
-                int[] lc2 = {x+1,y,  5,depth+1}; 
+                int[] lc2 = {x+1,y,  5,depth+1};
                 queue.add(lc2);
-                int[] lc3 = {x+1,y+1,6,depth+1}; 
+                int[] lc3 = {x+1,y+1,6,depth+1};
                 queue.add(lc3);
-                int[] lc4 = {x,y+1,  7,depth+1}; 
+                int[] lc4 = {x,y+1,  7,depth+1};
                 queue.add(lc4);
-                int[] lc5 = {x-1,y+1,8,depth+1}; 
+                int[] lc5 = {x-1,y+1,8,depth+1};
                 queue.add(lc5);
-                int[] lc6 = {x-1,y,  1,depth+1}; 
+                int[] lc6 = {x-1,y,  1,depth+1};
                 queue.add(lc6);
-                int[] lc7 = {x-1,y-1,2,depth+1}; 
+                int[] lc7 = {x-1,y-1,2,depth+1};
                 queue.add(lc7);
-                int[] lc8 = {x,y-1,  3,depth+1}; 
+                int[] lc8 = {x,y-1,  3,depth+1};
                 queue.add(lc8);
-                int[] lc9 = {x+1,y-1,4,depth+1}; 
+                int[] lc9 = {x+1,y-1,4,depth+1};
                 queue.add(lc9);
-            }         
+            }
         }
     }
 
@@ -968,7 +980,7 @@ public class Player {
                 updateEnemies();
             }
             buildFieldBFS();
-        }                      
+        }
     }
 
     //Moves unit on vector field
@@ -995,7 +1007,7 @@ public class Player {
                 }
                 buildFieldBFS();
                 moveOnVectorField(unit, mapLocation);
-                return;                            
+                return;
             }
             else if(movedir==movement_field[x][y].size()-1) { //fuzzy moves last possible direction
                 fuzzyMove(unit, dir);
@@ -1005,14 +1017,14 @@ public class Player {
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
-        }                        
+        }
     }
 
     //Takes an arraylist of starting enemy locations and builds vector fields
     //distance_field tells you how far from current path destination
     //movement_field gives ArrayList of equally optimal Directions to move in
     public static void buildFieldBFS() {
-        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
         Queue<int[]> queue = new LinkedList<int[]>();
@@ -1021,9 +1033,9 @@ public class Player {
         for(int w=0; w<width; w++) {
             for(int h=0; h<height; h++) {
                 distance_field[w][h] = (50*50+1);
-                movement_field[w][h] = new ArrayList<Direction>();                
+                movement_field[w][h] = new ArrayList<Direction>();
             }
-        }    
+        }
 
         while(queue.peek()!=null) {
             int[] lcc = queue.poll();
@@ -1044,23 +1056,23 @@ public class Player {
                 distance_field[x][y] = depth;
                 movement_field[x][y] = new ArrayList<Direction>();
                 movement_field[x][y].add(dirs[dir]);
-                int[] lc2 = {x+1,y,  5,depth+1}; 
+                int[] lc2 = {x+1,y,  5,depth+1};
                 queue.add(lc2);
-                int[] lc3 = {x+1,y+1,6,depth+1}; 
+                int[] lc3 = {x+1,y+1,6,depth+1};
                 queue.add(lc3);
-                int[] lc4 = {x,y+1,  7,depth+1}; 
+                int[] lc4 = {x,y+1,  7,depth+1};
                 queue.add(lc4);
-                int[] lc5 = {x-1,y+1,8,depth+1}; 
+                int[] lc5 = {x-1,y+1,8,depth+1};
                 queue.add(lc5);
-                int[] lc6 = {x-1,y,  1,depth+1}; 
+                int[] lc6 = {x-1,y,  1,depth+1};
                 queue.add(lc6);
-                int[] lc7 = {x-1,y-1,2,depth+1}; 
+                int[] lc7 = {x-1,y-1,2,depth+1};
                 queue.add(lc7);
-                int[] lc8 = {x,y-1,  3,depth+1}; 
+                int[] lc8 = {x,y-1,  3,depth+1};
                 queue.add(lc8);
-                int[] lc9 = {x+1,y-1,4,depth+1}; 
+                int[] lc9 = {x+1,y-1,4,depth+1};
                 queue.add(lc9);
-            }            
+            }
         }
     }
 
