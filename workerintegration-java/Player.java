@@ -116,6 +116,7 @@ public class Player {
 
                 //TODO:                
                 // - update factory function based on karbonite levels
+                // - worker replication late game for pure harvesting / navigation
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(current_workers>=minworkers && myPlanet==Planet.Earth) {
@@ -157,8 +158,7 @@ public class Player {
                 }       
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
-                //TODO: Don't walk into range of another ranger
-                //TODO!: Move to rockets by adding to vector field
+                //TODO: Don't walk into range of another ranger--verify this is how it works
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
