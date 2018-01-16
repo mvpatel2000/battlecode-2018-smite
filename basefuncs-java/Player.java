@@ -11,6 +11,7 @@ public class Player {
     public static PlanetMap map;
     public static int width;
     public static int height;
+    public static int[][] mars_landing;
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -37,6 +38,10 @@ public class Player {
         map = gc.startingMap(myPlanet); //map characteristics             
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
+
+        if(myPlanet==Planet.Earth) {
+            //build mars map
+        }
 
         enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
         VecUnit initial_units = map.getInitial_units();
@@ -76,8 +81,7 @@ public class Player {
         canSnipe = false;
 
         int maxworkers = 10-1; //unit limits
-        int maxfactory = 4;
-        int maxrangers = 1000;
+        int maxfactory = 3;
 
         while (true) {            
             if(gc.round()%50==0) { //print round number and update random field
@@ -150,8 +154,8 @@ public class Player {
                         if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
-                            System.out.println(target[1]+" "+target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
+                                System.out.println("Sniping: "+snipetarget.toString());
                                 gc.beginSnipe(unit.id(), snipetarget);
                             }
                             target[0]--;
@@ -199,24 +203,79 @@ public class Player {
                     }                                     
                 }
 
-                else if(unit.unitType()==UnitType.Factory) {
-                    int rangers = 0;
-                    for(int i=0; i<units.size(); i++)
-                        if(units.get(i).unitType()==UnitType.Ranger)
-                            rangers++;
-                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
+                else if(unit.unitType()==UnitType.Factory) {                                                 
+                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger)) {  //Autochecks if something else is being produced or not
                         gc.produceRobot(unit.id(),UnitType.Ranger);
+                    }    
+                    Direction unload_dir = Direction.East;
+                    if(enemy_locations.size()>0) {
+                        int[] enemy_direction = enemy_locations.get(0);
+                        unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
+                    }       
+                    fuzzyUnload(unit, unload_dir);
+                }
+
+                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace()) {
+                    Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
+                                        Direction.Southwest, Direction.South, Direction.Southeast};
+                    MapLocation myloc = unit.location().mapLocation();
+                    if(myPlanet==Planet.Earth) {
+                        VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
+                        VecUnitID garrison = unit.structureGarrison();
+                        int maxcapacity = (int)unit.structureMaxCapacity();                        
+                        int num_in_garrison = (int)garrison.size();
+                        int allyctr = 0;
+                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all rangers while space
+                            Unit ally_to_load = allies_to_load.get(allyctr);
+                            if(ally_to_load.unitType()==UnitType.Ranger && gc.canLoad(unit.id(), ally_to_load.id())) {
+                                gc.load(unit.id(), ally_to_load.id());
+                                num_in_garrison++;
+                            }
+                            allyctr++;
+                        }
+                        if(num_in_garrison==maxcapacity) {
+                            //lift off bitch
+                        }
                     }
-                    if(gc.canUnload(unit.id(),Direction.East)) { //unload to east
-                        gc.unload(unit.id(),Direction.East);
+                    else if(myPlanet==Planet.Mars) { //unload everything ASAP
+                        int dirctr = 0;
+                        VecUnitID garrison = unit.structureGarrison();
+                        for(int i=0; i<garrison.size(); i++) {
+                            while(dirctr<8) {
+                                if(gc.canUnload(unit.id(), dirs[dirctr])) {
+                                    gc.unload(unit.id(), dirs[dirctr]);
+                                    dirctr++;
+                                    break;
+                                }
+                                dirctr++;
+                            }
+                            if(dirctr>=8)
+                                break;
+                        }
                     }
-                    else if(gc.canUnload(unit.id(),Direction.South)) { //unload to east
-                        gc.unload(unit.id(),Direction.South);
-                    }
-                }       
+                }
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //Attempts to unload unit in direction as best as possible from factory
+    public static void fuzzyUnload(Unit unit, Direction dir) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2, -3, 3, 4};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<shifts.length; i++) {
+            if(gc.canUnload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+            }
         }
     }
 
@@ -296,7 +355,7 @@ public class Player {
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
-                    hval+=10*utctr;
+                    hval+=10*utctr; //later units have higher priorities because weight based on index
                     break;
                 }
             }
@@ -308,9 +367,6 @@ public class Player {
                 return b[0] - a[0];
             }
         });
-        // for(int i=0; i<heuristics.length; i++)
-        //     System.out.print("("+heuristics[i][0]+" "+enemies_in_range.get(heuristics[i][1]).health()+") ");
-        // System.out.println("|");
         for(int i=0; i<heuristics.length; i++) {            
             if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
                 gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());

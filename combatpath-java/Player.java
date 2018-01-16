@@ -81,8 +81,7 @@ public class Player {
         canSnipe = false;
 
         int maxworkers = 10-1; //unit limits
-        int maxfactory = 4;
-        int maxrangers = 1000;
+        int maxfactory = 3;
 
         while (true) {            
             if(gc.round()%50==0) { //print round number and update random field
@@ -204,20 +203,16 @@ public class Player {
                     }                                     
                 }
 
-                else if(unit.unitType()==UnitType.Factory) {
-                    int rangers = 0;
-                    for(int i=0; i<units.size(); i++)
-                        if(units.get(i).unitType()==UnitType.Ranger)
-                            rangers++;
-                    if(rangers<maxrangers && gc.canProduceRobot(unit.id(),UnitType.Ranger)) {  //TODO: check to see queue is empty
+                else if(unit.unitType()==UnitType.Factory) {                                                 
+                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger)) {  //Autochecks if something else is being produced or not
                         gc.produceRobot(unit.id(),UnitType.Ranger);
-                    }
-                    if(gc.canUnload(unit.id(),Direction.Northeast)) { //unload to east
-                        gc.unload(unit.id(),Direction.Northeast);
-                    }
-                    else if(gc.canUnload(unit.id(),Direction.Southwest)) { //unload to east
-                        gc.unload(unit.id(),Direction.Southwest);
-                    }
+                    }    
+                    Direction unload_dir = Direction.East;
+                    if(enemy_locations.size()>0) {
+                        int[] enemy_direction = enemy_locations.get(0);
+                        unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
+                    }       
+                    fuzzyUnload(unit, unload_dir);
                 }
 
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace()) {
@@ -262,6 +257,25 @@ public class Player {
             }
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //Attempts to unload unit in direction as best as possible from factory
+    public static void fuzzyUnload(Unit unit, Direction dir) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, 
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2, -3, 3, 4};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<shifts.length; i++) {
+            if(gc.canUnload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+            }
         }
     }
 
