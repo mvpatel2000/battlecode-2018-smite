@@ -96,6 +96,7 @@ public class Player {
         int num_rockets = 0;
         int minworkers=initial_workers*4; //replicate each dude *4 before creating factories        
 
+        //TODO: optimize order in which we loop through units
         while (true) {            
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
