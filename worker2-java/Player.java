@@ -90,6 +90,7 @@ public class Player {
         int current_workers=initial_workers;
         int centerid=0;
         int replicatorid = 0;
+        int num_factories = 0;
         while (true) {
             if(gc.round()%50==0) {
                 System.out.println("Current round: "+gc.round());
@@ -106,17 +107,16 @@ public class Player {
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(current_workers>3) {
-                        if(buildingFactory==false && unit.id()==centerid) {
+                        if(unit.id()==centerid && num_factories<=(gc.round()/30) + width) {
                             //blueprint factory
                             Direction buildDirection = leastKarboniteDirection(unit, unit.location());
                             if(gc.canBlueprint(unit.id(), UnitType.Factory, buildDirection)) {
                                 gc.blueprint(unit.id(), UnitType.Factory, buildDirection);
                                 buildingFactory=true;
+                                num_factories+=1;
                             }
-                        } else {
-                            buildingFactory = buildFactory(unit, mykarbs);
-                        }
-                    } else if (current_workers<=3) {
+                        } else buildFactory(unit, mykarbs, units);
+                    } else {
                         for (KarbDir k : mykarbs) {
                             if(gc.canReplicate(unit.id(), k.dir)) {
                                 gc.replicate(unit.id(), k.dir);
@@ -124,9 +124,6 @@ public class Player {
                                 break;
                             }
                         }
-                    } else {
-                        workerharvest(unit, mykarbs);
-                        workermove(unit, mykarbs);
                     }
                     // ****************************************
                     // WORKER LOGIC
@@ -220,6 +217,33 @@ public class Player {
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
+
+    public static long passability(Unit myUnit, long width, long height) {
+        MapLocation myLoc = myUnit.location().mapLocation();
+        MapLocation enemyLoc = new MapLocation(width - myLoc.x, height-myLoc.y);
+        long distSquared = myLoc.distanceSquaredTo(enemyLoc);
+        ArrayList<Direction> myList = Helpers.astar(myUnit, enemyLoc);
+        long passability_factor = distSquared/(myList.size()*myList.size());//1 = completely clear, closer to 0=not clear at all.
+        return passability_factor;
+    }
+    //find the closest factory
+    public static Direction backToFactory(Unit myUnit, VecUnit units) {
+        int closestfactoryid = 0;
+        long smalldist=100000000000L;
+        ArrayList<Unit> myFactories = new ArrayList<Unit>();
+        for (int i = 0; i < units.size(); i++) {
+            Unit unit = units.get(i);
+            if(unit.unitType()==UnitType.Factory && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                myFactories.add(unit);
+            }
+        }
+        if(myFactories.size()>0) {
+            int r = Helpers.randInt(0,myFactories.size()-1);
+            return myUnit.location().mapLocation().directionTo(myFactories.get(r).location().mapLocation());
+        } else {
+            return Helpers.opposite(getVectorFieldDirection(myUnit, myUnit.location().mapLocation()));
+        }
+    }
     //For Workers
     //Return the central of three workers, the center one will build the factory
     public static int centralworker(VecUnit units) {
@@ -248,35 +272,33 @@ public class Player {
         return centralworkerid;
     }
 
-    public static boolean buildFactory(Unit unit, ArrayList<KarbDir> mykarbs) {
+    public static boolean buildFactory(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units) {
         VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), unit.visionRange(), UnitType.Factory);
-        if(nearbyFactories.size()>0) {
-            Unit myFactory = nearbyFactories.get(0);
-            if(gc.canBuild(unit.id(), myFactory.id())) {
-                //factory needs to be built, and worker is close enought to build
-                gc.build(unit.id(), myFactory.id());
-                return true;
-            } else {
-                if(myFactory.health() == myFactory.maxHealth()) {
-                    //the factory is fully built, so workers can continue default harvest/move operations
-                    workerharvest(unit, mykarbs);
-                    workermove(unit, mykarbs);
-                    return false; //factory has been built
+
+        for(int i=0; i<nearbyFactories.size(); i++) {
+            Unit k = nearbyFactories.get(i);
+            if(k.team()!=ally) {
+                continue;
+            }
+            if(k.health()!=k.maxHealth()) {
+                if(gc.canBuild(unit.id(), k.id())) {
+                    gc.build(unit.id(), k.id());
+                    return true;
+                } else if(gc.canRepair(unit.id(), k.id())){
+                    gc.repair(unit.id(), k.id());
+                    return true;
                 } else {
-                    //the workers are within vision range of the factory but not close enough to help build
-                    //move workers towards factory
                     workerharvest(unit, mykarbs);
                     Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
                     fuzzyMove(unit, toFactory);
                     return true;
                 }
             }
-        } else {
-            //no blueprints exist
-            workerharvest(unit, mykarbs);
-            workermove(unit, mykarbs);
-            return false;
         }
+        //no blueprints exist
+        workerharvest(unit, mykarbs);
+        workermove(unit, mykarbs, units);
+        return false;
     }
     //harvest in the optimal direction
     public static void workerharvest(Unit unit, ArrayList<KarbDir> mykarbs) {
@@ -292,7 +314,7 @@ public class Player {
         }
 
     }
-    public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs) {
+    public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units) {
         MapLocation myLoc = unit.location().mapLocation();
         for (KarbDir k : mykarbs) {
             MapLocation newLoc = myLoc.add(k.dir);
@@ -309,7 +331,9 @@ public class Player {
         if(tonearkarb!=null) {
             fuzzyMove(unit, tonearkarb);
         } else {
-            fuzzyMove(unit, getVectorFieldDirection(unit, myLoc));
+            Direction d = Direction.Center;
+            while(d == Direction.Center) d = Helpers.randDir();
+            fuzzyMove(unit, d);
         }
         return;
     }
@@ -399,7 +423,7 @@ public class Player {
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         long mykarb = 0L;
-        Direction bestdir=getVectorFieldDirection(unit, myloc);
+        Direction bestdir=Helpers.opposite(getVectorFieldDirection(unit, myloc));
         for (int i=0; i<dirs.length; i++) {
             MapLocation newloc = myloc.add(dirs[i]);
             if(gc.canMove(unit.id(), dirs[i])) {
