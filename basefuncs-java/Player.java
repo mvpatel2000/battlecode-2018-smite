@@ -9,9 +9,11 @@ public class Player {
     public static Team enemy;
     public static Planet myPlanet;
     public static PlanetMap map;
+    public static PlanetMap mars_map;
     public static int width;
-    public static int height;
-    public static int[][] mars_landing;
+    public static int height; 
+    public static int mars_width;
+    public static int mars_height;       
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -22,6 +24,8 @@ public class Player {
     public static ArrayList<int[]> enemy_buildings;
     public static boolean canSnipe;
     public static boolean doesPathExist;
+    public static int[][] mars_landing;
+    public static int landing_spaces;
 
     public static void main(String[] args) {
 
@@ -39,8 +43,8 @@ public class Player {
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
 
-        if(myPlanet==Planet.Earth) {
-            //build mars map
+        if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
+            generateLandingPriorities();
         }
 
         enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
@@ -80,8 +84,9 @@ public class Player {
             gc.queueResearch(rarray[i]); 
         canSnipe = false;
 
-        int maxworkers = 10-1; //unit limits
+        int maxworkers = 9-1; //unit limits
         int maxfactory = 3;
+        int maxrocket = 20;
 
         while (true) {            
             if(gc.round()%50==0) { //print round number and update random field
@@ -102,9 +107,16 @@ public class Player {
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit nearbyFactories = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Factory);
+                    VecUnit nearbyRockets = gc.senseNearbyUnitsByType(myloc, (long)1.0, UnitType.Rocket);
                     if(maxworkers>0 && gc.canReplicate(unit.id(),Direction.East)) { //replicate
                         gc.replicate(unit.id(),Direction.East);
                         maxworkers--;
+                    }
+                    else if(nearbyRockets.size()>0 && gc.canBuild(unit.id(), nearbyRockets.get(0).id())) //build factory
+                        gc.build(unit.id(),nearbyRockets.get(0).id());
+                    else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.East)) { //blueprint Rocket 
+                        gc.blueprint(unit.id(), UnitType.Rocket, Direction.East);
+                        maxrocket--;
                     }
                     else if(nearbyFactories.size()>0 && gc.canBuild(unit.id(), nearbyFactories.get(0).id())) //build factory
                         gc.build(unit.id(),nearbyFactories.get(0).id());
@@ -119,6 +131,9 @@ public class Player {
                         moveOnVectorField(unit, myloc);
                 }       
 
+                //TODO: Rush if has some min unit amount so to sight for snipe
+                //TODO: Don't walk into range of another ranger
+                //TODO!: Move to rockets by adding to vector field
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
@@ -203,8 +218,9 @@ public class Player {
                     }                                     
                 }
 
+                //TODO: Heuristic to shut off production
                 else if(unit.unitType()==UnitType.Factory) {                                                 
-                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger)) {  //Autochecks if something else is being produced or not
+                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.round()<725) {  //Autochecks if queue empty / no production in final rounds
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }    
                     Direction unload_dir = Direction.East;
@@ -225,16 +241,16 @@ public class Player {
                         int maxcapacity = (int)unit.structureMaxCapacity();                        
                         int num_in_garrison = (int)garrison.size();
                         int allyctr = 0;
-                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all rangers while space
+                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                             Unit ally_to_load = allies_to_load.get(allyctr);
-                            if(ally_to_load.unitType()==UnitType.Ranger && gc.canLoad(unit.id(), ally_to_load.id())) {
+                            if(gc.canLoad(unit.id(), ally_to_load.id())) {
                                 gc.load(unit.id(), ally_to_load.id());
                                 num_in_garrison++;
                             }
                             allyctr++;
                         }
                         if(num_in_garrison==maxcapacity) {
-                            //lift off bitch
+                            launchRocket(unit);
                         }
                     }
                     else if(myPlanet==Planet.Mars) { //unload everything ASAP
@@ -277,6 +293,78 @@ public class Player {
                 gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
             }
         }
+    }
+
+    //launches rocket based on precomputed space
+    public static void launchRocket(Unit unit) {
+        if(landing_spaces<0) //no available spaces left
+            return;
+        for(int w=0; w<mars_width; w++) {
+            for(int h=0; h<mars_height; h++) {
+                if(mars_landing[w][h]==landing_spaces) { //one of the max space squares
+                    if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, w, h))) {
+                        gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, w, h)); //launch rocket
+                        int[] shifts = {-2, -1, 0, 1, 2}; //update available squares
+                        for(int xsi=0; xsi<shifts.length; xsi++) {
+                            for(int ysi=0; ysi<shifts.length; ysi++) {
+                                int shifted_x = w+shifts[xsi];
+                                int shifted_y = h+shifts[ysi];
+                                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
+                                    if(xsi>0 && xsi<4 && ysi>0 && ysi<4)
+                                        mars_landing[shifted_x][shifted_y]=-1;
+                                    else
+                                        mars_landing[shifted_x][shifted_y]--;
+                                }                                    
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+        landing_spaces--;
+        launchRocket(unit);
+    }
+
+    //generates count of open adjacent spaces for locations on mars
+    //used to land rockets
+    public static void generateLandingPriorities() {   
+        mars_map = gc.startingMap(Planet.Mars); 
+        mars_width = (int)mars_map.getWidth();
+        mars_height = (int)mars_map.getHeight();
+        mars_landing = new int[mars_width][mars_height];
+        for(int w=0; w<mars_width; w++) //default initialization
+            for(int h=0; h<mars_height; h++)
+                mars_landing[w][h] = 8;
+        for(int w=0; w<mars_width; w++) { //correct for borders horizontally
+            mars_landing[w][0]--;
+            mars_landing[w][mars_height-1]--;
+        }
+        for(int h=0; h<mars_height; h++) { //correct for borders vertically
+            mars_landing[0][h]--;
+            mars_landing[mars_width-1][h]--;
+        }        
+        int[] shifts = {-1, 0, 1};
+        for(int w=0; w<mars_width; w++) {
+            for(int h=0; h<mars_height; h++) {
+                if(mars_map.isPassableTerrainAt(new MapLocation(Planet.Mars, w, h))==0) { //not passable 
+                    for(int xsi=0; xsi<3; xsi++) {
+                        for(int ysi=0; ysi<3; ysi++) {
+                            int shifted_x = w+shifts[xsi];
+                            int shifted_y = h+shifts[ysi];
+                            if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height)
+                                mars_landing[shifted_x][shifted_y]--;
+                        }
+                    }
+                    mars_landing[w][h] = -1;
+                }
+            }
+        }        
+        landing_spaces = -1;
+        for(int w=0; w<mars_width; w++)
+            for(int h=0; h<mars_height; h++)
+                if(mars_landing[w][h]>landing_spaces)
+                    landing_spaces = mars_landing[w][h];
     }
 
     //adds all spotted enemies to enemy_locations
@@ -429,7 +517,7 @@ public class Player {
         int y = mapLocation.getY();
         for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
             Direction dir = random_movement_field[x][y].get(movedir);
-            if(dir == Direction.Center) { //refactors vector field if reaches enemy start location             
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location             
                 buildRandomField();
                 moveOnRandomField(unit, mapLocation);
                 return;                            
