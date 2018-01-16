@@ -260,6 +260,7 @@ public class Player {
                     fuzzyUnload(unit, unload_dir);
                 }
 
+                //TODO: imrpove land priority to accuont for nearby karbonite in decimal place
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
