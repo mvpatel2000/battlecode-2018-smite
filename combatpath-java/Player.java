@@ -218,8 +218,9 @@ public class Player {
                     }                                     
                 }
 
+                //TODO: Heuristic to shut off production
                 else if(unit.unitType()==UnitType.Factory) {                                                 
-                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger)) {  //Autochecks if something else is being produced or not
+                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.round()<725) {  //Autochecks if queue empty / no production in final rounds
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }    
                     Direction unload_dir = Direction.East;
