@@ -9,9 +9,11 @@ public class Player {
     public static Team enemy;
     public static Planet myPlanet;
     public static PlanetMap map;
+    public static PlanetMap mars_map;
     public static int width;
-    public static int height;
-    public static int[][] mars_landing;
+    public static int height; 
+    public static int mars_width;
+    public static int mars_height;       
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -22,6 +24,8 @@ public class Player {
     public static ArrayList<int[]> enemy_buildings;
     public static boolean canSnipe;
     public static boolean doesPathExist;
+    public static int[][] mars_landing;
+    public static int landing_spaces;
 
     public static void main(String[] args) {
 
@@ -39,8 +43,8 @@ public class Player {
         width = (int)map.getWidth();
         height = (int)map.getHeight(); 
 
-        if(myPlanet==Planet.Earth) {
-            //build mars map
+        if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
+            generateLandingPriorities();
         }
 
         enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field         
@@ -119,6 +123,8 @@ public class Player {
                         moveOnVectorField(unit, myloc);
                 }       
 
+                //TODO: Rush if has some min unit amount so to sight for snipe
+                //TODO: Don't walk into range of another ranger
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
@@ -234,7 +240,7 @@ public class Player {
                             allyctr++;
                         }
                         if(num_in_garrison==maxcapacity) {
-                            //lift off bitch
+                            launchRocket(unit);
                         }
                     }
                     else if(myPlanet==Planet.Mars) { //unload everything ASAP
@@ -277,6 +283,75 @@ public class Player {
                 gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
             }
         }
+    }
+
+    //launches rocket based on precomputed space
+    public static void launchRocket(Unit unit) {
+        if(landing_spaces<0) //no available spaces left
+            return;
+        for(int w=0; w<mars_width; w++) {
+            for(int h=0; h<mars_height; h++) {
+                if(mars_landing[w][h]==landing_spaces) { //one of the max space squares
+                    if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, w, h))) {
+                        gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, w, h)); //launch rocket
+                        int[] shifts = {-1, 0, 1}; //update available squares
+                        for(int xsi=0; xsi<3; xsi++) {
+                            for(int ysi=0; ysi<3; ysi++) {
+                                int shifted_x = w+shifts[xsi];
+                                int shifted_y = h+shifts[ysi];
+                                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height)
+                                    mars_landing[shifted_x][shifted_y]--;
+                            }
+                        }
+                        mars_landing[w][h] = -1;
+                    }
+                    return;
+                }
+            }
+        }
+        landing_spaces--;
+        launchRocket(unit);
+    }
+
+    //generates count of open adjacent spaces for locations on mars
+    //used to land rockets
+    public static void generateLandingPriorities() {   
+        mars_map = gc.startingMap(Planet.Mars); 
+        mars_width = (int)mars_map.getWidth();
+        mars_height = (int)mars_map.getHeight();
+        mars_landing = new int[mars_width][mars_height];
+        for(int w=0; w<mars_width; w++) //default initialization
+            for(int h=0; h<mars_height; h++)
+                mars_landing[w][h] = 8;
+        for(int w=0; w<mars_width; w++) { //correct for borders horizontally
+            mars_landing[w][0]--;
+            mars_landing[w][mars_height-1]--;
+        }
+        for(int h=0; h<mars_height; h++) { //correct for borders vertically
+            mars_landing[0][h]--;
+            mars_landing[mars_width-1][h]--;
+        }        
+        int[] shifts = {-1, 0, 1};
+        for(int w=0; w<mars_width; w++) {
+            for(int h=0; h<mars_height; h++) {
+                if(mars_map.isPassableTerrainAt(new MapLocation(Planet.Mars, w, h))==0) { //not passable 
+                    for(int xsi=0; xsi<3; xsi++) {
+                        for(int ysi=0; ysi<3; ysi++) {
+                            int shifted_x = w+shifts[xsi];
+                            int shifted_y = h+shifts[ysi];
+                            if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height)
+                                mars_landing[shifted_x][shifted_y]--;
+                        }
+                    }
+                    mars_landing[w][h] = -1;
+                }
+            }
+        }        
+        landing_spaces = -1;
+        for(int w=0; w<mars_width; w++)
+            for(int h=0; h<mars_height; h++)
+                if(mars_landing[w][h]>landing_spaces)
+                    landing_spaces = mars_landing[w][h];
     }
 
     //adds all spotted enemies to enemy_locations
