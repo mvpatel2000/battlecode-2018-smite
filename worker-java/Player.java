@@ -6,11 +6,12 @@
 // - workers building rockets
 //- merge code with other
 // PERFORMANCE ISSUES:
-/// - performs decent on smaller or more karbonite rich maps (handily beats combatpath, even with very old rangers)
-/// - performs poorly on large, sparse maps (maps with little karbonite)
+/// - performs decent on smaller or more karbonite rich maps (handily beats combatpath on karbonite-rich maps, even with very old rangers)
+/// - performs poorly on large, sparse maps (maps with little karbonite) [terrible on maps with 0 karb, perhaps because of immediate ranger production taking up karbonite?]
 // -----> eg. we never build a factory after the inital couple because
 // ------- our ranger factory production never lets us reach 100 karbonite
 // -----> thus use karbonite/area ratio to change rate of factories (line 127) & perhaps? worker production
+// ------> OR, (this is most likely to work), delay ranger production a little on sparse maps to allow for more factories early
 //****************************************************************
 import bc.*;
 import java.util.*;
