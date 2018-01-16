@@ -84,9 +84,9 @@ public class Player {
             gc.queueResearch(rarray[i]); 
         canSnipe = false;
 
-        int maxworkers = 20-1; //unit limits
-        int maxfactory = 2;
-        int maxrocket = 3;
+        int maxworkers = 9-1; //unit limits
+        int maxfactory = 3;
+        int maxrocket = 20;
 
         while (true) {            
             if(gc.round()%50==0) { //print round number and update random field
@@ -133,7 +133,7 @@ public class Player {
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
                 //TODO: Don't walk into range of another ranger
-                //TODO: Move to rockets by adding to vector field
+                //TODO!: Move to rockets by adding to vector field
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
