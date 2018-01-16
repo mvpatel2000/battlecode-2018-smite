@@ -45,9 +45,7 @@ public class Player {
         width = (int)map.getWidth();
         height = (int)map.getHeight();
         int initial_workers = 0; //TODO: Make global?
-        long initial_karbonite = countKarbonite();
-        System.out.println(width);
-        System.out.println(initial_karbonite);
+
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
             generateLandingPriorities();
         }
