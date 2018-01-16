@@ -159,6 +159,7 @@ public class Player {
 
                 //TODO: Rush if has some min unit amount so to sight for snipe
                 //TODO: Don't walk into range of another ranger--verify this is how it works
+                //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);      
@@ -189,8 +190,6 @@ public class Player {
                             moveOnRandomField(unit, myloc);
                         }
                         else {
-                            if(Math.random()<.05)
-                                System.out.println(enemy_locations.get(0)[0]+" "+enemy_locations.get(0)[1] +" "+enemy_locations.size());
                             moveOnVectorField(unit, myloc);
                         }
 
