@@ -26,6 +26,7 @@ public class Player {
     public static boolean doesPathExist;
     public static int[][] mars_landing;
     public static int landing_spaces;
+    public static int rocket_homing = 0;
 
     public static void main(String[] args) {
 
@@ -78,6 +79,8 @@ public class Player {
             }
         }     
 
+        rocket_homing = 0; //are rockets built
+
         UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                  UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
         for(int i=0; i<rarray.length; i++)
@@ -85,7 +88,7 @@ public class Player {
         canSnipe = false;
 
         int maxworkers = 9-1; //unit limits
-        int maxfactory = 3;
+        int maxfactory = 1;
         int maxrocket = 20;
 
         while (true) {            
@@ -112,10 +115,14 @@ public class Player {
                         gc.replicate(unit.id(),Direction.East);
                         maxworkers--;
                     }
-                    else if(nearbyRockets.size()>0 && gc.canBuild(unit.id(), nearbyRockets.get(0).id())) //build factory
+                    else if(nearbyRockets.size()>0 && gc.canBuild(unit.id(), nearbyRockets.get(0).id())) //build rocket
                         gc.build(unit.id(),nearbyRockets.get(0).id());
                     else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.East)) { //blueprint Rocket 
                         gc.blueprint(unit.id(), UnitType.Rocket, Direction.East);
+                        maxrocket--;
+                    }
+                    else if(maxrocket>0 && gc.canBlueprint(unit.id(), UnitType.Rocket, Direction.North)) { //blueprint Rocket 
+                        gc.blueprint(unit.id(), UnitType.Rocket, Direction.North);
                         maxrocket--;
                     }
                     else if(nearbyFactories.size()>0 && gc.canBuild(unit.id(), nearbyFactories.get(0).id())) //build factory
@@ -159,7 +166,7 @@ public class Player {
                         }
                     }
                     else { //non-combat state
-                        if(doesPathExist==false || enemy_locations.size()==0) {
+                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
                             moveOnRandomField(unit, myloc);
                         }
                         else {
@@ -231,11 +238,12 @@ public class Player {
                     fuzzyUnload(unit, unload_dir);
                 }
 
-                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace()) {
+                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
-                    MapLocation myloc = unit.location().mapLocation();
-                    if(myPlanet==Planet.Earth) {
+                    MapLocation myloc = unit.location().mapLocation();                    
+                    if(myPlanet==Planet.Earth) { //on earth load/lift
+                        addRocketLocation(unit, myloc);
                         VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
                         VecUnitID garrison = unit.structureGarrison();
                         int maxcapacity = (int)unit.structureMaxCapacity();                        
@@ -249,11 +257,12 @@ public class Player {
                             }
                             allyctr++;
                         }
-                        if(num_in_garrison==maxcapacity) {
+                        if(num_in_garrison==maxcapacity) { //launch
                             launchRocket(unit);
+                            removeRocketLocation(unit, myloc);
                         }
                     }
-                    else if(myPlanet==Planet.Mars) { //unload everything ASAP
+                    else if(myPlanet==Planet.Mars) { //unload everything ASAP on Mars
                         int dirctr = 0;
                         VecUnitID garrison = unit.structureGarrison();
                         for(int i=0; i<garrison.size(); i++) {
@@ -292,6 +301,42 @@ public class Player {
             if(gc.canUnload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
                 gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
             }
+        }
+    }
+
+    //removes rocket location to enemy_locations
+    //this does to stop homing towards rockets
+    public static void removeRocketLocation(Unit unit, MapLocation myloc) {
+        int x = myloc.getX();
+        int y = myloc.getY();
+        for(int i=0; i<enemy_locations.size(); i++) { //search through list
+            int[] enem_loc = enemy_locations.get(i);
+            if(x==enem_loc[0] && y==enem_loc[1]) {
+                enemy_locations.remove(i);        
+                rocket_homing--;        
+                return;
+            }
+        }
+    }
+
+    //adds rocket location to enemy_locations if not added
+    //this does homing towards rockets
+    public static void addRocketLocation(Unit unit, MapLocation myloc) {
+        int x = myloc.getX();
+        int y = myloc.getY();
+        boolean addLocation = true;
+        for(int i=0; i<enemy_locations.size(); i++) { //add rocket to enemy list if not there already
+            int[] enem_loc = enemy_locations.get(i);
+            if(x==enem_loc[0] && y==enem_loc[1]) {
+                addLocation = false;
+                break;
+            }
+        }
+        if(addLocation) {
+            int[] rocket_loc = {x, y, 0, 0};
+            enemy_locations.add(rocket_loc);
+            rocket_homing++;
+            buildFieldBFS();
         }
     }
 
