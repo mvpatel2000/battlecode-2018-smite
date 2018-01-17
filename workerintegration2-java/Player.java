@@ -318,7 +318,7 @@ public class Player {
         int bady = unitloc.getY();
         for(int w=0; w<width; w++) {
             for(int h=0; h<height; h++) {
-                path_depth[w][h] = 50*50+1;        
+                path_depth[w][h] = 50*50+1;
                 if((w==badx && h==bady) || map.isPassableTerrainAt(new MapLocation(myPlanet, w, h))==0) //impassable
                     path_depth[w][h] = -1;
             }
@@ -517,16 +517,18 @@ public class Player {
         for (Direction dir: dirs) {
             if(gc.canBlueprint(myUnit.id(), UnitType.Factory, dir)) {
                 MapLocation newLoc = myLoc.add(dir);
-                long mydist = 0L;
-                for (int j = 0; j < closeWorkers.size(); j++) {
-                    Unit otherworker = closeWorkers.get(j);
-                    if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
-                        mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                if(isChokepoint(myUnit, newLoc)) {
+                    long mydist = 0L;
+                    for (int j = 0; j < closeWorkers.size(); j++) {
+                        Unit otherworker = closeWorkers.get(j);
+                        if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
+                            mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                        }
                     }
-                }
-                if(mydist<shortestdist) {
-                    shortestdist=mydist;
-                    bestdir=dir;
+                    if(mydist<shortestdist) {
+                        shortestdist=mydist;
+                        bestdir=dir;
+                    }
                 }
             }
         }
