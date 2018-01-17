@@ -313,6 +313,7 @@ public class Player {
     }
 
     //verifies a factory is not a chokepoint
+    //true if build is bad, false if build is not a chokepoint
     public static boolean isChokepoint(Unit unit, MapLocation unitloc) {
         int badx = unitloc.getX();
         int bady = unitloc.getY();
@@ -336,10 +337,10 @@ public class Player {
                 MapLocation posfacloc = posfac.location().mapLocation();
                 boolean factory_ok = chokepointRecur(posfacloc.getX(), posfacloc.getY(), 0);
                 if(factory_ok==false)
-                    return false;
+                    return true;
             }
         }
-        return true;
+        return false;
     }
 
     //helper method for isChokepoint
@@ -517,7 +518,7 @@ public class Player {
         for (Direction dir: dirs) {
             if(gc.canBlueprint(myUnit.id(), UnitType.Factory, dir)) {
                 MapLocation newLoc = myLoc.add(dir);
-                if(isChokepoint(myUnit, newLoc)) {
+                if(!isChokepoint(myUnit, newLoc)) {
                     long mydist = 0L;
                     for (int j = 0; j < closeWorkers.size(); j++) {
                         Unit otherworker = closeWorkers.get(j);

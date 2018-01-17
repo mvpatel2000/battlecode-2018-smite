@@ -94,7 +94,7 @@ public class Player {
         int current_workers=initial_workers; //TODO: make global?
         int num_factories = 0;
         int num_rockets = 0;
-        int minworkers=initial_workers*4; //replicate each dude *4 before creating factories
+        int minworkers=initial_workers*8; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units
         while (true) {
