@@ -113,198 +113,64 @@ public class Player {
             if(canSnipe) //build snipe targets
                 buildSnipeTargets();
 
-            VecUnit units = gc.myUnits();
-            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
-                Unit unit = units.get(unit_counter);
+            for(int i=0; i<5; i++) {
+                VecUnit units = gc.myUnits();
+                for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
+                    Unit unit = units.get(unit_counter);
 
-                //TODO:
-                // - update factory function based on karbonite levels
-                // - worker replication late game for pure harvesting / navigation
-                if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(current_workers>=minworkers && myPlanet==Planet.Earth) {
-                        //execute build order
-                        if(buildRocket(unit, mykarbs, units, 20l)==true) {
-                            continue;
-                        }
-                        else if(buildFactory(unit, mykarbs, units, 20l)==true){
-                            continue;
-                        }
-                        else {
-                            if(num_rockets<=(current_round/10) && current_round>450) { //rocket cap
-                                //blueprint rocket or (replicate or moveharvest)
-                                int val = blueprintRocket(unit, mykarbs, units, 20l);
-                                if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                                    current_workers+=(val-2);
-                                } else { //did not degenerate
-                                    num_rockets+=val;
-                                }
+                    if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                        ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
+                        if(current_workers>=minworkers && myPlanet==Planet.Earth) {
+                            //execute build order
+                            if(buildRocket(unit, mykarbs, units, 20l)==true) {
+                                continue;
                             }
-                            else if(num_factories<4 || (width>25 && (gc.karbonite()>200+(50-width))) || (doesPathExist==false && num_factories<1)) { //factory cap
-                                //blueprint factory or (replicate or moveharvest)
-                                int val = blueprintFactory(unit, mykarbs, units, 20l);
-                                if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                                    current_workers+=(val-2);
-                                } else { //did not degenerate
-                                    num_factories+=val;
-                                }
+                            else if(buildFactory(unit, mykarbs, units, 20l)==true){
+                                continue;
                             }
                             else {
-                                workerharvest(unit, mykarbs);
-                                workermove(unit, mykarbs);
-                            }
-                        }
-                    } else {
-                        //replicate or move harvest
-                        current_workers += replicateOrMoveHarvest(unit, mykarbs);
-                    }
-                }
-
-                //TODO: Rush if has some min unit amount so to sight for snipe
-                //TODO: Don't walk into range of another ranger--verify this is how it works
-                //TODO: Giev rolling fire with snipetarget
-                //TODO: Rush workers / don't count them for backing up
-                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        if(enemy_locations.size()==0) { //add enemy locations
-                            updateEnemies();
-                        }
-                        checkVectorField(unit, myloc);
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range
-                            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
-                            MapLocation nearloc = nearestUnit.location().mapLocation();
-                            fuzzyMove(unit, myloc.directionTo(nearloc));
-                        }
-                        enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-
-                        if(enemies_in_range.size()>0) {
-                            rangerAttack(unit, enemies_in_range); //attack based on heuristic
-                            if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
-                                Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
-                                MapLocation nearloc = nearestUnit.location().mapLocation();
-                                fuzzyMove(unit, nearloc.directionTo(myloc));
-                            }
-                        }
-                    }
-                    else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
-                            moveOnRandomField(unit, myloc);
-                        }
-                        else {
-                            moveOnVectorField(unit, myloc);
-                        }
-
-                        if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
-                            int[] target = enemy_buildings.get(0);
-                            MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
-                            if(gc.canBeginSnipe(unit.id(), snipetarget)) {
-                                gc.beginSnipe(unit.id(), snipetarget);
-                            }
-                            target[0]--;
-                            if(target[0]==0)
-                                enemy_buildings.remove(0);
-                            else
-                                enemy_buildings.set(0,target);
-                        }
-                    }
-                }
-
-                else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
-                        MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc));
-
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-                        if(enemies_in_range.size()>0) {
-                            nearestUnit = enemies_in_range.get(0);
-                            if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), nearestUnit.id()))
-                                gc.attack(unit.id(), nearestUnit.id());
-                        }
-                    }
-                    else { //non-combat state
-                        if(enemy_locations.size()>0)
-                            moveOnVectorField(unit, myloc);
-                    }
-                }
-
-                else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
-                        MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc));
-                        if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(),nearestUnit.id()))
-                            gc.attack(unit.id(), nearestUnit.id());
-                    }
-                    else { //non-combat state
-                        moveOnVectorField(unit, myloc);
-                    }
-                }
-
-                //TODO: Heuristic to shut off production
-                else if(unit.unitType()==UnitType.Factory) {
-                    factories_active++;
-                    if(gc.canProduceRobot(unit.id(), UnitType.Worker) && //Autochecks if queue empty
-                        (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
-                        (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
-                        gc.produceRobot(unit.id(),UnitType.Worker);
-                    }
-                    Direction unload_dir = Direction.East;
-                    if(enemy_locations.size()>0) {
-                        int[] enemy_direction = enemy_locations.get(0);
-                        unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
-                    }
-                    fuzzyUnload(unit, unload_dir);
-                }
-
-                //TODO: imrpove land priority to accuont for nearby karbonite in decimal place
-                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
-                    Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
-                                        Direction.Southwest, Direction.South, Direction.Southeast};
-                    MapLocation myloc = unit.location().mapLocation();
-                    if(myPlanet==Planet.Earth) { //on earth load/lift
-                        addRocketLocation(unit, myloc);
-                        VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
-                        VecUnitID garrison = unit.structureGarrison();
-                        int maxcapacity = (int)unit.structureMaxCapacity();
-                        int num_in_garrison = (int)garrison.size();
-                        int allyctr = 0;
-                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
-                            Unit ally_to_load = allies_to_load.get(allyctr);
-                            if(gc.canLoad(unit.id(), ally_to_load.id())) {
-                                gc.load(unit.id(), ally_to_load.id());
-                                num_in_garrison++;
-                            }
-                            allyctr++;
-                        }
-                        if(num_in_garrison==maxcapacity) { //launch
-                            launchRocket(unit);
-                            removeRocketLocation(unit, myloc);
-                            System.out.println("Rocket launched");
-                        }
-                    }
-                    else if(myPlanet==Planet.Mars) { //unload everything ASAP on Mars
-                        int dirctr = 0;
-                        VecUnitID garrison = unit.structureGarrison();
-                        for(int i=0; i<garrison.size(); i++) {
-                            while(dirctr<8) {
-                                if(gc.canUnload(unit.id(), dirs[dirctr])) {
-                                    gc.unload(unit.id(), dirs[dirctr]);
-                                    dirctr++;
-                                    break;
+                                if(num_rockets<=(current_round/10) && current_round>450) { //rocket cap
+                                    //blueprint rocket or (replicate or moveharvest)
+                                    int val = blueprintRocket(unit, mykarbs, units, 20l);
+                                    if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
+                                        current_workers+=(val-2);
+                                    } else { //did not degenerate
+                                        num_rockets+=val;
+                                    }
                                 }
-                                dirctr++;
+                                else if(num_factories<4 || (width>25 && (gc.karbonite()>200+(50-width))) || (doesPathExist==false && num_factories<1)) { //factory cap
+                                    //blueprint factory or (replicate or moveharvest)
+                                    int val = blueprintFactory(unit, mykarbs, units, 20l);
+                                    if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
+                                        current_workers+=(val-2);
+                                    } else { //did not degenerate
+                                        num_factories+=val;
+                                    }
+                                }
+                                else {
+                                    workerharvest(unit, mykarbs);
+                                    workermove(unit, mykarbs);
+                                }
                             }
-                            if(dirctr>=8)
-                                break;
+                        } else {
+                            //replicate or move harvest
+                            current_workers += replicateOrMoveHarvest(unit, mykarbs);
                         }
+                    }
+
+                    else if(unit.unitType()==UnitType.Factory) {
+                        factories_active++;
+                        if(gc.canProduceRobot(unit.id(), UnitType.Worker) && //Autochecks if queue empty
+                            (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
+                            (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
+                            gc.produceRobot(unit.id(),UnitType.Worker);
+                        }
+                        Direction unload_dir = Direction.East;
+                        if(enemy_locations.size()>0) {
+                            int[] enemy_direction = enemy_locations.get(0);
+                            unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
+                        }
+                        fuzzyUnload(unit, unload_dir);
                     }
                 }
             }
