@@ -1,3 +1,5 @@
+//https://s3.amazonaws.com/battlecode-2018/logs/matchnumber_0.bc18log
+
 import bc.*;
 import java.util.*;
 

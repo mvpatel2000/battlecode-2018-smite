@@ -1,3 +1,5 @@
+//https://s3.amazonaws.com/battlecode-2018/logs/matchnumber_0.bc18log
+
 import bc.*;
 import java.util.*;
 
@@ -97,7 +99,7 @@ public class Player {
         int current_workers=initial_workers; //TODO: make global?
         int num_factories = 0;
         int num_rockets = 0;
-        int minworkers=initial_workers*4; //replicate each dude *4 before creating factories
+        int minworkers=initial_workers*8; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units
         while (true) {
@@ -121,6 +123,7 @@ public class Player {
                 //TODO:
                 // - update factory function based on karbonite levels
                 // - worker replication late game for pure harvesting / navigation
+                // - improve harvesting code
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(current_workers>=minworkers && myPlanet==Planet.Earth) {
