@@ -307,7 +307,7 @@ public class Player {
             
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
-    }
+    }  
 
     //Only called when no factories are within range
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1

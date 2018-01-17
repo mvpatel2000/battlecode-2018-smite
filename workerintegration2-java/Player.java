@@ -28,6 +28,7 @@ public class Player {
     public static int[][] mars_landing;
     public static int landing_spaces;
     public static int rocket_homing = 0;
+    public static int[][] path_depth;
 
     public static void main(String[] args) {
 
@@ -68,6 +69,8 @@ public class Player {
         random_distance_field = new int[width][height]; //generate random movement field
         random_movement_field = new ArrayList[width][height];
         buildRandomField();
+
+        path_depth = new int[width][height]; //for chokepointChecker
 
         doesPathExist = false; //determine if a path exists
         for(int i=0; i<initial_units.size(); i++) {
@@ -307,6 +310,59 @@ public class Player {
 
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //verifies a factory is not a chokepoint
+    public static boolean isChokepoint(Unit unit, MapLocation unitloc) {
+        int badx = unitloc.getX();
+        int bady = unitloc.getY();
+        for(int w=0; w<width; w++) {
+            for(int h=0; h<height; h++) {
+                path_depth[w][h] = 50*50+1;        
+                if((w==badx && h==bady) || map.isPassableTerrainAt(new MapLocation(myPlanet, w, h))==0) //impassable
+                    path_depth[w][h] = -1;
+            }
+        }
+
+        VecUnit factories = gc.senseNearbyUnitsByType(new MapLocation(myPlanet, width/2, height/2), width*height/2, UnitType.Factory);
+        for(int i=0; i<factories.size(); i++) {
+            MapLocation posfac = factories.get(i).location().mapLocation();
+            path_depth[posfac.getX()][posfac.getY()] = -1;
+        }
+
+        for(int i=0; i<factories.size(); i++) {
+            Unit posfac = factories.get(i);
+            if(posfac.team()==ally) {
+                MapLocation posfacloc = posfac.location().mapLocation();
+                boolean factory_ok = chokepointRecur(posfacloc.getX(), posfacloc.getY(), 0);
+                if(factory_ok==false)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    //helper method for isChokepoint
+    public static boolean chokepointRecur(int x, int y, int depth) {
+        if(x*x+y*y>64) //exceeds depth
+            return true;
+        for(int i=0; i<enemy_locations.size(); i++) {
+            int[] enemloc = enemy_locations.get(i);
+            if(enemloc[0]==x && enemloc[1]==y)
+                return true;
+        }
+        if(path_depth[x][y]==-1) //impassable
+            return false;
+        if(path_depth[x][y]<=depth)
+            return false;
+        if(path_depth[x][y]>depth) {
+            path_depth[x][y] = depth;
+            boolean top = chokepointRecur(x-1, y+1, depth+1) || chokepointRecur(x, y+1, depth+1) || chokepointRecur(x+1, y+1, depth+1);
+            boolean middle = chokepointRecur(x-1, y, depth+1) || chokepointRecur(x+1, y, depth+1);
+            boolean bottom = chokepointRecur(x-1, y-1, depth+1) || chokepointRecur(x, y-1, depth+1) || chokepointRecur(x+1, y-1, depth+1);
+            return top || middle || bottom;
+        }
+        return false;
     }
 
 
