@@ -99,14 +99,14 @@ public class Player {
         int current_workers=initial_workers; //TODO: make global?
         int num_factories = 0;
         int num_rockets = 0;
-        int minworkers=(int)(initial_workers*12*(width/37.5)); //replicate each dude *4 before creating factories
+        int minworkers=initial_workers*18; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units
         while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
             if(current_round%50==0) { //print round number and update random field
-                System.out.println("Current round: "+current_round);
+                System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 buildRandomField();
             }
             if(canSnipe==false && current_round>350) {//activate snipe
@@ -338,18 +338,34 @@ public class Player {
             Unit posfac = factories.get(i);
             if(posfac.team()==ally) {
                 MapLocation posfacloc = posfac.location().mapLocation();
-                boolean factory_ok = chokepointRecur(posfacloc.getX(), posfacloc.getY(), 0);
+                boolean factory_ok = callRecur(posfacloc.getX(), posfacloc.getY());
                 if(factory_ok==false)
                     return true;
             }
         }
+        boolean factory_ok = callRecur(badx, bady);
+        if(factory_ok==false)
+            return true;
         return false;
     }
 
     //helper method for isChokepoint
-    public static boolean chokepointRecur(int x, int y, int depth) {
-        if(x*x+y*y>64) //exceeds depth
+    //calls recursive part
+    public static boolean callRecur(int x, int y) {
+        boolean top = chokepointRecur(x, y, x-1, y+1, 0) || chokepointRecur(x, y, x, y+1, 0) || chokepointRecur(x, y, x+1, y+1, 0);
+        boolean middle = chokepointRecur(x, y, x-1, y, 0) || chokepointRecur(x, y, x+1, y, 0);
+        boolean bottom = chokepointRecur(x, y, x-1, y-1, 0) || chokepointRecur(x, y, x, y-1, 0) || chokepointRecur(x, y, x+1, y-1, 0);
+        return top || middle || bottom;
+    }
+
+    //helper method for isChokepoint
+    //returns true if factory is OK
+    public static boolean chokepointRecur(int startx, int starty, int x, int y, int depth) {
+        if(x<0 || x>=width || y<0 || y>=height) //off map
+            return false;
+        if((startx-x)*(startx-x)+(starty-y)*(starty-y)>49) {//exceeds depth
             return true;
+        }
         for(int i=0; i<enemy_locations.size(); i++) {
             int[] enemloc = enemy_locations.get(i);
             if(enemloc[0]==x && enemloc[1]==y)
@@ -361,9 +377,9 @@ public class Player {
             return false;
         if(path_depth[x][y]>depth) {
             path_depth[x][y] = depth;
-            boolean top = chokepointRecur(x-1, y+1, depth+1) || chokepointRecur(x, y+1, depth+1) || chokepointRecur(x+1, y+1, depth+1);
-            boolean middle = chokepointRecur(x-1, y, depth+1) || chokepointRecur(x+1, y, depth+1);
-            boolean bottom = chokepointRecur(x-1, y-1, depth+1) || chokepointRecur(x, y-1, depth+1) || chokepointRecur(x+1, y-1, depth+1);
+            boolean top = chokepointRecur(startx, starty, x-1, y+1, depth+1) || chokepointRecur(startx, starty, x, y+1, depth+1) || chokepointRecur(startx, starty, x+1, y+1, depth+1);
+            boolean middle = chokepointRecur(startx, starty, x-1, y, depth+1) || chokepointRecur(startx, starty, x+1, y, depth+1);
+            boolean bottom = chokepointRecur(startx, starty, x-1, y-1, depth+1) || chokepointRecur(startx, starty, x, y-1, depth+1) || chokepointRecur(startx, starty, x+1, y-1, depth+1);
             return top || middle || bottom;
         }
         return false;

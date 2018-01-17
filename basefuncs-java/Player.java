@@ -96,14 +96,14 @@ public class Player {
         int current_workers=initial_workers; //TODO: make global?
         int num_factories = 0;
         int num_rockets = 0;
-        int minworkers=(int)(initial_workers*12*(width/37.5)); //replicate each dude *4 before creating factories
+        int minworkers=initial_workers*18; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units
         while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
-            if(current_round%50==0) { //print round number and update random field
-                System.out.println("Current round: "+current_round);
+            if(current_round%50==0) { //System.out.print();rint round number and update random field
+                System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 buildRandomField();
             }
             if(canSnipe==false && current_round>350) {//activate snipe
@@ -160,7 +160,6 @@ public class Player {
                     }
                 }
 
-                //TODO: Rush if has some min unit amount so to sight for snipe
                 //TODO: Don't walk into range of another ranger--verify this is how it works
                 //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
@@ -182,9 +181,8 @@ public class Player {
                         if(enemies_in_range.size()>0) {
                             rangerAttack(unit, enemies_in_range); //attack based on heuristic
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
-                                Unit nearestUnit = getNearestUnit(myloc, enemies_in_range);
-                                MapLocation nearloc = nearestUnit.location().mapLocation();
-                                fuzzyMove(unit, nearloc.directionTo(myloc));
+                                Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
+                                fuzzyMove(unit, toMoveDir);
                             }
                         }
                     }
@@ -252,7 +250,7 @@ public class Player {
                     factories_active++;
                     if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
                         (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
-                        (current_round<725 || current_round<700 && doesPathExist==false)) {  //no production in final rounds
+                        (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
                         gc.produceRobot(unit.id(),UnitType.Ranger);
                     }
                     Direction unload_dir = Direction.East;
@@ -286,6 +284,7 @@ public class Player {
                         if(num_in_garrison==maxcapacity) { //launch
                             launchRocket(unit);
                             removeRocketLocation(unit, myloc);
+                            System.out.println("Rocket launched");
                         }
                     }
                     else if(myPlanet==Planet.Mars) { //unload everything ASAP on Mars
@@ -846,6 +845,43 @@ public class Player {
             }
         }
         return nearestUnit;
+    }
+
+    //Takes MapLocation and a VecUnit
+    //Finds unit from VecUnit closest to MapLocation and returns direction
+    //Returns towards unit if only workers 
+    public static Direction getNearestNonWorkerDirection(MapLocation myloc, VecUnit other_units) {
+        Unit nearestUnit = null;
+        MapLocation nearloc = null;
+        int mindist = 50*50+1;
+        for(int i=0; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            if(testUnit.unitType()!=UnitType.Worker) {
+                MapLocation testloc = testUnit.location().mapLocation();
+                int testdist = (int)testloc.distanceSquaredTo(myloc);
+                if(testdist<mindist) {
+                    nearestUnit = testUnit;
+                    nearloc = testloc;
+                    mindist = testdist;
+                }
+            }
+        }
+        if(nearestUnit!=null)
+            return nearloc.directionTo(myloc);
+        nearestUnit = null;
+        nearloc = null;
+        mindist = 50*50+1;
+        for(int i=0; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            MapLocation testloc = testUnit.location().mapLocation();
+            int testdist = (int)testloc.distanceSquaredTo(myloc);
+            if(testdist<mindist) {
+                nearestUnit = testUnit;
+                nearloc = testloc;
+                mindist = testdist;
+            }
+        }
+        return myloc.directionTo(nearloc);
     }
 
     //Attempts to move unit in direction as best as possible
