@@ -84,10 +84,19 @@ public class Player {
             }
         }
 
-        UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
-                                 UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
-        for(int i=0; i<rarray.length; i++)
-            gc.queueResearch(rarray[i]);
+        if(doesPathExist==false) {
+            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
+                                    UnitType.Ranger, UnitType.Ranger, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                gc.queueResearch(rarray[i]);
+        }
+        else {
+            UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                gc.queueResearch(rarray[i]);
+        }        
+        
         canSnipe = false;
 
         current_round = 0;
@@ -131,7 +140,7 @@ public class Player {
                             continue;
                         }
                         else {
-                            if(num_rockets<=(current_round/10) && current_round>450) { //rocket cap
+                            if(num_rockets<=(current_round/10) && (current_round>450 || doesPathExist==false && current_round>125 )) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
