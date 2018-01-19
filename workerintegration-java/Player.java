@@ -265,6 +265,7 @@ public class Player {
                     else { //non-combat state
                         moveOnVectorField(unit, myloc);
                     }
+                    healUnit(unit, myloc);
                 }
 
                 //TODO: Heuristic to shut off production
@@ -331,6 +332,27 @@ public class Player {
 
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //heal lowest hp unit in range
+    public static void healUnit(Unit unit, MapLocation myLoc) {
+        if(!gc.isHealReady(unit.id()))
+            return;
+        VecUnit allies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), ally);
+        if(allies_in_range.size()==0)
+            return;
+        Unit ally_to_heal = allies_in_range.get(0);
+        int ally_health = (int)ally_to_heal.health();
+        for(int i=1; i<allies_in_range.size(); i++) {
+            Unit test_ally = allies_in_range.get(i);
+            int test_health = (int)test_ally.health();
+            if(test_health<ally_health) {
+                ally_to_heal = test_ally;
+                ally_health = test_health;
+            }
+        }
+        if(gc.canHeal(unit.id() ally_to_heal.id()))
+            gc.heal(unit.id(), ally_to_heal.id());
     }
     
 
