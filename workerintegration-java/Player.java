@@ -141,7 +141,7 @@ public class Player {
                             continue;
                         }
                         else {
-                            if(num_rockets<=(current_round/10) && (current_round>450 || doesPathExist==false && current_round>125 )) { //rocket cap
+                            if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
@@ -248,6 +248,19 @@ public class Player {
                         fuzzyMove(unit, myloc.directionTo(nearloc));
                         if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(),nearestUnit.id()))
                             gc.attack(unit.id(), nearestUnit.id());
+                    }
+                    else { //non-combat state
+                        moveOnVectorField(unit, myloc);
+                    }
+                }
+
+                //TODO: Heal weakest unit
+                else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                    MapLocation myloc = unit.location().mapLocation();
+                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+                    if(enemies_in_range.size()>0) {      //combat state
+                        Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
+                        fuzzyMove(unit, toMoveDir);
                     }
                     else { //non-combat state
                         moveOnVectorField(unit, myloc);
