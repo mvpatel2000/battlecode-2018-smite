@@ -335,7 +335,7 @@ public class Player {
     }
 
     //heal lowest hp unit in range
-    public static void healUnit(Unit unit, MapLocation myLoc) {
+    public static void healUnit(Unit unit, MapLocation myloc) {
         if(!gc.isHealReady(unit.id()))
             return;
         VecUnit allies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), ally);
@@ -351,7 +351,7 @@ public class Player {
                 ally_health = test_health;
             }
         }
-        if(gc.canHeal(unit.id() ally_to_heal.id()))
+        if(gc.canHeal(unit.id(), ally_to_heal.id()))
             gc.heal(unit.id(), ally_to_heal.id());
     }
     
@@ -369,7 +369,7 @@ public class Player {
             Unit enem = enemies_in_range.get(i);
             int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
             if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
-                hp -= enem.damage()
+                hp -= enem.damage();
                 if(hp<=0)
                     return true;
             }

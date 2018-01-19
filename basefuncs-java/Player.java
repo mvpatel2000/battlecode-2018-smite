@@ -107,7 +107,8 @@ public class Player {
         int num_rockets = 0;
         int minworkers=initial_workers*24; //replicate each dude *4 before creating factories
 
-        //TODO: optimize how we go thorugh units
+        //TODO: optimize how we go thorugh units (toposort?)
+        //TODO: if enemy dead, build rockets??        
         while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
@@ -140,7 +141,7 @@ public class Player {
                             continue;
                         }
                         else {
-                            if(num_rockets<=(current_round/10) && (current_round>450 || doesPathExist==false && current_round>125 )) { //rocket cap
+                            if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
@@ -169,7 +170,6 @@ public class Player {
                     }
                 }
 
-                //TODO: Don't walk into range of another ranger--verify this is how it works
                 //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
@@ -254,7 +254,22 @@ public class Player {
                     }
                 }
 
+                //TODO: Heal weakest unit
+                else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                    MapLocation myloc = unit.location().mapLocation();
+                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+                    if(enemies_in_range.size()>0) {      //combat state
+                        Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
+                        fuzzyMove(unit, toMoveDir);
+                    }
+                    else { //non-combat state
+                        moveOnVectorField(unit, myloc);
+                    }
+                    healUnit(unit, myloc);
+                }
+
                 //TODO: Heuristic to shut off production
+                //TODO: Build workers late for rockets
                 else if(unit.unitType()==UnitType.Factory) {
                     factories_active++;
                     if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
@@ -290,7 +305,7 @@ public class Player {
                             }
                             allyctr++;
                         }
-                        if(num_in_garrison==maxcapacity) { //launch
+                        if(shouldLaunchRocket(unit, myloc, num_in_garrison, maxcapacity)) { //launch
                             launchRocket(unit);
                             removeRocketLocation(unit, myloc);
                             System.out.println("Rocket launched");
@@ -317,6 +332,49 @@ public class Player {
 
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //heal lowest hp unit in range
+    public static void healUnit(Unit unit, MapLocation myloc) {
+        if(!gc.isHealReady(unit.id()))
+            return;
+        VecUnit allies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), ally);
+        if(allies_in_range.size()==0)
+            return;
+        Unit ally_to_heal = allies_in_range.get(0);
+        int ally_health = (int)ally_to_heal.health();
+        for(int i=1; i<allies_in_range.size(); i++) {
+            Unit test_ally = allies_in_range.get(i);
+            int test_health = (int)test_ally.health();
+            if(test_health<ally_health) {
+                ally_to_heal = test_ally;
+                ally_health = test_health;
+            }
+        }
+        if(gc.canHeal(unit.id(), ally_to_heal.id()))
+            gc.heal(unit.id(), ally_to_heal.id());
+    }
+    
+
+    //check if rocket launch conditions are met
+    //max garrison, about to die, or turn 749
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
+        if(num_in_garrison==maxcapacity)
+            return true;        
+        if(current_round>=749)
+            return true;
+        int hp = (int)unit.health();
+        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            Unit enem = enemies_in_range.get(i);
+            int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
+            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
+                hp -= enem.damage();
+                if(hp<=0)
+                    return true;
+            }
+        }
+        return false;
     }
 
 
