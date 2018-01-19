@@ -334,6 +334,10 @@ public class Player {
         }
     }
 
+    //***********************************************************************************//
+    //********************************** HEALER METHODS *********************************//
+    //***********************************************************************************//
+
     //heal lowest hp unit in range
     public static void healUnit(Unit unit, MapLocation myloc) {
         if(!gc.isHealReady(unit.id()))
@@ -354,29 +358,10 @@ public class Player {
         if(gc.canHeal(unit.id(), ally_to_heal.id()))
             gc.heal(unit.id(), ally_to_heal.id());
     }
-    
 
-    //check if rocket launch conditions are met
-    //max garrison, about to die, or turn 749
-    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
-        if(num_in_garrison==maxcapacity)
-            return true;        
-        if(current_round>=749)
-            return true;
-        int hp = (int)unit.health();
-        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
-        for(int i=0; i<enemies_in_range.size(); i++) {
-            Unit enem = enemies_in_range.get(i);
-            int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
-            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
-                hp -= enem.damage();
-                if(hp<=0)
-                    return true;
-            }
-        }
-        return false;
-    }
-
+    //***********************************************************************************//
+    //********************************** WORKER METHODS *********************************//
+    //***********************************************************************************//
 
     //count number of karbonites on map initially
     public static long countKarbonite() {
@@ -669,6 +654,31 @@ public class Player {
         }
         Collections.sort(karboniteDirections, Collections.reverseOrder()); //sort high to low
         return karboniteDirections;
+    }
+
+    //***********************************************************************************//
+    //********************************** ROCKET METHODS *********************************//
+    //***********************************************************************************//
+
+    //check if rocket launch conditions are met
+    //max garrison, about to die, or turn 749
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
+        if(num_in_garrison==maxcapacity)
+            return true;        
+        if(current_round>=749)
+            return true;
+        int hp = (int)unit.health();
+        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            Unit enem = enemies_in_range.get(i);
+            int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
+            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
+                hp -= enem.damage();
+                if(hp<=0)
+                    return true;
+            }
+        }
+        return false;
     }
 
     //removes rocket location to enemy_locations
