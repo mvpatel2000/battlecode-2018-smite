@@ -334,6 +334,10 @@ public class Player {
         }
     }
 
+    //***********************************************************************************//
+    //********************************** HEALER METHODS *********************************//
+    //***********************************************************************************//
+
     //heal lowest hp unit in range
     public static void healUnit(Unit unit, MapLocation myloc) {
         if(!gc.isHealReady(unit.id()))
@@ -354,29 +358,10 @@ public class Player {
         if(gc.canHeal(unit.id(), ally_to_heal.id()))
             gc.heal(unit.id(), ally_to_heal.id());
     }
-    
 
-    //check if rocket launch conditions are met
-    //max garrison, about to die, or turn 749
-    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
-        if(num_in_garrison==maxcapacity)
-            return true;        
-        if(current_round>=749)
-            return true;
-        int hp = (int)unit.health();
-        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
-        for(int i=0; i<enemies_in_range.size(); i++) {
-            Unit enem = enemies_in_range.get(i);
-            int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
-            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
-                hp -= enem.damage();
-                if(hp<=0)
-                    return true;
-            }
-        }
-        return false;
-    }
-
+    //***********************************************************************************//
+    //********************************** WORKER METHODS *********************************//
+    //***********************************************************************************//
 
     //count number of karbonites on map initially
     public static long countKarbonite() {
@@ -671,23 +656,29 @@ public class Player {
         return karboniteDirections;
     }
 
-    //Attempts to unload unit in direction as best as possible from factory
-    public static void fuzzyUnload(Unit unit, Direction dir) {
-        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
-                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-        int[] shifts = {0, -1, 1, -2, 2, -3, 3, 4};
-        int dirindex = 0;
-        for(int i=0; i<8; i++) {
-            if(dir==dirs[i]) {
-                dirindex = i;
-                break;
+    //***********************************************************************************//
+    //********************************** ROCKET METHODS *********************************//
+    //***********************************************************************************//
+
+    //check if rocket launch conditions are met
+    //max garrison, about to die, or turn 749
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
+        if(num_in_garrison==maxcapacity)
+            return true;        
+        if(current_round>=749)
+            return true;
+        int hp = (int)unit.health();
+        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            Unit enem = enemies_in_range.get(i);
+            int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
+            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
+                hp -= enem.damage();
+                if(hp<=0)
+                    return true;
             }
         }
-        for(int i=0; i<shifts.length; i++) {
-            if(gc.canUnload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
-                gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
-            }
-        }
+        return false;
     }
 
     //removes rocket location to enemy_locations
@@ -798,17 +789,9 @@ public class Player {
                     landing_spaces = mars_landing[w][h];
     }
 
-    //adds all spotted enemies to enemy_locations
-    public static void updateEnemies() {
-        VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
-        for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
-            MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
-            int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
-            enemy_locations.add(enemy_info);
-        }
-        if(enemy_locations.size()>0)
-            buildFieldBFS();
-    }
+    //***********************************************************************************//
+    //********************************** RANGER METHODS *********************************//
+    //***********************************************************************************//
 
     //updates snipe list to contain all buildings
     public static void buildSnipeTargets() {
@@ -894,6 +877,10 @@ public class Player {
         }
     }
 
+    //***********************************************************************************//
+    //******************************* GENERAL UNIT METHODS ******************************//
+    //***********************************************************************************//
+
     //Takes MapLocation and a VecUnit
     //Finds unit from VecUnit closest to MapLocation
     //Typically used to find enemy unit from array closest to your unit
@@ -949,7 +936,34 @@ public class Player {
             }
         }
         return myloc.directionTo(nearloc);
+    }    
+
+    //***********************************************************************************//
+    //***************************** GENERAL BUILDING METHODS ****************************//
+    //***********************************************************************************//
+
+    //Attempts to unload unit in direction as best as possible from factory
+    public static void fuzzyUnload(Unit unit, Direction dir) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2, -3, 3, 4};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<shifts.length; i++) {
+            if(gc.canUnload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                gc.unload(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+            }
+        }
     }
+
+    //***********************************************************************************//
+    //*********************************** PATHFINDING ***********************************//
+    //***********************************************************************************//
 
     //Attempts to move unit in direction as best as possible
     //Scans 45 degree offsets, then 90
@@ -1065,6 +1079,18 @@ public class Player {
         }
     }
 
+    //adds all spotted enemies to enemy_locations
+    public static void updateEnemies() {
+        VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy);
+        for(int eloc = 0; eloc<total_enemies.size(); eloc++) {
+            MapLocation enemloc = total_enemies.get(eloc).location().mapLocation();
+            int[] enemy_info = {enemloc.getX(), enemloc.getY(), 0, 0};
+            enemy_locations.add(enemy_info);
+        }
+        if(enemy_locations.size()>0)
+            buildFieldBFS();
+    }
+
     //Checks if current location is a destination in vector field
     //Used when in combat mode to verify not blocked into enemy initial location
     public static void checkVectorField(Unit unit, MapLocation mapLocation) {
@@ -1178,6 +1204,10 @@ public class Player {
             }
         }
     }
+
+    //***********************************************************************************//
+    //********************************** OTHER CLASSES **********************************//
+    //***********************************************************************************//
 
     static class KarbDir implements Comparable {
         Direction dir;
