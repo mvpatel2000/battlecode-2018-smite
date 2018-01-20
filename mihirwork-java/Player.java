@@ -199,7 +199,7 @@ public class Player {
                         if(enemies_in_range.size()>0) {
                             rangerAttack(unit, myloc, enemies_in_range); //attack based on heuristic
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
-                                Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
+                                Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
                                 fuzzyMove(unit, toMoveDir);
                             }
                         }
@@ -228,13 +228,16 @@ public class Player {
                 }
 
                 // KNIGHT CODE //
+                //TODO: update movement method priority
+                //TODO: Move towards better enemy
+                //TODO: Figure javelin
                 else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
+                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
                         MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc));
+                        fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
 
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
                         if(enemies_in_range.size()>0) {
@@ -242,29 +245,36 @@ public class Player {
                         }
                     }
                     else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
-                            moveOnRandomField(unit, myloc);
-                        }
-                        else {
-                            moveOnVectorField(unit, myloc);
-                        }
-
+                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+                            moveOnRandomField(unit, myloc);                        
+                        else
+                            moveOnVectorField(unit, myloc);                    
                     }
                 }
 
                 // MAGE CODE //
+                //TODO: Update Mage attack
+                //TODO: Update movement method priority
+                //TODO: move in a better way
+                //TODO: Figure out blink
                 else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
+                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
                         MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc));
-                        if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(),nearestUnit.id()))
-                            gc.attack(unit.id(), nearestUnit.id());
+                        fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
+
+                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+                        if(enemies_in_range.size()>0) {
+                            mageAttack(unit, myloc, enemies_in_range);
+                        }
                     }
                     else { //non-combat state
-                        moveOnVectorField(unit, myloc);
+                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+                            moveOnRandomField(unit, myloc);                        
+                        else
+                            moveOnVectorField(unit, myloc);                    
                     }
                 }
 
@@ -274,7 +284,7 @@ public class Player {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
                     if(enemies_in_range.size()>0) {      //combat state
-                        Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
+                        Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
                         fuzzyMove(unit, toMoveDir);
                     }
                     else { //non-combat state
@@ -349,6 +359,63 @@ public class Player {
             }
 
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    //***********************************************************************************//
+    //*********************************** MAGE METHODS **********************************//
+    //***********************************************************************************//
+
+    //1. anything that u can kill
+    //2. attack factories then rockets
+    //3. anything that can hit u
+    //Tiebreaker weakest
+    //Tiebreaker again: rangers > mages > healers > knights > workers
+    public static void mageAttack(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {
+        if(!gc.isAttackReady(unit.id()))
+            return;
+        int[][] heuristics = new int[(int)enemies_in_range.size()][2];
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            int hval = 0;
+            Unit enemy = enemies_in_range.get(i);
+            UnitType enemyType = enemy.unitType();
+            int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
+            if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
+                hval+=10000;
+            else if(unit.damage()>(int)enemy.health()) //can kill
+                hval+=10000;
+            if(enemyType==UnitType.Rocket)
+                hval+=8000;
+            if(enemyType==UnitType.Factory)
+                hval+=7000;
+            try {
+                if(distance<(int)enemy.attackRange()) //can be hit
+                    hval+=1000;
+            } catch(Exception e) {} //if unit has no attack range
+            if(UnitType.Knight==enemy.unitType())
+                hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
+            else
+                hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            for(int utctr=0; utctr<priorities.length; utctr++) {
+                if(enemyType == priorities[utctr]) {
+                    hval+=10*utctr; //later units have higher priorities because weight based on index
+                    break;
+                }
+            }
+            heuristics[i][0] = hval;
+            heuristics[i][1] = i;
+        }
+        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
+            public int compare(int[] a, int[] b) {
+                return b[0] - a[0];
+            }
+        });
+        for(int i=0; i<heuristics.length; i++) {
+            if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+                gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
+                return;
+            }
         }
     }
 
@@ -1022,8 +1089,8 @@ public class Player {
 
     //Takes MapLocation and a VecUnit
     //Finds unit from VecUnit closest to MapLocation and returns direction
-    //Returns towards unit if only workers 
-    public static Direction getNearestNonWorkerDirection(MapLocation myloc, VecUnit other_units) {
+    //Returns direction from unit to me
+    public static Direction getNearestNonWorkerOppositeDirection(MapLocation myloc, VecUnit other_units) {
         Unit nearestUnit = null;
         MapLocation nearloc = null;
         int mindist = 50*50+1;
