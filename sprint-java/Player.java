@@ -17,7 +17,6 @@ public class Player {
     public static int mars_width;
     public static int mars_height;
     public static int current_round;
-    public static AsteroidPattern asteroid_pattern;
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations;
@@ -28,8 +27,11 @@ public class Player {
     public static ArrayList<int[]> enemy_buildings;
     public static boolean canSnipe;
     public static boolean doesPathExist;
-    public static double[][] mars_landing;
-    public static int rocket_homing;
+    public static int[][] mars_landing;
+    public static int landing_spaces;
+    public static int rocket_homing = 0;
+    public static int ranger_count = 0;
+    public static int healer_count = 0;
 
     public static void main(String[] args) {
 
@@ -50,7 +52,6 @@ public class Player {
 
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
             generateLandingPriorities();
-            asteroid_pattern = gc.asteroidPattern();
         }
 
         enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
@@ -111,14 +112,12 @@ public class Player {
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??        
         while (true) {
-            current_round = (int)gc.round();            
+            current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
             if(current_round%50==0) { //System.out.print();rint round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 buildRandomField();
             }
-            if(myPlanet==Planet.Earth)
-                updateLandingPriorities();
             if(canSnipe==false && current_round>350) {//activate snipe
                 canSnipe = true;
                 enemy_buildings = new ArrayList<int[]>();
@@ -130,7 +129,6 @@ public class Player {
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                 Unit unit = units.get(unit_counter);
 
-                // WORKER CODE //
                 //TODO:
                 // - update factory function based on karbonite levels
                 // - worker replication late game for pure harvesting / navigation
@@ -174,8 +172,7 @@ public class Player {
                     }
                 }
 
-                // RANGER CODE //
-                //TODO: Give rolling fire with snipetarget?
+                //TODO: Giev rolling fire with snipetarget
                 else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
@@ -223,7 +220,6 @@ public class Player {
                     }
                 }
 
-                // KNIGHT CODE //
                 else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
@@ -245,7 +241,6 @@ public class Player {
                     }
                 }
 
-                // MAGE CODE //
                 else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
@@ -261,7 +256,7 @@ public class Player {
                     }
                 }
 
-                // HEALER CODE //
+                //TODO: Heal weakest unit
                 else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
@@ -275,7 +270,6 @@ public class Player {
                     healUnit(unit, myloc);
                 }
 
-                // FACTORY CODE //
                 //TODO: Heuristic to shut off production
                 //TODO: Build workers late for rockets
                 else if(unit.unitType()==UnitType.Factory) {
@@ -283,7 +277,14 @@ public class Player {
                     if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
                         (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
                         (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
-                        gc.produceRobot(unit.id(),UnitType.Ranger);
+                        if(ranger_count<5 || ranger_count/(1.0*healer_count)<3.0/1.0 ) {
+                            gc.produceRobot(unit.id(),UnitType.Ranger);
+                            ranger_count++;
+                        }
+                        else {
+                            gc.produceRobot(unit.id(),UnitType.Healer);
+                            healer_count++;
+                        }
                     }
                     Direction unload_dir = Direction.East;
                     if(enemy_locations.size()>0) {
@@ -293,8 +294,7 @@ public class Player {
                     fuzzyUnload(unit, unload_dir);
                 }
 
-                // ROCKET CODE //
-                //TODO: make units go away from rocket b4 launch
+                //TODO: imrpove land priority to accuont for nearby karbonite in decimal place
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
@@ -382,7 +382,6 @@ public class Player {
         }
         return totalkarb;
     }
-
     //Only called when no factories are within range
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
@@ -729,62 +728,33 @@ public class Player {
 
     //launches rocket based on precomputed space
     public static void launchRocket(Unit unit) {
-        int idealw = 0;
-        int idealh = 0;
-        double score = -99.0;
+        if(landing_spaces<0) //no available spaces left
+            return;
         for(int w=0; w<mars_width; w++) {
             for(int h=0; h<mars_height; h++) {
-                double locscore = mars_landing[w][h];
-                if(locscore>score) {
-                    idealw = w;
-                    idealh = h;
-                    score = locscore;
-                }
-            }
-        }
-        if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh))) {
-            gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)); //launch rocket
-            int[] shifts = {-3, -2, -1, 0, 1, 2, 3}; //update available squares
-            for(int xsi=0; xsi<shifts.length; xsi++) {
-                for(int ysi=0; ysi<shifts.length; ysi++) {
-                    int shifted_x = idealw+shifts[xsi];
-                    int shifted_y = idealh+shifts[ysi];
-                    if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
-                        if(xsi>1 && xsi<5 && ysi>1 && ysi<5)
-                            mars_landing[shifted_x][shifted_y]=-4; //1 space adjacency penalty
-                        else if(xsi>0 && xsi<6 && ysi>0 && ysi<6)
-                            mars_landing[shifted_x][shifted_y]=-2; //2 space adjacency penalty
-                        else
-                            mars_landing[shifted_x][shifted_y]--; //3 space adjacency penalty
+                if(mars_landing[w][h]==landing_spaces) { //one of the max space squares
+                    if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, w, h))) {
+                        gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, w, h)); //launch rocket
+                        int[] shifts = {-2, -1, 0, 1, 2}; //update available squares
+                        for(int xsi=0; xsi<shifts.length; xsi++) {
+                            for(int ysi=0; ysi<shifts.length; ysi++) {
+                                int shifted_x = w+shifts[xsi];
+                                int shifted_y = h+shifts[ysi];
+                                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
+                                    if(xsi>0 && xsi<4 && ysi>0 && ysi<4)
+                                        mars_landing[shifted_x][shifted_y]=-1;
+                                    else
+                                        mars_landing[shifted_x][shifted_y]--;
+                                }
+                            }
+                        }
                     }
+                    return;
                 }
             }
         }
-    }
-
-    //update Mars with karbonite levels
-    public static void updateLandingPriorities() {
-        if(!asteroid_pattern.hasAsteroid(current_round))
-            return;
-        AsteroidStrike strike = asteroid_pattern.asteroid(current_round);
-        MapLocation strikeloc = strike.getLocation();
-        int w = strikeloc.getX();
-        int h = strikeloc.getY();
-        int[] shifts = {-1, 0, 1};
-        int karblocation = (int)strike.getKarbonite();
-        double karbshift = karblocation/1000.0;   
-        for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
-            for(int ysi=0; ysi<shifts.length; ysi++) {
-                int shifted_x = w+shifts[xsi];
-                int shifted_y = h+shifts[ysi];
-                if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
-                    if(xsi==1 && ysi==1)
-                        mars_landing[shifted_x][shifted_y]=-karbshift; //this square
-                    else
-                        mars_landing[shifted_x][shifted_y]+=karbshift;
-                }
-            }
-        }
+        landing_spaces--;
+        launchRocket(unit);
     }
 
     //generates count of open adjacent spaces for locations on mars
@@ -793,10 +763,10 @@ public class Player {
         mars_map = gc.startingMap(Planet.Mars);
         mars_width = (int)mars_map.getWidth();
         mars_height = (int)mars_map.getHeight();
-        mars_landing = new double[mars_width][mars_height];
+        mars_landing = new int[mars_width][mars_height];
         for(int w=0; w<mars_width; w++) //default initialization
             for(int h=0; h<mars_height; h++)
-                mars_landing[w][h] = 8.0;
+                mars_landing[w][h] = 8;
         for(int w=0; w<mars_width; w++) { //correct for borders horizontally
             mars_landing[w][0]--;
             mars_landing[w][mars_height-1]--;
@@ -817,30 +787,15 @@ public class Player {
                                 mars_landing[shifted_x][shifted_y]--;
                         }
                     }
-                    mars_landing[w][h] = -100.0;
+                    mars_landing[w][h] = -1;
                 }
             }
         }
-
-        //get mars map and update initial karbonite levels
-        for(int w=0; w<mars_width; w++) {
-            for(int h=0; h<mars_height; h++) {
-                int karblocation = (int)mars_map.initialKarboniteAt(new MapLocation(Planet.Mars, w, h));
-                double karbshift = karblocation/1000.0;   
-                for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
-                    for(int ysi=0; ysi<shifts.length; ysi++) {
-                        int shifted_x = w+shifts[xsi];
-                        int shifted_y = h+shifts[ysi];
-                        if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
-                            if(xsi==1 && ysi==1)
-                                mars_landing[shifted_x][shifted_y]=-karbshift; //this square
-                            else
-                                mars_landing[shifted_x][shifted_y]+=karbshift;
-                        }
-                    }
-                }
-            }
-        }
+        landing_spaces = -1;
+        for(int w=0; w<mars_width; w++)
+            for(int h=0; h<mars_height; h++)
+                if(mars_landing[w][h]>landing_spaces)
+                    landing_spaces = mars_landing[w][h];
     }
 
     //***********************************************************************************//
