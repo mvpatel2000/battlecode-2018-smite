@@ -23,11 +23,14 @@ public class Player {
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
+
     public static int[][] random_distance_field;
     public static ArrayList<Direction>[][] random_movement_field;
+
     public static ArrayList<int[]> enemy_buildings;
-    public static boolean canSnipe;
+
     public static boolean doesPathExist;
+
     public static double[][] mars_landing;
     public static int rocket_homing;
 
@@ -100,8 +103,8 @@ public class Player {
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }        
-        
-        canSnipe = false;
+                
+        enemy_buildings = new ArrayList<int[]>();
 
         current_round = 0;
         rocket_homing = 0; //are rockets built
@@ -124,12 +127,7 @@ public class Player {
             }
             if(myPlanet==Planet.Earth)
                 updateLandingPriorities();
-            if(canSnipe==false && current_round>350) {//activate snipe
-                canSnipe = true;
-                enemy_buildings = new ArrayList<int[]>();
-            }
-            if(canSnipe) //build snipe targets
-                buildSnipeTargets();
+            buildSnipeTargets(); //build snipe targets
 
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
@@ -213,7 +211,7 @@ public class Player {
                             moveOnVectorField(unit, myloc);
                         }
 
-                        if(canSnipe && enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
+                        if(enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
                             int[] target = enemy_buildings.get(0);
                             MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
                             if(gc.canBeginSnipe(unit.id(), snipetarget)) {
@@ -871,6 +869,7 @@ public class Player {
                 }
             }
         }
+        System.out.println(idealw+" "+idealh+" "+score+" "+gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)));
         if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh))) {
             gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)); //launch rocket
             int[] shifts = {-3, -2, -1, 0, 1, 2, 3}; //update available squares
@@ -908,7 +907,7 @@ public class Player {
                 int shifted_y = h+shifts[ysi];
                 if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
                     if(xsi==1 && ysi==1)
-                        mars_landing[shifted_x][shifted_y]=-karbshift; //this square
+                        mars_landing[shifted_x][shifted_y]-=karbshift; //this square
                     else
                         mars_landing[shifted_x][shifted_y]+=karbshift;
                 }
@@ -951,7 +950,7 @@ public class Player {
             }
         }
 
-        //get mars map and update initial karbonite levels
+        // get mars map and update initial karbonite levels
         for(int w=0; w<mars_width; w++) {
             for(int h=0; h<mars_height; h++) {
                 int karblocation = (int)mars_map.initialKarboniteAt(new MapLocation(Planet.Mars, w, h));
@@ -962,7 +961,7 @@ public class Player {
                         int shifted_y = h+shifts[ysi];
                         if(shifted_x>=0 && shifted_x<mars_width && shifted_y>=0 && shifted_y<mars_height) {
                             if(xsi==1 && ysi==1)
-                                mars_landing[shifted_x][shifted_y]=-karbshift; //this square
+                                mars_landing[shifted_x][shifted_y]-=karbshift; //this square
                             else
                                 mars_landing[shifted_x][shifted_y]+=karbshift;
                         }
