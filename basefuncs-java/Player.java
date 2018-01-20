@@ -31,6 +31,9 @@ public class Player {
     public static double[][] mars_landing;
     public static int rocket_homing;
 
+    //Constants
+    public static final long maxAttackRange = 70L;
+
     public static void main(String[] args) {
 
         // Connect to the manager, starting the game
@@ -115,6 +118,7 @@ public class Player {
             int factories_active = 0; //tracks amount of factories producing units
             if(current_round%50==0) { //System.out.print();rint round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
+                System.gc();
                 buildRandomField();
             }
             if(myPlanet==Planet.Earth)
@@ -132,8 +136,8 @@ public class Player {
 
                 // WORKER CODE //
                 //TODO:
-                // - update factory function based on karbonite levels
-                // - worker replication late game for pure harvesting / navigation
+                // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
+                // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(current_workers>=minworkers && myPlanet==Planet.Earth) {
@@ -193,7 +197,7 @@ public class Player {
                         enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
 
                         if(enemies_in_range.size()>0) {
-                            rangerAttack(unit, enemies_in_range); //attack based on heuristic
+                            rangerAttack(unit, myloc, enemies_in_range); //attack based on heuristic
                             if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
                                 Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
                                 fuzzyMove(unit, toMoveDir);
@@ -226,7 +230,7 @@ public class Player {
                 // KNIGHT CODE //
                 else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
                         Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
                         MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -234,14 +238,17 @@ public class Player {
 
                         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
                         if(enemies_in_range.size()>0) {
-                            nearestUnit = enemies_in_range.get(0);
-                            if(gc.isAttackReady(unit.id()) && gc.canAttack(unit.id(), nearestUnit.id()))
-                                gc.attack(unit.id(), nearestUnit.id());
+                            knightAttack(unit, enemies_in_range);
                         }
                     }
                     else { //non-combat state
-                        if(enemy_locations.size()>0)
+                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+                            moveOnRandomField(unit, myloc);
+                        }
+                        else {
                             moveOnVectorField(unit, myloc);
+                        }
+
                     }
                 }
 
@@ -262,9 +269,10 @@ public class Player {
                 }
 
                 // HEALER CODE //
+                //TODO: Better micro xd
                 else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
                     if(enemies_in_range.size()>0) {      //combat state
                         Direction toMoveDir = getNearestNonWorkerDirection(myloc, enemies_in_range);
                         fuzzyMove(unit, toMoveDir);
@@ -272,12 +280,13 @@ public class Player {
                     else { //non-combat state
                         moveOnVectorField(unit, myloc);
                     }
-                    healUnit(unit, myloc);
+                    healerHeal(unit, myloc);
                 }
 
                 // FACTORY CODE //
                 //TODO: Heuristic to shut off production
                 //TODO: Build workers late for rockets
+                //TODO: First 2 units knights
                 else if(unit.unitType()==UnitType.Factory) {
                     factories_active++;
                     if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
@@ -344,11 +353,63 @@ public class Player {
     }
 
     //***********************************************************************************//
+    //********************************** KNIGHT METHODS *********************************//
+    //***********************************************************************************//
+
+    //knight attack prioritization
+    //1. anything that u can kill
+    //2. attack factories then rockets
+    //Tiebreaker weakest
+    //Tiebreaker again: mages > healers > knights > workers > rangers
+    public static void knightAttack(Unit unit, VecUnit enemies_in_range) {
+        if(!gc.isAttackReady(unit.id()))
+            return;
+        int[][] heuristics = new int[(int)enemies_in_range.size()][2];
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            int hval = 0;
+            Unit enemy = enemies_in_range.get(i);
+            UnitType enemyType = enemy.unitType();
+            if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
+                hval+=10000;
+            else if(unit.damage()>(int)enemy.health()) //can kill
+                hval+=10000;
+            if(enemyType==UnitType.Rocket)
+                hval+=8000;
+            if(enemyType==UnitType.Factory)
+                hval+=7000;
+            if(UnitType.Knight==enemy.unitType())
+                hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
+            else
+                hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
+            UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage}; //unit priorities
+            for(int utctr=0; utctr<priorities.length; utctr++) {
+                if(enemyType == priorities[utctr]) {
+                    hval+=10*utctr; //later units have higher priorities because weight based on index
+                    break;
+                }
+            }
+            heuristics[i][0] = hval;
+            heuristics[i][1] = i;
+        }
+        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
+            public int compare(int[] a, int[] b) {
+                return b[0] - a[0];
+            }
+        });
+        for(int i=0; i<heuristics.length; i++) {
+            if(gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+                gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
+                return;
+            }
+        }
+    }
+
+    //***********************************************************************************//
     //********************************** HEALER METHODS *********************************//
     //***********************************************************************************//
 
     //heal lowest hp unit in range
-    public static void healUnit(Unit unit, MapLocation myloc) {
+    public static void healerHeal(Unit unit, MapLocation myloc) {
         if(!gc.isHealReady(unit.id()))
             return;
         VecUnit allies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), ally);
@@ -678,7 +739,7 @@ public class Player {
         if(current_round>=749)
             return true;
         int hp = (int)unit.health();
-        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, 70L, enemy);
+        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
         for(int i=0; i<enemies_in_range.size(); i++) {
             Unit enem = enemies_in_range.get(i);
             int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
@@ -863,7 +924,7 @@ public class Player {
                 if(isDuplicate)
                     continue;
                 MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {8, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                int[] building_info = {10, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
                 enemy_buildings.add(building_info);
             }
             else if(enemy_unit.unitType()==UnitType.Rocket) { //if rocket
@@ -876,7 +937,7 @@ public class Player {
                 if(isDuplicate)
                     continue;
                 MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {5, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                int[] building_info = {7, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
                 enemy_buildings.add(building_info);
             }
         }
@@ -886,18 +947,19 @@ public class Player {
     //2. attack factories then rockets
     //3. anything that can hit u
     //Tiebreaker weakest
-    //Tiebreaker again: rangers > mages > healers > knights > workers > factory > rocket
-    public static void rangerAttack(Unit unit, VecUnit enemies_in_range) {
+    //Tiebreaker again: rangers > mages > healers > knights > workers
+    public static void rangerAttack(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {
         if(!gc.isAttackReady(unit.id()))
             return;
-        MapLocation myloc = unit.location().mapLocation();
         int[][] heuristics = new int[(int)enemies_in_range.size()][2];
         for(int i=0; i<enemies_in_range.size(); i++) {
             int hval = 0;
             Unit enemy = enemies_in_range.get(i);
             UnitType enemyType = enemy.unitType();
             int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
-            if(unit.damage()>(int)enemy.health()) //can kill
+            if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
+                hval+=10000;
+            else if(unit.damage()>(int)enemy.health()) //can kill
                 hval+=10000;
             if(enemyType==UnitType.Rocket)
                 hval+=8000;
@@ -907,7 +969,10 @@ public class Player {
                 if(distance<(int)enemy.attackRange()) //can be hit
                     hval+=1000;
             } catch(Exception e) {} //if unit has no attack range
-            hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
+            if(UnitType.Knight==enemy.unitType())
+                hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
+            else
+                hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
