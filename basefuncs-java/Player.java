@@ -31,12 +31,17 @@ public class Player {
     public static double[][] mars_landing = new double[mars_width][mars_height];
     public static int rocket_homing = 0; //are rockets built / how many
     public static int minworkers = 0;
+    public static int factories_active = 0;
 
     public static int num_factories = 0;
     public static int num_rockets = 0;
     public static int num_workers = 0;
     public static int num_rangers = 0;
+    public static int num_knights = 0;
     public static int num_healers = 0;
+    public static int total_rangers = 0;
+    public static int total_knights = 0;
+    public static int total_healers = 0;
 
     //Constants
     public static final long maxAttackRange = 50L;
@@ -79,13 +84,13 @@ public class Player {
 
         if(doesPathExist==false) { //research
             UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
-                                    UnitType.Ranger, UnitType.Ranger, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+                                    UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Healer, UnitType.Healer}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
-                                    UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Mage}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }                            
@@ -97,7 +102,7 @@ public class Player {
         //TODO: Better way of checking tech levels
         while (true) {
             current_round = (int)gc.round();            
-            int factories_active = 0; //tracks amount of factories producing units
+            factories_active = 0; //tracks amount of factories producing units
             if(current_round%50==0) { //System.out.print();rint round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 System.gc();
@@ -108,14 +113,32 @@ public class Player {
             buildSnipeTargets(); //build snipe targets
 
             VecUnit units = gc.myUnits();
-            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
-                Unit unit = units.get(unit_counter);
+            num_rangers = 0;
+            num_healers = 0;
+            num_knights = 0;
+            for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
+                UnitType unit_type = units.get(i).unitType();
+                if(unit_type==UnitType.Ranger)
+                    num_rangers++;
+                else if(unit_type==UnitType.Healer)
+                    num_healers++;
+                else if(unit_type==UnitType.Knight)
+                    num_knights++;
+            }
+            total_rangers+=num_rangers;
+            total_healers+=num_healers;
+            total_knights+=num_knights;
+            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {                
+                Unit unit = units.get(unit_counter); 
+                if(unit.location().isInGarrison() || unit.location().isInSpace())
+                    continue; 
+                MapLocation myloc = unit.location().mapLocation();              
 
                 // WORKER CODE //
                 //TODO:
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
-                if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                if(unit.unitType()==UnitType.Worker) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
@@ -157,76 +180,17 @@ public class Player {
 
                 // RANGER CODE //
                 //TODO: Give rolling fire with snipetarget?
-                else if(unit.unitType()==UnitType.Ranger && !unit.location().isInGarrison() && !unit.location().isInSpace() && unit.rangerIsSniping()==0) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        if(enemy_locations.size()==0) { //add enemy locations
-                            updateEnemies();
-                        }
-                        checkVectorField(unit, myloc);
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-                        if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range
-                            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
-                            MapLocation nearloc = nearestUnit.location().mapLocation();
-                            fuzzyMove(unit, myloc.directionTo(nearloc));
-                        }
-                        enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-
-                        if(enemies_in_range.size()>0) {
-                            rangerAttack(unit, myloc, enemies_in_range); //attack based on heuristic
-                            if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
-                                Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
-                                fuzzyMove(unit, toMoveDir);
-                            }
-                        }
-                    }
-                    else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
-                            moveOnRandomField(unit, myloc);
-                        }
-                        else {
-                            moveOnVectorField(unit, myloc);
-                        }
-
-                        if(enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
-                            int[] target = enemy_buildings.get(0);
-                            MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
-                            if(gc.canBeginSnipe(unit.id(), snipetarget)) {
-                                gc.beginSnipe(unit.id(), snipetarget);
-                            }
-                            target[0]--;
-                            if(target[0]==0)
-                                enemy_buildings.remove(0);
-                            else
-                                enemy_buildings.set(0,target);
-                        }
-                    }
+                //TODO: Charge mechanic
+                else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {                    
+                    runRanger(unit, myloc);
                 }
 
                 // KNIGHT CODE //
                 //TODO: update movement method priority
                 //TODO: Move towards better enemy
                 //TODO: Figure javelin
-                else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
-                        MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
-
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-                        if(enemies_in_range.size()>0) {
-                            knightAttack(unit, enemies_in_range);
-                        }
-                    }
-                    else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
-                            moveOnRandomField(unit, myloc);                        
-                        else
-                            moveOnVectorField(unit, myloc);                    
-                    }
+                else if(unit.unitType()==UnitType.Knight) {
+                    runKnight(unit, myloc);
                 }
 
                 // MAGE CODE //
@@ -234,109 +198,28 @@ public class Player {
                 //TODO: Update movement method priority
                 //TODO: move in a better way
                 //TODO: Figure out blink
-                else if(unit.unitType()==UnitType.Mage && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
-                    if(enemies_in_sight.size()>0) {      //combat state
-                        Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
-                        MapLocation nearloc = nearestUnit.location().mapLocation();
-                        fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
-
-                        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
-                        if(enemies_in_range.size()>0) {
-                            mageAttack(unit, myloc, enemies_in_range);
-                        }
-                    }
-                    else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
-                            moveOnRandomField(unit, myloc);                        
-                        else
-                            moveOnVectorField(unit, myloc);                    
-                    }
+                else if(unit.unitType()==UnitType.Mage) {
+                    runMage(unit, myloc);
                 }
 
                 // HEALER CODE //
-                //TODO: Better micro xd
-                else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-                    MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
-                    if(enemies_in_range.size()>0) {      //combat state
-                        Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
-                        fuzzyMove(unit, toMoveDir);
-                    }
-                    else { //non-combat state
-                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
-                            moveOnRandomField(unit, myloc);
-                        }
-                        else {
-                            moveOnVectorField(unit, myloc);
-                        }
-                    }
-                    healerHeal(unit, myloc);
+                //TODO: Some kind of follow mechanic?
+                else if(unit.unitType()==UnitType.Healer) {                    
+                    runHealer(unit, myloc);
                 }
 
                 // FACTORY CODE //
                 //TODO: Heuristic to shut off production
                 //TODO: Build workers late for rockets
-                //TODO: First 2 units knights
-                else if(unit.unitType()==UnitType.Factory) {
-                    factories_active++;
-                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
-                        (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
-                        (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
-                        gc.produceRobot(unit.id(),UnitType.Ranger);
-                    }
-                    Direction unload_dir = Direction.East;
-                    if(enemy_locations.size()>0) {
-                        int[] enemy_direction = enemy_locations.get(0);
-                        unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
-                    }
-                    fuzzyUnload(unit, unload_dir);
+                else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
+                    runFactory(unit, myloc);
                 }
 
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
-                else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
-                    Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
-                                        Direction.Southwest, Direction.South, Direction.Southeast};
-                    MapLocation myloc = unit.location().mapLocation();
-                    if(myPlanet==Planet.Earth) { //on earth load/lift
-                        addRocketLocation(unit, myloc);
-                        VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
-                        VecUnitID garrison = unit.structureGarrison();
-                        int maxcapacity = (int)unit.structureMaxCapacity();
-                        int num_in_garrison = (int)garrison.size();
-                        int allyctr = 0;
-                        while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
-                            Unit ally_to_load = allies_to_load.get(allyctr);
-                            if(gc.canLoad(unit.id(), ally_to_load.id())) {
-                                gc.load(unit.id(), ally_to_load.id());
-                                num_in_garrison++;
-                            }
-                            allyctr++;
-                        }
-                        if(shouldLaunchRocket(unit, myloc, num_in_garrison, maxcapacity)) { //launch
-                            launchRocket(unit);
-                            removeRocketLocation(unit, myloc);
-                            System.out.println("Rocket launched");
-                        }
-                    }
-                    else if(myPlanet==Planet.Mars) { //unload everything ASAP on Mars
-                        int dirctr = 0;
-                        VecUnitID garrison = unit.structureGarrison();
-                        for(int i=0; i<garrison.size(); i++) {
-                            while(dirctr<8) {
-                                if(gc.canUnload(unit.id(), dirs[dirctr])) {
-                                    gc.unload(unit.id(), dirs[dirctr]);
-                                    dirctr++;
-                                    break;
-                                }
-                                dirctr++;
-                            }
-                            if(dirctr>=8)
-                                break;
-                        }
-                    }
+                //TODO: Load less workers
+                else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
+                    runRocket(unit, myloc);
                 }
             }
 
@@ -345,8 +228,62 @@ public class Player {
     }
 
     //***********************************************************************************//
+    //********************************** FACTORY METHODS ********************************//
+    //***********************************************************************************//
+
+    public static void runFactory(Unit unit, MapLocation myloc) {
+        factories_active++;
+        if( (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
+            (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
+            produceUnit(unit, myloc);
+        }
+        Direction unload_dir = Direction.East;
+        if(enemy_locations.size()>0) {
+            int[] enemy_direction = enemy_locations.get(0);
+            unload_dir = myloc.directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
+        }
+        fuzzyUnload(unit, unload_dir);
+    }
+
+    public static void produceUnit(Unit unit, MapLocation myloc) {
+        if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) && 
+            gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
+            return;
+        if(total_knights<0)
+            gc.produceRobot(unit.id(),UnitType.Knight);
+        else if(num_rangers<7)
+            gc.produceRobot(unit.id(), UnitType.Ranger);
+        else if(num_rangers>30 && (num_rangers)/(1.0*num_healers)>3.0/2.0)
+            gc.produceRobot(unit.id(), UnitType.Healer);
+        else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
+            gc.produceRobot(unit.id(), UnitType.Healer);
+        else
+            gc.produceRobot(unit.id(), UnitType.Ranger);
+    }
+
+    //***********************************************************************************//
     //*********************************** MAGE METHODS **********************************//
     //***********************************************************************************//
+
+    public static void runMage(Unit unit, MapLocation myloc) {
+        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
+        if(enemies_in_sight.size()>0) {      //combat state
+            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+            MapLocation nearloc = nearestUnit.location().mapLocation();
+            fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
+
+            VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+            if(enemies_in_range.size()>0) {
+                mageAttack(unit, myloc, enemies_in_range);
+            }
+        }
+        else { //non-combat state
+            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+                moveOnRandomField(unit, myloc);                        
+            else
+                moveOnVectorField(unit, myloc);                    
+        }
+    }
 
     //1. anything that u can kill
     //2. attack factories then rockets
@@ -370,15 +307,11 @@ public class Player {
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;
-            try {
-                if(distance<(int)enemy.attackRange()) //can be hit
-                    hval+=1000;
-            } catch(Exception e) {} //if unit has no attack range
             if(UnitType.Knight==enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
@@ -405,6 +338,26 @@ public class Player {
     //********************************** KNIGHT METHODS *********************************//
     //***********************************************************************************//
 
+    public static void runKnight(Unit unit, MapLocation myloc)  {
+        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
+        if(enemies_in_sight.size()>0) {      //combat state
+            Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+            MapLocation nearloc = nearestUnit.location().mapLocation();
+            fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
+
+            VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+            if(enemies_in_range.size()>0) {
+                knightAttack(unit, enemies_in_range);
+            }
+        }
+        else { //non-combat state
+            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+                moveOnRandomField(unit, myloc);                        
+            else
+                moveOnVectorField(unit, myloc);                    
+        }
+    }
+
     //knight attack prioritization
     //1. anything that u can kill
     //2. attack factories then rockets
@@ -430,7 +383,7 @@ public class Player {
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage}; //unit priorities
+            UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
@@ -457,6 +410,23 @@ public class Player {
     //********************************** HEALER METHODS *********************************//
     //***********************************************************************************//
 
+    public static void runHealer(Unit unit, MapLocation myloc) {
+        VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
+        if(true && enemies_in_range.size()>0) {      //combat state //ADD CHARGE MECHANIC
+            Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
+            fuzzyMove(unit, toMoveDir);
+        }
+        else { //non-combat state
+            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+                moveOnRandomField(unit, myloc);
+            }
+            else {
+                moveOnVectorField(unit, myloc);
+            }
+        }
+        healerHeal(unit, myloc);
+    }
+
     //heal lowest hp unit in range
     public static void healerHeal(Unit unit, MapLocation myloc) {
         if(!gc.isHealReady(unit.id()))
@@ -465,16 +435,16 @@ public class Player {
         if(allies_in_range.size()==0)
             return;
         Unit ally_to_heal = allies_in_range.get(0);
-        int ally_health = (int)ally_to_heal.health();
+        int ally_damage = (int)(ally_to_heal.maxHealth()-ally_to_heal.health());
         for(int i=1; i<allies_in_range.size(); i++) {
             Unit test_ally = allies_in_range.get(i);
-            int test_health = (int)test_ally.health();
-            if(test_health<ally_health) {
+            int test_damage = (int)(test_ally.maxHealth()-test_ally.health());
+            if(test_damage>ally_damage) {
                 ally_to_heal = test_ally;
-                ally_health = test_health;
+                ally_damage = test_damage;
             }
         }
-        if(gc.canHeal(unit.id(), ally_to_heal.id()))
+        if(ally_damage>0 && gc.canHeal(unit.id(), ally_to_heal.id()))
             gc.heal(unit.id(), ally_to_heal.id());
     }
 
@@ -780,6 +750,48 @@ public class Player {
     //********************************** ROCKET METHODS *********************************//
     //***********************************************************************************//
 
+    public static void runRocket(Unit unit, MapLocation myloc) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
+                    Direction.Southwest, Direction.South, Direction.Southeast};
+        if(myPlanet==Planet.Earth) { //on earth load/lift
+            addRocketLocation(unit, myloc);
+            VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
+            VecUnitID garrison = unit.structureGarrison();
+            int maxcapacity = (int)unit.structureMaxCapacity();
+            int num_in_garrison = (int)garrison.size();
+            int allyctr = 0;
+            while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
+                Unit ally_to_load = allies_to_load.get(allyctr);
+                if(gc.canLoad(unit.id(), ally_to_load.id())) {
+                    gc.load(unit.id(), ally_to_load.id());
+                    num_in_garrison++;
+                }
+                allyctr++;
+            }
+            if(shouldLaunchRocket(unit, myloc, num_in_garrison, maxcapacity)) { //launch
+                launchRocket(unit);
+                removeRocketLocation(unit, myloc);
+                System.out.println("Rocket launched");
+            }
+        }
+        else if(myPlanet==Planet.Mars) { //unload everything ASAP on Mars
+            int dirctr = 0;
+            VecUnitID garrison = unit.structureGarrison();
+            for(int i=0; i<garrison.size(); i++) {
+                while(dirctr<8) {
+                    if(gc.canUnload(unit.id(), dirs[dirctr])) {
+                        gc.unload(unit.id(), dirs[dirctr]);
+                        dirctr++;
+                        break;
+                    }
+                    dirctr++;
+                }
+                if(dirctr>=8)
+                    break;
+            }
+        }
+    }
+
     //check if rocket launch conditions are met
     //max garrison, about to die, or turn 749
     public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
@@ -953,6 +965,57 @@ public class Player {
     //********************************** RANGER METHODS *********************************//
     //***********************************************************************************//
 
+    public static void runRanger(Unit unit, MapLocation myloc) {
+        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
+        if(enemies_in_sight.size()>0) {      //combat state
+            if(enemy_locations.size()==0) { //add enemy locations
+                updateEnemies();
+            }
+            checkVectorField(unit, myloc);
+            VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+            if(enemies_in_range.size()==0) {    //move towards enemy since nothing in attack range
+                Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight);
+                MapLocation nearloc = nearestUnit.location().mapLocation();
+                fuzzyMove(unit, myloc.directionTo(nearloc));
+            }
+            enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), enemy);
+
+            if(enemies_in_range.size()>0) {
+                rangerAttack(unit, myloc, enemies_in_range); //attack based on heuristic
+                if(gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
+                    if(true)  { //retreat //ADD CHARGE MECHANIC HERE
+                        Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
+                        fuzzyMove(unit, toMoveDir);
+                    }
+                    else { //charge
+                        moveOnVectorField(unit, myloc);
+                    }
+                }
+            }
+        }
+        else { //non-combat state
+            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+                moveOnRandomField(unit, myloc);
+            }
+            else {
+                moveOnVectorField(unit, myloc);
+            }
+
+            if(enemy_buildings.size()>0 && gc.isBeginSnipeReady(unit.id())) { //sniping
+                int[] target = enemy_buildings.get(0);
+                MapLocation snipetarget = new MapLocation(myPlanet, target[1], target[2]);
+                if(gc.canBeginSnipe(unit.id(), snipetarget)) {
+                    gc.beginSnipe(unit.id(), snipetarget);
+                }
+                target[0]--;
+                if(target[0]==0)
+                    enemy_buildings.remove(0);
+                else
+                    enemy_buildings.set(0,target);
+            }
+        }
+    }
+
     //updates snipe list to contain all buildings
     public static void buildSnipeTargets() {
         VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy); //all enemies
@@ -1010,15 +1073,11 @@ public class Player {
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;
-            try {
-                if(distance<(int)enemy.attackRange()) //can be hit
-                    hval+=1000;
-            } catch(Exception e) {} //if unit has no attack range
             if(UnitType.Knight==enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
