@@ -32,6 +32,7 @@ public class Player {
     public static int rocket_homing = 0; //are rockets built / how many
     public static int minworkers = 0;
     public static int factories_active = 0;
+    public static int nikhil_num_workers = 0;
 
     public static int num_factories = 0;
     public static int num_rockets = 0;
@@ -73,7 +74,7 @@ public class Player {
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(ally==unit.team()) {
-                num_workers+=1;
+                nikhil_num_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
@@ -95,7 +96,7 @@ public class Player {
                 gc.queueResearch(rarray[i]);
         }                            
 
-        minworkers=num_workers*16; //write a method that does this better
+        minworkers=nikhil_num_workers*16; //write a method that does this better
 
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??        
@@ -103,7 +104,7 @@ public class Player {
         while (true) {
             current_round = (int)gc.round();            
             factories_active = 0; //tracks amount of factories producing units
-            if(current_round%50==0) { //System.out.print();rint round number and update random field
+            if(current_round%50==0) { //print round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 System.gc();
                 buildRandomField();
@@ -140,7 +141,7 @@ public class Player {
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(num_workers>=minworkers && myPlanet==Planet.Earth) {
+                    if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
                         if(buildRocket(unit, mykarbs, units, 20l)==true) {
                             continue;
@@ -153,7 +154,7 @@ public class Player {
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                                    num_workers+=(val-2);
+                                    nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_rockets+=val;
                                 }
@@ -162,7 +163,7 @@ public class Player {
                                 //blueprint factory or (replicate or moveharvest)
                                 int val = blueprintFactory(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                                    num_workers+=(val-2);
+                                    nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_factories+=val;
                                 }
@@ -174,7 +175,7 @@ public class Player {
                         }
                     } else {
                         //replicate or move harvest
-                        num_workers += replicateOrMoveHarvest(unit, mykarbs);
+                        nikhil_num_workers += replicateOrMoveHarvest(unit, mykarbs);
                     }
                 }
 
