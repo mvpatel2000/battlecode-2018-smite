@@ -6,62 +6,54 @@ import java.util.*;
 public class Player {
 
     //Stuff from game/api
-    public static GameController gc;
-    public static Team ally;
+    public static GameController gc = new GameController();;
+    public static Team ally = gc.team();
     public static Team enemy;
-    public static Planet myPlanet;
-    public static PlanetMap map;
-    public static PlanetMap mars_map;
-    public static int width;
-    public static int height;
-    public static int mars_width;
-    public static int mars_height;
-    public static int current_round;
-    public static AsteroidPattern asteroid_pattern;
+    public static Planet myPlanet = gc.planet();
+    public static PlanetMap map = gc.startingMap(myPlanet);;
+    public static PlanetMap mars_map = gc.startingMap(Planet.Mars);
+    public static int width = (int)map.getWidth();;
+    public static int height = (int)map.getHeight();;
+    public static int mars_width = (int)mars_map.getWidth();
+    public static int mars_height = (int)mars_map.getHeight();
+    public static int initial_workers = 0;
+    public static int current_round = 0;
+    public static AsteroidPattern asteroid_pattern = gc.asteroidPattern();
 
     //Stuff we create
-    public static ArrayList<int[]> enemy_locations;
-    public static int[][] distance_field;
-    public static ArrayList<Direction>[][] movement_field;
+    public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
+    public static int[][] distance_field = new int[width][height];
+    public static ArrayList<Direction>[][] movement_field = new ArrayList[width][height];
+    public static int[][] random_distance_field = new int[width][height]; //generate random movement field
+    public static ArrayList<Direction>[][] random_movement_field = new ArrayList[width][height];
+    public static ArrayList<int[]> enemy_buildings = new ArrayList<int[]>();
+    public static boolean doesPathExist = false; //determine if a path exists
+    public static double[][] mars_landing = new double[mars_width][mars_height];
+    public static int rocket_homing = 0; //are rockets built / how many
+    public static int minworkers = 0;
 
-    public static int[][] random_distance_field;
-    public static ArrayList<Direction>[][] random_movement_field;
-
-    public static ArrayList<int[]> enemy_buildings;
-
-    public static boolean doesPathExist;
-
-    public static double[][] mars_landing;
-    public static int rocket_homing;
+    public static int num_factories = 0;
+    public static int num_rockets = 0;
+    public static int num_workers = 0;
+    public static int num_rangers = 0;
+    public static int num_healers = 0;
 
     //Constants
-    public static final long maxAttackRange = 70L;
+    public static final long maxAttackRange = 50L;
+    public static final long maxVisionRange = 100L;
 
     public static void main(String[] args) {
 
-        // Connect to the manager, starting the game
-        gc = new GameController();
-
-        ally = gc.team();   //this is our team
         enemy = Team.Red;   //this is evil team
         if(ally==Team.Red)
             enemy = Team.Blue;
-
-        myPlanet = gc.planet(); //this planet
-
-        map = gc.startingMap(myPlanet); //map characteristics
-        width = (int)map.getWidth();
-        height = (int)map.getHeight();
-        int initial_workers = 0; //TODO: Make global?
-
+              
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
-            generateLandingPriorities();
-            asteroid_pattern = gc.asteroidPattern();
+            generateLandingPriorities();            
         }
-
-        enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
+        
         VecUnit initial_units = map.getInitial_units();
-        for(int i=0; i<initial_units.size(); i++) {
+        for(int i=0; i<initial_units.size(); i++) { //initial units
             Unit unit = initial_units.get(i);
             if(ally!=unit.team()) {
                 MapLocation enemy_location = unit.location().mapLocation();
@@ -69,20 +61,14 @@ public class Player {
                 enemy_locations.add(enemy_info);
             }
         }
-
-        distance_field = new int[width][height]; //generate movement field
-        movement_field = new ArrayList[width][height];
-        buildFieldBFS();
-
-        random_distance_field = new int[width][height]; //generate random movement field
-        random_movement_field = new ArrayList[width][height];
+        
+        buildFieldBFS();       //pathing
         buildRandomField();
-
-        doesPathExist = false; //determine if a path exists
-        for(int i=0; i<initial_units.size(); i++) {
+       
+        for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(ally==unit.team()) {
-                initial_workers+=1;
+                num_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
@@ -91,7 +77,7 @@ public class Player {
             }
         }
 
-        if(doesPathExist==false) {
+        if(doesPathExist==false) { //research
             UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
                                     UnitType.Ranger, UnitType.Ranger, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
@@ -102,17 +88,9 @@ public class Player {
                                     UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
-        }        
-                
-        enemy_buildings = new ArrayList<int[]>();
+        }                            
 
-        current_round = 0;
-        rocket_homing = 0; //are rockets built
-
-        int current_workers=initial_workers; //TODO: make global?
-        int num_factories = 0;
-        int num_rockets = 0;
-        int minworkers=initial_workers*16; //replicate each dude *4 before creating factories
+        minworkers=num_workers*16; //write a method that does this better
 
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??        
@@ -139,7 +117,7 @@ public class Player {
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(current_workers>=minworkers && myPlanet==Planet.Earth) {
+                    if(num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
                         if(buildRocket(unit, mykarbs, units, 20l)==true) {
                             continue;
@@ -152,7 +130,7 @@ public class Player {
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                                    current_workers+=(val-2);
+                                    num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_rockets+=val;
                                 }
@@ -161,7 +139,7 @@ public class Player {
                                 //blueprint factory or (replicate or moveharvest)
                                 int val = blueprintFactory(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                                    current_workers+=(val-2);
+                                    num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_factories+=val;
                                 }
@@ -173,7 +151,7 @@ public class Player {
                         }
                     } else {
                         //replicate or move harvest
-                        current_workers += replicateOrMoveHarvest(unit, mykarbs);
+                        num_workers += replicateOrMoveHarvest(unit, mykarbs);
                     }
                 }
 
@@ -232,7 +210,7 @@ public class Player {
                 //TODO: Figure javelin
                 else if(unit.unitType()==UnitType.Knight && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
+                    VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
                     if(enemies_in_sight.size()>0) {      //combat state
                         Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
                         MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -281,13 +259,18 @@ public class Player {
                 //TODO: Better micro xd
                 else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
                     MapLocation myloc = unit.location().mapLocation();
-                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
+                    VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
                     if(enemies_in_range.size()>0) {      //combat state
                         Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
                         fuzzyMove(unit, toMoveDir);
                     }
                     else { //non-combat state
-                        moveOnVectorField(unit, myloc);
+                        if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+                            moveOnRandomField(unit, myloc);
+                        }
+                        else {
+                            moveOnVectorField(unit, myloc);
+                        }
                     }
                     healerHeal(unit, myloc);
                 }
@@ -869,7 +852,6 @@ public class Player {
                 }
             }
         }
-        System.out.println(idealw+" "+idealh+" "+score+" "+gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)));
         if(gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh))) {
             gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)); //launch rocket
             int[] shifts = {-3, -2, -1, 0, 1, 2, 3}; //update available squares
@@ -917,11 +899,7 @@ public class Player {
 
     //generates count of open adjacent spaces for locations on mars
     //used to land rockets
-    public static void generateLandingPriorities() {
-        mars_map = gc.startingMap(Planet.Mars);
-        mars_width = (int)mars_map.getWidth();
-        mars_height = (int)mars_map.getHeight();
-        mars_landing = new double[mars_width][mars_height];
+    public static void generateLandingPriorities() {        
         for(int w=0; w<mars_width; w++) //default initialization
             for(int h=0; h<mars_height; h++)
                 mars_landing[w][h] = 8.0;
