@@ -32,6 +32,7 @@ public class Player {
     public static int rocket_homing = 0; //are rockets built / how many
     public static int minworkers = 0;
     public static int factories_active = 0;
+    public static int nikhil_num_workers = 0;
 
     public static int num_factories = 0;
     public static int num_rockets = 0;
@@ -39,9 +40,10 @@ public class Player {
     public static int num_rangers = 0;
     public static int num_knights = 0;
     public static int num_healers = 0;
+    public static int total_workers = 0;
     public static int total_rangers = 0;
     public static int total_knights = 0;
-    public static int total_healers = 0;
+    public static int total_healers = 0;    
 
     //Constants
     public static final long maxAttackRange = 50L;
@@ -73,7 +75,7 @@ public class Player {
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(ally==unit.team()) {
-                num_workers+=1;
+                nikhil_num_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
@@ -95,7 +97,7 @@ public class Player {
                 gc.queueResearch(rarray[i]);
         }                            
 
-        minworkers=num_workers*16; //write a method that does this better
+        minworkers=nikhil_num_workers*16; //write a method that does this better
 
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??        
@@ -103,8 +105,9 @@ public class Player {
         while (true) {
             current_round = (int)gc.round();            
             factories_active = 0; //tracks amount of factories producing units
-            if(current_round%50==0) { //System.out.print();rint round number and update random field
+            if(current_round%20==0) { //print round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
+                System.runFinalization();
                 System.gc();
                 buildRandomField();
             }
@@ -116,6 +119,7 @@ public class Player {
             num_rangers = 0;
             num_healers = 0;
             num_knights = 0;
+            num_workers = 0;
             for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
                 UnitType unit_type = units.get(i).unitType();
                 if(unit_type==UnitType.Ranger)
@@ -124,10 +128,13 @@ public class Player {
                     num_healers++;
                 else if(unit_type==UnitType.Knight)
                     num_knights++;
+                else if(unit_type==UnitType.Worker)
+                    num_workers++;
             }
             total_rangers+=num_rangers;
             total_healers+=num_healers;
             total_knights+=num_knights;
+            total_workers+=num_workers;
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {                
                 Unit unit = units.get(unit_counter); 
                 if(unit.location().isInGarrison() || unit.location().isInSpace())
@@ -140,7 +147,7 @@ public class Player {
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker) {
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(num_workers>=minworkers && myPlanet==Planet.Earth) {
+                    if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
                         if(buildRocket(unit, mykarbs, units, 20l)==true) {
                             continue;
@@ -153,16 +160,16 @@ public class Player {
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                                    num_workers+=(val-2);
+                                    nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_rockets+=val;
                                 }
                             }
-                            else if(num_factories<4 || (width>25 && (gc.karbonite()>200+(50-width))) || (doesPathExist==false && num_factories<1)) { //factory cap
+                            else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
                                 //blueprint factory or (replicate or moveharvest)
                                 int val = blueprintFactory(unit, mykarbs, units, 20l);
                                 if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                                    num_workers+=(val-2);
+                                    nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
                                     num_factories+=val;
                                 }
@@ -174,7 +181,7 @@ public class Player {
                         }
                     } else {
                         //replicate or move harvest
-                        num_workers += replicateOrMoveHarvest(unit, mykarbs);
+                        nikhil_num_workers += replicateOrMoveHarvest(unit, mykarbs);
                     }
                 }
 
@@ -203,14 +210,13 @@ public class Player {
                 }
 
                 // HEALER CODE //
-                //TODO: Some kind of follow mechanic?
+                //TODO: Overcharge
                 else if(unit.unitType()==UnitType.Healer) {                    
                     runHealer(unit, myloc);
                 }
 
                 // FACTORY CODE //
                 //TODO: Heuristic to shut off production
-                //TODO: Build workers late for rockets
                 else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
                     runFactory(unit, myloc);
                 }
@@ -251,6 +257,8 @@ public class Player {
             return;
         if(total_knights<0)
             gc.produceRobot(unit.id(),UnitType.Knight);
+        else if(num_workers<=0)
+            gc.produceRobot(unit.id(),UnitType.Worker);
         else if(num_rangers<7)
             gc.produceRobot(unit.id(), UnitType.Ranger);
         else if(num_rangers>30 && (num_rangers)/(1.0*num_healers)>3.0/2.0)
@@ -757,14 +765,20 @@ public class Player {
             addRocketLocation(unit, myloc);
             VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
             VecUnitID garrison = unit.structureGarrison();
+            int workers_in_garrison = 0;
+            for(int i=0; i<garrison.size(); i++)
+                if(gc.unit(garrison.get(i)).unitType()==UnitType.Worker)
+                    workers_in_garrison++;
             int maxcapacity = (int)unit.structureMaxCapacity();
             int num_in_garrison = (int)garrison.size();
             int allyctr = 0;
             while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                 Unit ally_to_load = allies_to_load.get(allyctr);
-                if(gc.canLoad(unit.id(), ally_to_load.id())) {
+                if(gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<=2)) {
                     gc.load(unit.id(), ally_to_load.id());
                     num_in_garrison++;
+                    if(ally_to_load.unitType()==UnitType.Worker)
+                        workers_in_garrison++;
                 }
                 allyctr++;
             }
