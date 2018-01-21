@@ -35,6 +35,7 @@ public class Player {
 	public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
 
+	public static MapLocation nearestKarbLoc;
     public static void main(String[] args) {
 
         // Connect to the manager, starting the game
@@ -126,6 +127,7 @@ public class Player {
             }
             if(canSnipe) //build snipe targets
                 buildSnipeTargets();
+												//TODO: Tune this variable
 			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
 				karbonite_path = karbonitePath(new int[] {0, 20, 50});
 			}
@@ -141,12 +143,11 @@ public class Player {
 					int x = unit.location().mapLocation().getX();
 					int y = unit.location().mapLocation().getY();
 					int value = -100000000;
-					int amount;
+					int amount = -1;
 					Direction toKarb = Direction.Center;
-					int distance;
-					System.out.println(karbonite_path);
+					int distance = -1;
 					for(KarbonitePath k : karbonite_path) {
-						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*4;
+						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
 						if(my_value > value) {
 							value = my_value;
 							amount = k.amount_field[x][y];
@@ -154,8 +155,30 @@ public class Player {
 							toKarb = k.movement_field[x][y];
 						}
 					}
-					if(toKarb == null || value < -10000000) {
-						toKarb = dirs[1+(int)(Math.random()*8)];
+					boolean fallback = false;
+					Direction toNearest = null;
+					if(toKarb == Direction.Center && gc.karboniteAt(unit.location().mapLocation()) == 0)
+						fallback = true;
+					else if(distance < 4) {
+						toNearest = nearestKarboniteDir(unit, unit.location().mapLocation(), 7);
+						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
+						if(t >= 4) fallback = true;
+					}
+					if(toKarb == null || value < -10000000 || fallback) {
+						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
+						if(a.get(0).karb > 0L) 
+							toKarb = a.get(0).dir;
+						else {
+							if(toNearest == null)
+								toNearest = nearestKarboniteDir(unit, unit.location().mapLocation(), 7);
+							if(toNearest != null) toKarb = toNearest;
+							else if(current_round < (width+height)) {
+								toKarb = fuzzyMoveDir(unit, unit.location().mapLocation().directionTo(new MapLocation(myPlanet,
+											width/2, height/2)));
+							} else {
+								toKarb = moveOnRandomFieldDir(unit, unit.location().mapLocation());
+							}
+						}
 					}
                     if(current_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
@@ -633,7 +656,8 @@ public class Player {
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(myPlanet, i, j);
-                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+				nearestKarbLoc = m;
+                if((x-i)*(x-i) + (y-j)*(y-j)<unit.visionRange()) {
                     if(gc.canSenseLocation(m)) {
                         if(gc.karboniteAt(m)>0L) {
                             return myLoc.directionTo(m);
@@ -970,7 +994,7 @@ public class Player {
 
     //Attempts to move unit in direction as best as possible
     //Scans 45 degree offsets, then 90
-    public static void fuzzyMove(Unit unit, Direction dir) {
+     public static void fuzzyMove(Unit unit, Direction dir) {
         if(!gc.isMoveReady(unit.id()) || dir==Direction.Center)
             return;
         int[] shifts = {0, -1, 1, -2, 2};
@@ -987,6 +1011,24 @@ public class Player {
                 return;
             }
         }
+    }
+
+   public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                return dirs[(dirindex+shifts[i]+8)%8];
+            }
+        }
+		return Direction.Center;
+
     }
 
     //Moves unit on vector field
@@ -1014,6 +1056,29 @@ public class Player {
                 return;
             }
         }
+    }
+	public static Direction moveOnRandomFieldDir(Unit unit, MapLocation mapLocation) {
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location
+                buildRandomField();
+                return moveOnRandomFieldDir(unit, mapLocation);
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                return fuzzyMoveDir(unit, dir);
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                return dir;
+			}
+        }
+		for(int w=0; w<50; x++) {
+			Direction d = dirs[(int)Math.random()*9];
+			if(gc.canMove(unit.id(), d)) return d;
+		}
+		return Direction.Center;
     }
 
     //Takes a random llocation and builds vector fields
@@ -1296,6 +1361,15 @@ public class Player {
 					int[] lc9 = {x+1,y-1,4,depth+1,amount};
 				}
 			}
+/*			if(bucket == 0) {
+				for(int x=0; x<map.getWidth(); x++) {
+						for(int y=(int)map.getHeight()-1; y>=0; y--) {
+//							System.out.print(movement_field[x][y]+" ");
+						}
+//						System.out.println();
+					}
+				if(gc.round() > 18) System.exit(0);
+			}*/
 			R.add(new KarbonitePath(amount_field, distance_field, movement_field));
 		}
 		return R;
