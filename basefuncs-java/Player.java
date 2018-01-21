@@ -36,7 +36,11 @@ public class Player {
     public static int num_rockets = 0;
     public static int num_workers = 0;
     public static int num_rangers = 0;
+    public static int num_knights = 0;
     public static int num_healers = 0;
+    public static int total_rangers = 0;
+    public static int total_knights = 0;
+    public static int total_healers = 0;
 
     //Constants
     public static final long maxAttackRange = 50L;
@@ -79,13 +83,13 @@ public class Player {
 
         if(doesPathExist==false) { //research
             UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
-                                    UnitType.Ranger, UnitType.Ranger, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+                                    UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Healer, UnitType.Healer}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Ranger, UnitType.Ranger, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
-                                    UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
+            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Mage}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }                            
@@ -108,8 +112,23 @@ public class Player {
             buildSnipeTargets(); //build snipe targets
 
             VecUnit units = gc.myUnits();
+            num_rangers = 0;
+            num_healers = 0;
+            num_knights = 0;
+            for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
+                UnitType unit_type = units.get(i).unitType();
+                if(unit_type==UnitType.Ranger)
+                    num_rangers++;
+                else if(unit_type==UnitType.Healer)
+                    num_healers++;
+                else if(unit_type==UnitType.Knight)
+                    num_knights++;
+            }
+            total_rangers+=num_rangers;
+            total_healers+=num_healers;
+            total_knights+=num_knights;
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
-                Unit unit = units.get(unit_counter);
+                Unit unit = units.get(unit_counter);                
 
                 // WORKER CODE //
                 //TODO:
@@ -257,7 +276,7 @@ public class Player {
 
                 // HEALER CODE //
                 //TODO: Better micro xd
-                else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
+                else if(unit.unitType()==UnitType.Healer && !unit.location().isInGarrison() && !unit.location().isInSpace()) {                    
                     MapLocation myloc = unit.location().mapLocation();
                     VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
                     if(enemies_in_range.size()>0) {      //combat state
@@ -280,16 +299,16 @@ public class Player {
                 //TODO: Build workers late for rockets
                 //TODO: First 2 units knights
                 else if(unit.unitType()==UnitType.Factory) {
+                    MapLocation myloc = unit.location().mapLocation();
                     factories_active++;
-                    if(gc.canProduceRobot(unit.id(), UnitType.Ranger) && //Autochecks if queue empty
-                        (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
+                    if( (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
                         (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
-                        gc.produceRobot(unit.id(),UnitType.Ranger);
+                        produceUnit(unit, myloc);
                     }
                     Direction unload_dir = Direction.East;
                     if(enemy_locations.size()>0) {
                         int[] enemy_direction = enemy_locations.get(0);
-                        unload_dir = unit.location().mapLocation().directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
+                        unload_dir = myloc.directionTo(new MapLocation(myPlanet, enemy_direction[0], enemy_direction[1]));
                     }
                     fuzzyUnload(unit, unload_dir);
                 }
@@ -297,9 +316,9 @@ public class Player {
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
                 else if(unit.unitType()==UnitType.Rocket && !unit.location().isInSpace() && unit.structureIsBuilt()!=0) {
+                    MapLocation myloc = unit.location().mapLocation();
                     Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West,
                                         Direction.Southwest, Direction.South, Direction.Southeast};
-                    MapLocation myloc = unit.location().mapLocation();
                     if(myPlanet==Planet.Earth) { //on earth load/lift
                         addRocketLocation(unit, myloc);
                         VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
@@ -345,6 +364,24 @@ public class Player {
     }
 
     //***********************************************************************************//
+    //********************************** FACTORY METHODS ********************************//
+    //***********************************************************************************//
+
+    public static void produceUnit(Unit unit, MapLocation myloc) {
+        if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) && 
+            gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
+            return;
+        if(total_knights<0)            
+            gc.produceRobot(unit.id(),UnitType.Knight);
+        else if(num_rangers<7)
+            gc.produceRobot(unit.id(), UnitType.Ranger);
+        else if((num_rangers-4)/(1.0*num_healers)<2.0/1.0)
+            gc.produceRobot(unit.id(), UnitType.Ranger);
+        else
+            gc.produceRobot(unit.id(), UnitType.Healer);
+    }
+
+    //***********************************************************************************//
     //*********************************** MAGE METHODS **********************************//
     //***********************************************************************************//
 
@@ -370,15 +407,11 @@ public class Player {
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;
-            try {
-                if(distance<(int)enemy.attackRange()) //can be hit
-                    hval+=1000;
-            } catch(Exception e) {} //if unit has no attack range
             if(UnitType.Knight==enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
@@ -430,7 +463,7 @@ public class Player {
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage}; //unit priorities
+            UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
@@ -465,13 +498,13 @@ public class Player {
         if(allies_in_range.size()==0)
             return;
         Unit ally_to_heal = allies_in_range.get(0);
-        int ally_health = (int)ally_to_heal.health();
+        int ally_damage = (int)(ally_to_heal.maxHealth()-ally_to_heal.health());
         for(int i=1; i<allies_in_range.size(); i++) {
             Unit test_ally = allies_in_range.get(i);
-            int test_health = (int)test_ally.health();
-            if(test_health<ally_health) {
+            int test_damage = (int)(test_ally.maxHealth()-test_ally.health());
+            if(test_damage>ally_damage) {
                 ally_to_heal = test_ally;
-                ally_health = test_health;
+                ally_damage = test_damage;
             }
         }
         if(gc.canHeal(unit.id(), ally_to_heal.id()))
@@ -1010,15 +1043,11 @@ public class Player {
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;
-            try {
-                if(distance<(int)enemy.attackRange()) //can be hit
-                    hval+=1000;
-            } catch(Exception e) {} //if unit has no attack range
             if(UnitType.Knight==enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Healer, UnitType.Mage, UnitType.Ranger}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
