@@ -19,6 +19,7 @@ public class Player {
     public static int current_round;
 
     //Stuff we create
+	public static ArrayList<int[]> karbonite_locations;
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
@@ -30,6 +31,7 @@ public class Player {
     public static int[][] mars_landing;
     public static int landing_spaces;
     public static int rocket_homing = 0;
+	public static ArrayList<KarbonitePath> karbonite_path;
 
     public static void main(String[] args) {
 
@@ -122,6 +124,9 @@ public class Player {
             }
             if(canSnipe) //build snipe targets
                 buildSnipeTargets();
+			if(current_round % 20 == 0 && current_round < 750) {
+				karbonite_path = karbonitePath({0, 20, 50});
+			}
 
             VecUnit units = gc.myUnits();
             for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
@@ -1227,4 +1232,71 @@ public class Player {
             return (int)(this.karb - otherkarb);
         }
     }
+	static class KarbonitePath {
+		public int[][] distance_field;
+		public Direction[][] movement_field;
+		public KarbonitePath(int[][] distance_field, Direction[][] movement_field) {
+			self.distance_field = distance_field;
+			self.movement_field = movement_field;
+		}
+	}
+
+	public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
+		ArrayList<KarbonitePath> R = new ArrayList<>();
+		Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+		int[][] k = new int[51][51];
+		for(int x=0; x<width; x++)
+			for(int y=0; y<height; y++)
+					k = gc.karboniteAt(new MapLocation(myPlanet, x, y));
+		for(int bucket : buckets) {
+
+
+			Queue<int[]> queue = new LinkedList<int[]>();
+			int[][] distance_field = new int[51][51];
+			Direction[][] movement_field = new Direction[51][51];
+			for(int x=0; x<width; x++)
+				for(int y=0; y<height; y++) {
+					distance_field[x][y] = 50*50+1;
+					if(k[x][y] > bucket) {
+						int[] j = {x, y, 0, 0};
+						queue.add(j);
+					}
+				}
+
+			while(queue.peek()!=null) {
+				int[] lcc = queue.poll();
+				int x = lcc[0];
+				int y = lcc[1];
+				int depth = lcc[2];
+				int dir = lcc[3];
+
+				if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+						map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0 || //is not passable
+						distance_field[x][y]<=depth) { //is an inferior move
+					continue;
+				}
+				else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+					distance_field[x][y] = depth;
+					movement_field[x][y] = dirs[dir];
+					int[] lc2 = {x+1,y,  5,depth+1};
+					queue.add(lc2);
+					int[] lc3 = {x+1,y+1,6,depth+1};
+					queue.add(lc3);
+					int[] lc4 = {x,y+1,  7,depth+1};
+					queue.add(lc4);
+					int[] lc5 = {x-1,y+1,8,depth+1};
+					queue.add(lc5);
+					int[] lc6 = {x-1,y,  1,depth+1};
+					queue.add(lc6);
+					int[] lc7 = {x-1,y-1,2,depth+1};
+					queue.add(lc7);
+					int[] lc8 = {x,y-1,  3,depth+1};
+					queue.add(lc8);
+					int[] lc9 = {x+1,y-1,4,depth+1};
+				}
+			}
+			R.add(new KarbonitePath(distance_field, movement_field));
+		}
+		return R;
+	}
 }
