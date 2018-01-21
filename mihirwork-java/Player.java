@@ -371,14 +371,16 @@ public class Player {
         if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) && 
             gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
-        if(total_knights<0)            
+        if(total_knights<0)
             gc.produceRobot(unit.id(),UnitType.Knight);
         else if(num_rangers<7)
             gc.produceRobot(unit.id(), UnitType.Ranger);
-        else if((num_rangers-4)/(1.0*num_healers)<2.0/1.0)
-            gc.produceRobot(unit.id(), UnitType.Ranger);
-        else
+        else if(num_rangers>30 && (num_rangers)/(1.0*num_healers)>3.0/2.0)
             gc.produceRobot(unit.id(), UnitType.Healer);
+        else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
+            gc.produceRobot(unit.id(), UnitType.Healer);
+        else
+            gc.produceRobot(unit.id(), UnitType.Ranger);
     }
 
     //***********************************************************************************//
