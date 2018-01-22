@@ -318,7 +318,7 @@ public class Player {
             return;
         if(total_knights<0)
             gc.produceRobot(unit.id(),UnitType.Knight);
-        else if(num_workers<=0)
+        else if(num_workers<=0 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
         else if(num_rangers<7)
             gc.produceRobot(unit.id(), UnitType.Ranger);
