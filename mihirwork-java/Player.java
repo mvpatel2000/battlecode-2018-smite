@@ -297,6 +297,7 @@ public class Player {
 
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
+                //TODO: Handle all load sqaures are blocked by workers then wat
                 else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                     runRocket(unit, myloc);
                 }
