@@ -90,13 +90,13 @@ public class Player {
 
         if(doesPathExist==false) { //research
             UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
-                                    UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Healer, UnitType.Healer}; //research queue
+                                    UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
-                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Mage}; //research queue
+            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Healer, UnitType.Ranger, UnitType.Ranger}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }                            
@@ -229,7 +229,7 @@ public class Player {
                             continue;
                         }
                         else {
-                            if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
+                            if(current_round>225 || doesPathExist==false && current_round>75) { //rocket cap //225 is when we get tech!
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, toKarb, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
@@ -313,7 +313,7 @@ public class Player {
 
     public static void runFactory(Unit unit, MapLocation myloc) {
         factories_active++;
-        if( (current_round<601 || current_round>600 && factories_active<3) && //only 2 factories after round 600
+        if( (current_round<451 || current_round>450 && factories_active<3) && //only 2 factories after round 600
             (current_round<700 || current_round<600 && doesPathExist==false)) {  //no production in final rounds
             produceUnit(unit, myloc);
         }
