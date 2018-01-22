@@ -128,7 +128,7 @@ public class Player {
 												
             //TODO: Tune this variable
             VecUnit units = gc.myUnits();
-			if(current_round == 1 || current_round % 15 == 0) {
+			if(current_round == 1 || current_round % 1 == 0) {
 				if((myPlanet == Planet.Earth && current_round < 750) ||
 						(myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
 					karbonite_path = karbonitePath(new int[] {0, 20});
@@ -184,6 +184,7 @@ public class Player {
 					Direction toKarb = Direction.Center;
 					int distance = -1;
 					for(KarbonitePath k : karbonite_path) {
+						if(k.movement_field[x][y] == null) continue;
 						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
 						if(my_value > value) {
 							value = my_value;
@@ -1647,8 +1648,8 @@ public class Player {
 				int amount = lcc[4];
 
 				if(x<0 || y<0 || x>=width || y>=height ||  //border checks
-						map_memo[x][y]==-1 || //is not passable
-						distance_field[x][y]<=depth) { //is an inferior move
+						map_memo[x][y] == -1 || //is not passable
+						distance_field[x][y] < depth) { //is an inferior move
 					continue;
 				}
 				else if(distance_field[x][y]==depth) { //add equivalently optimal Direction
@@ -1674,6 +1675,7 @@ public class Player {
 					int[] lc8 = {x,y-1,  3,depth+1,amount};
 					queue.add(lc8);
 					int[] lc9 = {x+1,y-1,4,depth+1,amount};
+					queue.add(lc9);
 				}
 			}
 /*			if(bucket == 0) {
@@ -1686,10 +1688,11 @@ public class Player {
 				if(gc.round() > 18) System.exit(0);
 			}*/
 			R.add(new KarbonitePath(amount_field, distance_field, movement_field));
-/*			if(current_round == 200) {
-				for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
+/*			if(current_round == 1 && bucket == 0) {
+				for(int y=height-1; y>=0; y--) {for(int x=0; x<width; x++) {
 					String t = "";
-					Direction d = movement_field[x][y];
+					Direction d;
+					if(movement_field[x][y] == null) d = Direction.Center; else d = movement_field[x][y].get(0);
 						if(d==Direction.North) t = "N ";
 						else if(d==Direction.Northeast) t="NE";
 						else if(d==Direction.East)
@@ -1702,10 +1705,10 @@ public class Player {
 						else if(d==Direction.West) t= "W ";
 						else if(d==Direction.Northwest)
 											 t = "NW";
-						else t = "C ";
+						else t = "o ";
 
 					System.out.print(t+" "); }
-					System.out.println();}}*/
+					System.out.println();}} */
 		}
 		return R;
 	}
