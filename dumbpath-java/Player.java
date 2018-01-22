@@ -161,6 +161,52 @@ public class Player {
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker) {
+										MapLocation loc = unit.location().mapLocation();
+					int x = loc.getX();
+					int y = loc.getY();
+					int value = -100000000;
+					int amount = -1;
+					Direction toKarb = Direction.Center;
+					int distance = -1;
+					for(KarbonitePath k : karbonite_path) {
+						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
+						if(my_value > value) {
+							value = my_value;
+							amount = k.amount_field[x][y];
+							distance = k.distance_field[x][y];
+							toKarb = k.movement_field[x][y];
+						}
+					}
+					boolean fallback = false;
+					Direction toNearest = null;
+					if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
+						fallback = true;
+					else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
+						fallback = true;
+//					else if(distance < 4) {
+//						toNearest = nearestKarboniteDir(unit, loc, 7);
+//						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
+//						if(t >= 4) fallback = true;
+//					}
+
+					if(value < -10000000 || fallback) {
+						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
+						if(a.get(0).karb > 0L)
+							toKarb = a.get(0).dir;
+						else if(distance > 5) {
+							toKarb = fuzzyMoveDir(unit, toKarb);
+						} else {
+							//if(toNearest == null)
+						//		toNearest = nearestKarboniteDir(unit, loc, 7);
+						//	if(toNearest != null) toKarb = toNearest;
+						/*else */if(current_round < (width+height)) {
+								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
+											width/2, height/2)));
+							} else {
+								toKarb = moveOnRandomFieldDir(unit, loc);
+							}
+						}
+					}
                     ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
@@ -740,7 +786,7 @@ public class Player {
             long totdist = newLoc.distanceSquaredTo(karbLoc);
             if(workermemes.containsKey(unit.id())) {
                 MapLocation oldLoc = workermemes.get(unit.id());
-                totdist = newLoc.distanceSquaredTo(karbLoc) - newLoc.distanceSquaredTo(oldLoc);
+                totdist = newLoc.distanceSquaredTo(karbLoc) - newLoc.distanceSquaredTo(oldLoc)/2L;
             }
             if(totdist<optimaldist) {
                 optimaldist=totdist;
