@@ -19,7 +19,6 @@ public class Player {
     public static int current_round;
 
     //Stuff we create
-	public static ArrayList<int[]> karbonite_locations;
     public static ArrayList<int[]> enemy_locations;
     public static int[][] distance_field;
     public static ArrayList<Direction>[][] movement_field;
@@ -33,6 +32,7 @@ public class Player {
     public static int rocket_homing = 0;
 	public static ArrayList<KarbonitePath> karbonite_path;
 	public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+	public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
 
 
 	public static MapLocation nearestKarbLoc;
@@ -114,6 +114,12 @@ public class Player {
 
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??        
+		map_memo = new int[51][51];
+		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
+			map_memo[x][y] = 1;
+			if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
+		}
+
         while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
@@ -140,8 +146,9 @@ public class Player {
                 // - update factory function based on karbonite levels
                 // - worker replication late game for pure harvesting / navigation
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
-					int x = unit.location().mapLocation().getX();
-					int y = unit.location().mapLocation().getY();
+					MapLocation loc = unit.location().mapLocation();
+					int x = loc.getX();
+					int y = loc.getY();
 					int value = -100000000;
 					int amount = -1;
 					Direction toKarb = Direction.Center;
@@ -157,10 +164,10 @@ public class Player {
 					}
 					boolean fallback = false;
 					Direction toNearest = null;
-					if(toKarb == Direction.Center && gc.karboniteAt(unit.location().mapLocation()) == 0)
+					if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
 						fallback = true;
 					else if(distance < 4) {
-						toNearest = nearestKarboniteDir(unit, unit.location().mapLocation(), 7);
+						toNearest = nearestKarboniteDir(unit, loc, 7);
 						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
 						if(t >= 4) fallback = true;
 					}
@@ -170,13 +177,13 @@ public class Player {
 							toKarb = a.get(0).dir;
 						else {
 							if(toNearest == null)
-								toNearest = nearestKarboniteDir(unit, unit.location().mapLocation(), 7);
+								toNearest = nearestKarboniteDir(unit, loc, 7);
 							if(toNearest != null) toKarb = toNearest;
 							else if(current_round < (width+height)) {
-								toKarb = fuzzyMoveDir(unit, unit.location().mapLocation().directionTo(new MapLocation(myPlanet,
+								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
 											width/2, height/2)));
 							} else {
-								toKarb = moveOnRandomFieldDir(unit, unit.location().mapLocation());
+								toKarb = moveOnRandomFieldDir(unit, loc);
 							}
 						}
 					}
@@ -1307,9 +1314,12 @@ public class Player {
 		int[][] k = new int[51][51];
 		for(int x=0; x<width; x++)
 			for(int y=0; y<height; y++) {
-				MapLocation m = new MapLocation(myPlanet, x, y);
-				if(gc.canSenseLocation(m))
-					k[x][y] = (int)gc.karboniteAt(m);
+				if(map_memo[x][y] == 1) {
+					MapLocation m = new MapLocation(myPlanet, x, y);
+					if(gc.canSenseLocation(m))
+						k[x][y] = (int)gc.karboniteAt(m);
+					if(k[x][y] == 0) map_memo[x][y] = 0;
+				}
 			}
 		for(int bucket : buckets) {
 
@@ -1336,7 +1346,7 @@ public class Player {
 				int amount = lcc[4];
 
 				if(x<0 || y<0 || x>=width || y>=height ||  //border checks
-						map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0 || //is not passable
+						map_memo[x][y]==-1 || //is not passable
 						distance_field[x][y]<=depth) { //is an inferior move
 					continue;
 				}
