@@ -210,7 +210,7 @@ public class Player {
                 }
 
                 // HEALER CODE //
-                //TODO: Overcharge
+                //TODO: Verify overcharge
                 else if(unit.unitType()==UnitType.Healer) {                    
                     runHealer(unit, myloc);
                 }

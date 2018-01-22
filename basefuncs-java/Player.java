@@ -91,7 +91,7 @@ public class Player {
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
+            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
                                     UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Mage}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
@@ -99,9 +99,8 @@ public class Player {
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
 
-        //TODO: optimize how we go thorugh units (toposort?)
+        //TODO: Sort so rangers > healers > factories > workers
         //TODO: if enemy dead, build rockets??        
-        //TODO: Better way of checking tech levels
         while (true) {
             current_round = (int)gc.round();            
             factories_active = 0; //tracks amount of factories producing units
@@ -188,6 +187,7 @@ public class Player {
                 // RANGER CODE //
                 //TODO: Give rolling fire with snipetarget?
                 //TODO: Charge mechanic
+                //TODO: make rangerAttack not a sort
                 else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {                    
                     runRanger(unit, myloc);
                 }
@@ -210,7 +210,7 @@ public class Player {
                 }
 
                 // HEALER CODE //
-                //TODO: Overcharge
+                //TODO: Verify overcharge
                 else if(unit.unitType()==UnitType.Healer) {                    
                     runHealer(unit, myloc);
                 }
@@ -223,7 +223,6 @@ public class Player {
 
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
-                //TODO: Load less workers
                 else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                     runRocket(unit, myloc);
                 }
@@ -433,6 +432,41 @@ public class Player {
             }
         }
         healerHeal(unit, myloc);
+        healerOvercharge(unit, myloc);
+    }
+
+    public static void healerOvercharge(Unit unit, MapLocation myloc) {
+        if(!gc.isOverchargeReady(unit.id()))
+            return;
+        VecUnit allies_in_range = gc.senseNearbyUnitsByTeam(myloc, unit.abilityRange(), ally);
+        if(allies_in_range.size()<=0)
+            return;
+        Unit ally_to_heal = null;
+        int ally_score = 0;
+        for(int i=0; i<allies_in_range.size(); i++) {
+            Unit test_to_heal = allies_in_range.get(0);
+            if(test_to_heal.unitType()!=UnitType.Ranger)
+                continue;
+            int test_score = 0;
+            int attack_heat = (int)test_to_heal.attackHeat();
+            int movement_heat = (int)test_to_heal.movementHeat();
+            if(attack_heat>=20)
+                test_score+=2000;
+            else if(attack_heat>=10)
+                test_score+=1000;
+            if(movement_heat>=20)
+                test_score+=200;
+            else if(movement_heat>=10)
+                test_score+=100;
+            if(test_score>ally_score) {
+                ally_to_heal = test_to_heal;
+                ally_score = test_score;
+            }
+        }
+        if(ally_to_heal!=null && gc.canOvercharge(unit.id(), ally_to_heal.id())) {
+            gc.overcharge(unit.id(), ally_to_heal.id());
+            runRanger(ally_to_heal, ally_to_heal.location().mapLocation());
+        }
     }
 
     //heal lowest hp unit in range
@@ -452,8 +486,9 @@ public class Player {
                 ally_damage = test_damage;
             }
         }
-        if(ally_damage>0 && gc.canHeal(unit.id(), ally_to_heal.id()))
+        if(ally_damage>0 && gc.canHeal(unit.id(), ally_to_heal.id())) {
             gc.heal(unit.id(), ally_to_heal.id());
+        }
     }
 
     //***********************************************************************************//
