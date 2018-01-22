@@ -103,7 +103,6 @@ public class Player {
         }
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
-		ArrayList<Integer> rand_permutation = randomPermutation(9);
 
 		map_memo = new int[51][51];
 		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
@@ -125,13 +124,14 @@ public class Player {
             if(myPlanet==Planet.Earth)
                 updateLandingPriorities();
             buildSnipeTargets(); //build snipe targets
-												
+
             //TODO: Tune this variable
             VecUnit units = gc.myUnits();
-			if(current_round == 1 || current_round % 1 == 0) {
+			if(current_round == 1 || current_round % 15 == 0) {
 				if((myPlanet == Planet.Earth && current_round < 750) ||
 						(myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
 					karbonite_path = karbonitePath(new int[] {0, 20});
+                    System.out.println(karbonite_path);
 				}
 			}
 
@@ -174,7 +174,6 @@ public class Player {
                 //TODO:
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
-				
                 if(unit.unitType()==UnitType.Worker) {
 					MapLocation loc = unit.location().mapLocation();
 					int x = loc.getX();
@@ -184,21 +183,12 @@ public class Player {
 					Direction toKarb = Direction.Center;
 					int distance = -1;
 					for(KarbonitePath k : karbonite_path) {
-						if(k.movement_field[x][y] == null) continue;
 						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
 						if(my_value > value) {
 							value = my_value;
 							amount = k.amount_field[x][y];
 							distance = k.distance_field[x][y];
-							Collections.shuffle(rand_permutation);
-							for(int z : rand_permutation) {
-								if(z >= k.movement_field[x][y].size()) continue;
-								Direction d = k.movement_field[x][y].get(z);
-								if(gc.canMove(unit.id(), d)) {
-									toKarb = d;
-									break;
-								}
-							}
+							toKarb = k.movement_field[x][y];
 						}
 					}
 					boolean fallback = false;
@@ -241,7 +231,7 @@ public class Player {
                             continue;
                         }
                         else {
-                            if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
+                            if(current_round>250 || doesPathExist==false && current_round>125) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
                                 int val = blueprintRocket(unit, toKarb, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
@@ -317,15 +307,6 @@ public class Player {
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
-
-	public static ArrayList<Integer> randomPermutation(int l) {
-		ArrayList<Integer> a = new ArrayList<>();
-		for(int x=0; x<l; x++) {
-			a.add(x);
-		}
-		Collections.shuffle(a);
-		return a;
-	}
 
     //***********************************************************************************//
     //********************************** FACTORY METHODS ********************************//
@@ -1319,7 +1300,7 @@ public class Player {
             }
         }
     }
-    
+
     public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
         int[] shifts = {0, -1, 1, -2, 2};
         int dirindex = 0;
@@ -1603,12 +1584,44 @@ public class Player {
     	static class KarbonitePath {
 		public int[][] distance_field;
 		public int[][] amount_field;
-		public ArrayList<Direction>[][] movement_field;
-		public KarbonitePath(int[][] amount_field, int[][] distance_field, ArrayList<Direction>[][] movement_field) {
+		public Direction[][] movement_field;
+		public KarbonitePath(int[][] amount_field, int[][] distance_field, Direction[][] movement_field) {
 			this.distance_field = distance_field;
 			this.movement_field = movement_field;
 			this.amount_field = amount_field;
 		}
+        public String toString() {
+            String finstr = "";
+            for(int h=0; h<height; h++) {
+                String str = "";
+                for(int w=0; w<width; w++) {
+                    if(movement_field[w][h]==Direction.West)
+                          str+="←";
+                    else if(movement_field[w][h]==Direction.Southwest)
+                           str+="↙";
+                    else if(movement_field[w][h]==Direction.South)
+                           str+="↓";
+                    else if(movement_field[w][h]==Direction.Southeast)
+                           str+="↘";
+                    else if(movement_field[w][h]==Direction.East)
+                           str+="→";
+                    else if(movement_field[w][h]==Direction.Northeast)
+                           str+="↗";
+                    else if(movement_field[w][h]==Direction.North)
+                           str+="↑";
+                    else if(movement_field[w][h]==Direction.Northwest)
+                           str+="↖";
+                    else if(movement_field[w][h]==Direction.Center)
+                           str+="x";
+                    else {
+                          str+="_";
+                    }
+                }
+                str+="\n";
+                finstr+=str;
+            }
+            return finstr;
+        }
 	}
 
 	public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
@@ -1628,7 +1641,7 @@ public class Player {
 
 			Queue<int[]> queue = new LinkedList<int[]>();
 			int[][] distance_field = new int[51][51];
-			ArrayList<Direction>[][] movement_field = new ArrayList[51][51];
+			Direction[][] movement_field = new Direction[51][51];
 			int[][] amount_field = new int[51][51];
 			for(int x=0; x<width; x++)
 				for(int y=0; y<height; y++) {
@@ -1647,18 +1660,17 @@ public class Player {
 				int depth = lcc[3];
 				int amount = lcc[4];
 
-				if(x<0 || y<0 || x>=width || y>=height ||  //border checks
-						map_memo[x][y] == -1 || //is not passable
-						distance_field[x][y] < depth) { //is an inferior move
-					continue;
-				}
-				else if(distance_field[x][y]==depth) { //add equivalently optimal Direction
-					movement_field[x][y].add(dirs[dir]);
-				}
+                if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+                        map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0 || //is not passable
+                        distance_field[x][y]<depth) { //is an inferior move
+                    continue;
+                }
+                else if(distance_field[x][y]==depth) { //add equivalently optimal Direction
+                    movement_field[x][y].add(dirs[dir]);
+                }
 				else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
 					distance_field[x][y] = depth;
-					movement_field[x][y] = new ArrayList<Direction>();
-					movement_field[x][y].add(dirs[dir]);
+					movement_field[x][y] = dirs[dir];
 					amount_field[x][y] = amount;
 					int[] lc2 = {x+1,y,  5,depth+1,amount};
 					queue.add(lc2);
@@ -1675,7 +1687,6 @@ public class Player {
 					int[] lc8 = {x,y-1,  3,depth+1,amount};
 					queue.add(lc8);
 					int[] lc9 = {x+1,y-1,4,depth+1,amount};
-					queue.add(lc9);
 				}
 			}
 /*			if(bucket == 0) {
@@ -1688,11 +1699,10 @@ public class Player {
 				if(gc.round() > 18) System.exit(0);
 			}*/
 			R.add(new KarbonitePath(amount_field, distance_field, movement_field));
-/*			if(current_round == 1 && bucket == 0) {
-				for(int y=height-1; y>=0; y--) {for(int x=0; x<width; x++) {
+/*			if(current_round == 200) {
+				for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
 					String t = "";
-					Direction d;
-					if(movement_field[x][y] == null) d = Direction.Center; else d = movement_field[x][y].get(0);
+					Direction d = movement_field[x][y];
 						if(d==Direction.North) t = "N ";
 						else if(d==Direction.Northeast) t="NE";
 						else if(d==Direction.East)
@@ -1705,10 +1715,10 @@ public class Player {
 						else if(d==Direction.West) t= "W ";
 						else if(d==Direction.Northwest)
 											 t = "NW";
-						else t = "o ";
+						else t = "C ";
 
 					System.out.print(t+" "); }
-					System.out.println();}} */
+					System.out.println();}}*/
 		}
 		return R;
 	}
