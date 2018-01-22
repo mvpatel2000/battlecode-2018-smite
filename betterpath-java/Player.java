@@ -124,8 +124,8 @@ public class Player {
             if(myPlanet==Planet.Earth)
                 updateLandingPriorities();
             buildSnipeTargets(); //build snipe targets
-												//TODO: Tune this variable
-
+												
+            //TODO: Tune this variable
             VecUnit units = gc.myUnits();
 			if(current_round == 1 || current_round % 15 == 0) {
 				if((myPlanet == Planet.Earth && current_round < 750) ||
@@ -174,7 +174,7 @@ public class Player {
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker) {
-										MapLocation loc = unit.location().mapLocation();
+					MapLocation loc = unit.location().mapLocation();
 					int x = loc.getX();
 					int y = loc.getY();
 					int value = -100000000;
@@ -1299,7 +1299,8 @@ public class Player {
             }
         }
     }
-       public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
+    
+    public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
         int[] shifts = {0, -1, 1, -2, 2};
         int dirindex = 0;
         for(int i=0; i<8; i++) {
@@ -1314,7 +1315,6 @@ public class Player {
             }
         }
 		return Direction.Center;
-
     }
 
     //Moves unit on vector field
