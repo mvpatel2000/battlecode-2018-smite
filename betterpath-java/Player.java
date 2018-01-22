@@ -32,7 +32,6 @@ public class Player {
     public static int[][] random_distance_field = new int[width][height]; //generate random movement field
     public static ArrayList<Direction>[][] random_movement_field = new ArrayList[width][height];
     public static ArrayList<int[]> enemy_buildings = new ArrayList<int[]>();
-    public static HashMap<Integer, MapLocation> workermemes = new HashMap<>();
     public static boolean doesPathExist = false; //determine if a path exists
     public static double[][] mars_landing = new double[mars_width][mars_height];
     public static int rocket_homing = 0; //are rockets built / how many
@@ -104,7 +103,7 @@ public class Player {
         }
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
-		
+
 		map_memo = new int[51][51];
 		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
 			if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
@@ -127,9 +126,9 @@ public class Player {
             buildSnipeTargets(); //build snipe targets
 												//TODO: Tune this variable
 			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
-				karbonite_path = karbonitePath(new int[] {0, 20, 50});
+				karbonite_path = karbonitePath(new int[] {0, 20});
 			}
-			
+
             VecUnit units = gc.myUnits();
             num_rangers = 0;
             num_healers = 0;
@@ -754,26 +753,6 @@ public class Player {
 		}
     }
 
-
-    public static Direction heuristicKarb(Unit unit, MapLocation myLoc, MapLocation karbLoc) {
-        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
-                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-        long optimaldist = 10000000000000L;
-        Direction optimalDir = myLoc.directionTo(karbLoc);
-        for (Direction dir: dirs) {
-            MapLocation newLoc = myLoc.add(dir);
-            long totdist = newLoc.distanceSquaredTo(karbLoc);
-            if(workermemes.containsKey(unit.id())) {
-                MapLocation oldLoc = workermemes.get(unit.id());
-                totdist = newLoc.distanceSquaredTo(karbLoc) - newLoc.distanceSquaredTo(oldLoc)/2L;
-            }
-            if(totdist<optimaldist) {
-                optimaldist=totdist;
-                optimalDir = dir;
-            }
-        }
-        return optimalDir;
-    }
     public static MapLocation nearestKarbonite(Unit unit, MapLocation myLoc, int visionrad) {
         int visrad = visionrad;
         long totalkarb = 0L;
@@ -1300,7 +1279,6 @@ public class Player {
         }
         for(int i=0; i<5; i++) {
             if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
-                workermemes.put(unit.id(), unit.location().mapLocation());
                 gc.moveRobot(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
                 return;
             }
@@ -1345,7 +1323,6 @@ public class Player {
                 return;
             }
             else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
-                workermemes.put(unit.id(), mapLocation);
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
@@ -1503,7 +1480,6 @@ public class Player {
                 return;
             }
             else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
-                workermemes.put(unit.id(), mapLocation);
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
@@ -1588,7 +1564,7 @@ public class Player {
             return (int)(this.karb - otherkarb);
         }
     }
-    
+
     	static class KarbonitePath {
 		public int[][] distance_field;
 		public int[][] amount_field;
