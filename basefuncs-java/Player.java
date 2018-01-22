@@ -91,7 +91,7 @@ public class Player {
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
+            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Rocket, UnitType.Rocket,
                                     UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Mage}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
@@ -257,7 +257,7 @@ public class Player {
             return;
         if(total_knights<0)
             gc.produceRobot(unit.id(),UnitType.Knight);
-        else if(num_workers<=0)
+        else if(num_workers<=0 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
         else if(num_rangers<7)
             gc.produceRobot(unit.id(), UnitType.Ranger);
