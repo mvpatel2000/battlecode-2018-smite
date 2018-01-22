@@ -169,16 +169,20 @@ public class Player {
 					Direction toNearest = null;
 					if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
 						fallback = true;
-					else if(distance < 4) {
-						toNearest = nearestKarboniteDir(unit, loc, 7);
-						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
-						if(t >= 4) fallback = true;
-					}
+					else if(toKarb != null && !gc.canMove(unit.id(), toKarb))
+						fallback = true;
+//					else if(distance < 4) {
+//						toNearest = nearestKarboniteDir(unit, loc, 7);
+//						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
+//						if(t >= 4) fallback = true;
+//					}
 					if(toKarb == null || value < -10000000 || fallback) {
 						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
 						if(a.get(0).karb > 0L)
 							toKarb = a.get(0).dir;
-						else {
+						else if(distance > 8) {
+							toKarb = fuzzyMoveDir(unit, toKarb);
+						} else {
 							if(toNearest == null)
 								toNearest = nearestKarboniteDir(unit, loc, 7);
 							if(toNearest != null) toKarb = toNearest;
@@ -665,6 +669,7 @@ public class Player {
         int y = myLoc.getY();
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+				if(map_memo[i][j] != 1) continue;
                 MapLocation m = new MapLocation(myPlanet, i, j);
 				nearestKarbLoc = m;
                 if((x-i)*(x-i) + (y-j)*(y-j)<unit.visionRange()) {
