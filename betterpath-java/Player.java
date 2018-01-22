@@ -103,6 +103,7 @@ public class Player {
         }
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
+		ArrayList<Integer> rand_permutation = randomPermutation(9);
 
 		map_memo = new int[51][51];
 		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
@@ -173,6 +174,7 @@ public class Player {
                 //TODO:
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
+				
                 if(unit.unitType()==UnitType.Worker) {
 					MapLocation loc = unit.location().mapLocation();
 					int x = loc.getX();
@@ -187,7 +189,15 @@ public class Player {
 							value = my_value;
 							amount = k.amount_field[x][y];
 							distance = k.distance_field[x][y];
-							toKarb = k.movement_field[x][y];
+							Collections.shuffle(rand_permutation);
+							for(int z : rand_permutation) {
+								if(z >= k.movement_field[x][y].size()) continue;
+								Direction d = k.movement_field[x][y].get(z);
+								if(gc.canMove(unit.id(), d)) {
+									toKarb = d;
+									break;
+								}
+							}
 						}
 					}
 					boolean fallback = false;
@@ -306,6 +316,15 @@ public class Player {
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
+
+	public static ArrayList<Integer> randomPermutation(int l) {
+		ArrayList<Integer> a = new ArrayList<>();
+		for(int x=0; x<l; x++) {
+			a.add(x);
+		}
+		Collections.shuffle(a);
+		return a;
+	}
 
     //***********************************************************************************//
     //********************************** FACTORY METHODS ********************************//
@@ -1583,8 +1602,8 @@ public class Player {
     	static class KarbonitePath {
 		public int[][] distance_field;
 		public int[][] amount_field;
-		public Direction[][] movement_field;
-		public KarbonitePath(int[][] amount_field, int[][] distance_field, Direction[][] movement_field) {
+		public ArrayList<Direction>[][] movement_field;
+		public KarbonitePath(int[][] amount_field, int[][] distance_field, ArrayList<Direction>[][] movement_field) {
 			this.distance_field = distance_field;
 			this.movement_field = movement_field;
 			this.amount_field = amount_field;
@@ -1608,7 +1627,7 @@ public class Player {
 
 			Queue<int[]> queue = new LinkedList<int[]>();
 			int[][] distance_field = new int[51][51];
-			Direction[][] movement_field = new Direction[51][51];
+			ArrayList<Direction>[][] movement_field = new ArrayList[51][51];
 			int[][] amount_field = new int[51][51];
 			for(int x=0; x<width; x++)
 				for(int y=0; y<height; y++) {
@@ -1632,9 +1651,13 @@ public class Player {
 						distance_field[x][y]<=depth) { //is an inferior move
 					continue;
 				}
+				else if(distance_field[x][y]==depth) { //add equivalently optimal Direction
+					movement_field[x][y].add(dirs[dir]);
+				}
 				else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
 					distance_field[x][y] = depth;
-					movement_field[x][y] = dirs[dir];
+					movement_field[x][y] = new ArrayList<Direction>();
+					movement_field[x][y].add(dirs[dir]);
 					amount_field[x][y] = amount;
 					int[] lc2 = {x+1,y,  5,depth+1,amount};
 					queue.add(lc2);
