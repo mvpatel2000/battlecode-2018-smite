@@ -116,8 +116,8 @@ public class Player {
         //TODO: if enemy dead, build rockets??        
 		map_memo = new int[51][51];
 		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
-			map_memo[x][y] = 1;
 			if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
+			map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
 		}
 
         //TODO: if enemy dead, build rockets??
@@ -138,7 +138,7 @@ public class Player {
 			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
                 System.runFinalization();
                 System.gc();
-				karbonite_path = karbonitePath(new int[] {0, 20, 50});
+				karbonite_path = karbonitePath(new int[] {0, 50});
 			}
 
             VecUnit units = gc.myUnits();
@@ -169,24 +169,28 @@ public class Player {
 					Direction toNearest = null;
 					if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
 						fallback = true;
-					else if(toKarb != null && !gc.canMove(unit.id(), toKarb))
+					else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
 						fallback = true;
 //					else if(distance < 4) {
 //						toNearest = nearestKarboniteDir(unit, loc, 7);
 //						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
 //						if(t >= 4) fallback = true;
 //					}
-					if(toKarb == null || value < -10000000 || fallback) {
+
+					if(current_round == 200 && !fallback) {
+						System.out.println("x: "+x+" y: "+y+" d: "+toKarb);
+					}
+					if(value < -10000000 || fallback) {
 						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
 						if(a.get(0).karb > 0L)
 							toKarb = a.get(0).dir;
-						else if(distance > 8) {
+						else if(distance > 5) {
 							toKarb = fuzzyMoveDir(unit, toKarb);
 						} else {
-							if(toNearest == null)
-								toNearest = nearestKarboniteDir(unit, loc, 7);
-							if(toNearest != null) toKarb = toNearest;
-							else if(current_round < (width+height)) {
+							//if(toNearest == null)
+						//		toNearest = nearestKarboniteDir(unit, loc, 7);
+						//	if(toNearest != null) toKarb = toNearest;
+						/*else */if(current_round < (width+height)) {
 								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
 											width/2, height/2)));
 							} else {
@@ -669,7 +673,7 @@ public class Player {
         int y = myLoc.getY();
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
-				if(map_memo[i][j] != 1) continue;
+				if(map_memo[i][j] <= 0) continue;
                 MapLocation m = new MapLocation(myPlanet, i, j);
 				nearestKarbLoc = m;
                 if((x-i)*(x-i) + (y-j)*(y-j)<unit.visionRange()) {
@@ -1319,14 +1323,13 @@ public class Player {
 	public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
 		ArrayList<KarbonitePath> R = new ArrayList<>();
 		Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-		int[][] k = new int[51][51];
 		for(int x=0; x<width; x++)
 			for(int y=0; y<height; y++) {
-				if(map_memo[x][y] == 1) {
+				if(map_memo[x][y] > 0) {
 					MapLocation m = new MapLocation(myPlanet, x, y);
-					if(gc.canSenseLocation(m))
-						k[x][y] = (int)gc.karboniteAt(m);
-					if(k[x][y] == 0) map_memo[x][y] = 0;
+					if(gc.canSenseLocation(m)) {
+						map_memo[x][y] = (int)gc.karboniteAt(m);
+					}
 				}
 			}
 		for(int bucket : buckets) {
@@ -1339,8 +1342,8 @@ public class Player {
 			for(int x=0; x<width; x++)
 				for(int y=0; y<height; y++) {
 					distance_field[x][y] = 50*50+1;
-					if(k[x][y] > bucket) {
-						int[] j = {x, y, 0, 0, k[x][y]};
+					if(map_memo[x][y] > bucket) {
+						int[] j = {x, y, 0, 0, map_memo[x][y]};
 						queue.add(j);
 					}
 				}
@@ -1389,6 +1392,26 @@ public class Player {
 				if(gc.round() > 18) System.exit(0);
 			}*/
 			R.add(new KarbonitePath(amount_field, distance_field, movement_field));
+/*			if(current_round == 200) {
+				for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
+					String t = "";
+					Direction d = movement_field[x][y];
+						if(d==Direction.North) t = "N ";
+						else if(d==Direction.Northeast) t="NE";
+						else if(d==Direction.East)
+												  t = "E ";
+						else if(d==Direction.Southeast)
+												  t= "SE"; 
+						else if(d==Direction.South) t=  "S "; 
+						else if(d==Direction.Southwest)
+											  t = "SW"; 
+						else if(d==Direction.West) t= "W "; 
+						else if(d==Direction.Northwest)
+											 t = "NW"; 
+						else t = "C ";
+
+					System.out.print(t+" "); }
+					System.out.println();}}*/
 		}
 		return R;
 	}
