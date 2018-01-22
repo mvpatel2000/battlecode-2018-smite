@@ -113,7 +113,7 @@ public class Player {
         int minworkers=initial_workers*24; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units (toposort?)
-        //TODO: if enemy dead, build rockets??        
+        //TODO: if enemy dead, build rockets??
 		map_memo = new int[51][51];
 		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
 			if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
@@ -134,11 +134,12 @@ public class Player {
             }
             if(canSnipe) //build snipe targets
                 buildSnipeTargets();
+
+            System.runFinalization();
+            System.gc();
 												//TODO: Tune this variable
-			System.runFinalization();
-			System.gc();
 			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
-				//karbonite_path = karbonitePath(new int[] {0, 50});
+				karbonite_path = karbonitePath(new int[] {0});
 			}
 
             VecUnit units = gc.myUnits();
@@ -150,13 +151,13 @@ public class Player {
                 // - worker replication late game for pure harvesting / navigation
                 if(unit.unitType()==UnitType.Worker && !unit.location().isInGarrison() && !unit.location().isInSpace()) {
 					MapLocation loc = unit.location().mapLocation();
-					/*int x = loc.getX();
+					int x = loc.getX();
 					int y = loc.getY();
 					int value = -100000000;
 					int amount = -1;
 					Direction toKarb = Direction.Center;
 					int distance = -1;
-					/*for(KarbonitePath k : karbonite_path) {
+					for(KarbonitePath k : karbonite_path) {
 						int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
 						if(my_value > value) {
 							value = my_value;
@@ -167,7 +168,7 @@ public class Player {
 					}
 					boolean fallback = false;
 					Direction toNearest = null;
-					if(toKarb == Direction.Center)// && gc.karboniteAt(loc) == 0)
+					if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
 						fallback = true;
 					else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
 						fallback = true;
@@ -176,8 +177,10 @@ public class Player {
 //						int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
 //						if(t >= 4) fallback = true;
 //					}
-					*/
-/*
+
+					if(current_round == 200 && !fallback) {
+						System.out.println("x: "+x+" y: "+y+" d: "+toKarb);
+					}
 					if(value < -10000000 || fallback) {
 						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
 						if(a.get(0).karb > 0L)
@@ -188,15 +191,14 @@ public class Player {
 							//if(toNearest == null)
 						//		toNearest = nearestKarboniteDir(unit, loc, 7);
 						//	if(toNearest != null) toKarb = toNearest;
-						/*else if(current_round < (width+height)) {
+						/*else */if(current_round < (width+height)) {
 								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
 											width/2, height/2)));
 							} else {
 								toKarb = moveOnRandomFieldDir(unit, loc);
 							}
 						}
-					}*/
-								Direction toKarb = moveOnRandomFieldDir(unit, loc);
+					}
                     if(current_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
                         if(buildRocket(unit, toKarb, units, 20l)==true) {
@@ -644,7 +646,11 @@ public class Player {
 		MapLocation newLoc = myLoc.add(toKarb);
 		if(gc.canHarvest(unit.id(), toKarb)){
 			gc.harvest(unit.id(), toKarb);
-			map_memo[myLoc.getX()][myLoc.getY()] = Math.max(map_memo[myLoc.getX()][myLoc.getY()]-4, 0);
+            if(gc.round()>25) {
+                map_memo[myLoc.getX()][myLoc.getY()] = Math.max(map_memo[myLoc.getX()][myLoc.getY()]-4, 0);
+            } else {
+                map_memo[myLoc.getX()][myLoc.getY()] = Math.max(map_memo[myLoc.getX()][myLoc.getY()]-3, 0);
+            }
 			return;
 		}
     }
@@ -1399,13 +1405,13 @@ public class Player {
 						else if(d==Direction.East)
 												  t = "E ";
 						else if(d==Direction.Southeast)
-												  t= "SE"; 
-						else if(d==Direction.South) t=  "S "; 
+												  t= "SE";
+						else if(d==Direction.South) t=  "S ";
 						else if(d==Direction.Southwest)
-											  t = "SW"; 
-						else if(d==Direction.West) t= "W "; 
+											  t = "SW";
+						else if(d==Direction.West) t= "W ";
 						else if(d==Direction.Northwest)
-											 t = "NW"; 
+											 t = "NW";
 						else t = "C ";
 
 					System.out.print(t+" "); }
