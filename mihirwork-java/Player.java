@@ -25,6 +25,7 @@ public class Player {
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
+    public static ArrayList<int[]> ally_locations = new ArrayList<int[]>();
     public static int[][] distance_field = new int[width][height];
     public static ArrayList<Direction>[][] movement_field = new ArrayList[width][height];
     public static int[][] random_distance_field = new int[width][height]; //generate random movement field
@@ -70,8 +71,12 @@ public class Player {
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
                 enemy_locations.add(enemy_info);
             }
-            else
+            else {
                 nikhil_num_workers+=1;
+                MapLocation ally_location = unit.location().mapLocation();
+                int[] ally_info = {ally_location.getX(), ally_location.getY()};
+                ally_locations.add(ally_info);
+            }
         }
         
         buildFieldBFS();       //pathing
@@ -101,7 +106,7 @@ public class Player {
                 gc.queueResearch(rarray[i]);
         }                            
 
-        minworkers=nikhil_num_workers*16; //write a method that does this better
+        minworkers=workerReplicateRatio(); //write a method that does this better
 
         map_memo = new int[51][51];
         for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
@@ -307,6 +312,27 @@ public class Player {
         }
     }
 
+    //DETERMINE RATIO
+    public static int workerReplicateRatio() {
+        if(myPlanet==Planet.Mars)
+            return 1;
+        int dist = 0;
+        for(int i=0; i<ally_locations.size(); i++) {
+            int[] ally_loc = ally_locations.get(i);
+            dist+=distance_field[ally_loc[0]][ally_loc[1]];
+        }
+        dist = dist / ally_locations.size();
+        int ret = 0;
+        if(dist<40)
+            ret = 8;
+        else if(dist<60)
+            ret = 10;
+        else
+            ret = 12;
+        System.out.println("Path length: "+dist+" Worker Ratio: "+ret);
+        return ret;
+    }
+
     //***********************************************************************************//
     //********************************** FACTORY METHODS ********************************//
     //***********************************************************************************//
@@ -339,7 +365,7 @@ public class Player {
             gc.produceRobot(unit.id(), UnitType.Healer);
         else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
             gc.produceRobot(unit.id(), UnitType.Healer);
-        else
+        else if(num_rangers<60)
             gc.produceRobot(unit.id(), UnitType.Ranger);
     }
 
