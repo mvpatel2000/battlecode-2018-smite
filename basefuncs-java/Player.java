@@ -70,6 +70,8 @@ public class Player {
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
                 enemy_locations.add(enemy_info);
             }
+            else
+                nikhil_num_workers+=1;
         }
         
         buildFieldBFS();       //pathing
@@ -77,8 +79,7 @@ public class Player {
        
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
-            if(ally==unit.team()) {
-                nikhil_num_workers+=1;
+            if(ally==unit.team()) {                
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;

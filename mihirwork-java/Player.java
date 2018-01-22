@@ -19,6 +19,9 @@ public class Player {
     public static int initial_workers = 0;
     public static int current_round = 0;
     public static AsteroidPattern asteroid_pattern = gc.asteroidPattern();
+    public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+    public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
+    public static ArrayList<KarbonitePath> karbonite_path;
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
@@ -67,6 +70,8 @@ public class Player {
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
                 enemy_locations.add(enemy_info);
             }
+            else
+                nikhil_num_workers+=1;
         }
         
         buildFieldBFS();       //pathing
@@ -74,8 +79,7 @@ public class Player {
        
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
-            if(ally==unit.team()) {
-                nikhil_num_workers+=1;
+            if(ally==unit.team()) {                
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
@@ -99,6 +103,12 @@ public class Player {
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
 
+        map_memo = new int[51][51];
+        for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
+            if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
+            else map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
+        }
+
         //TODO: Sort so rangers > healers > factories > workers
         //TODO: if enemy dead, build rockets??        
         while (true) {
@@ -114,7 +124,25 @@ public class Player {
                 updateLandingPriorities();
             buildSnipeTargets(); //build snipe targets
 
+            //TODO: Tune this variable
             VecUnit units = gc.myUnits();
+            if(current_round == 1 || current_round % 15 == 0) {
+                if((myPlanet == Planet.Earth && current_round < 750) ||
+                        (myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
+                    karbonite_path = karbonitePath(new int[] {0, 20});
+                }
+            }
+
+            // TODO: check for next asteroids within ~50 rounds
+            if(myPlanet == Planet.Mars) {
+                if(asteroid_pattern.hasAsteroid(current_round)) {
+                    AsteroidStrike a = asteroid_pattern.asteroid(current_round);
+                    MapLocation loc = a.getLocation();
+                    if(map_memo[loc.getX()][loc.getY()] != -1)
+                        map_memo[loc.getX()][loc.getY()] += a.getKarbonite();
+                }
+            }
+
             num_rangers = 0;
             num_healers = 0;
             num_knights = 0;
@@ -145,19 +173,65 @@ public class Player {
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
                 if(unit.unitType()==UnitType.Worker) {
-                    ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
+                    MapLocation loc = unit.location().mapLocation();
+                    int x = loc.getX();
+                    int y = loc.getY();
+                    int value = -100000000;
+                    int amount = -1;
+                    Direction toKarb = Direction.Center;
+                    int distance = -1;
+                    for(KarbonitePath k : karbonite_path) {
+                        int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
+                        if(my_value > value) {
+                            value = my_value;
+                            amount = k.amount_field[x][y];
+                            distance = k.distance_field[x][y];
+                            toKarb = k.movement_field[x][y];
+                        }
+                    }
+                    boolean fallback = false;
+                    Direction toNearest = null;
+                    if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
+                        fallback = true;
+                    else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
+                        fallback = true;
+//                  else if(distance < 4) {
+//                      toNearest = nearestKarboniteDir(unit, loc, 7);
+//                      int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
+//                      if(t >= 4) fallback = true;
+//                  }
+
+                    if(value < -10000000 || fallback) {
+                        ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
+                        if(a.get(0).karb > 0L)
+                            toKarb = a.get(0).dir;
+                        else if(distance > 5) {
+                            toKarb = fuzzyMoveDir(unit, toKarb);
+                        } else {
+                            if(toNearest == null)
+                                toNearest = nearestKarboniteDir(unit, loc, 7);
+                            if(toNearest != null) toKarb = toNearest;
+                            else if(current_round < (width+height)/2) {
+                                toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
+                                            width/2, height/2)));
+                            } else {
+                                toKarb = moveOnRandomFieldDir(unit, loc);
+                            }
+                        }
+                    }
+                    //ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
                     if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
                         //execute build order
-                        if(buildRocket(unit, mykarbs, units, 20l)==true) {
+                        if(buildRocket(unit, toKarb, units, 20l)==true) {
                             continue;
                         }
-                        else if(buildFactory(unit, mykarbs, units, 20l)==true){
+                        else if(buildFactory(unit, toKarb, units, 20l)==true){
                             continue;
                         }
                         else {
                             if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
                                 //blueprint rocket or (replicate or moveharvest)
-                                int val = blueprintRocket(unit, mykarbs, units, 20l);
+                                int val = blueprintRocket(unit, toKarb, units, 20l);
                                 if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
                                     nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
@@ -166,7 +240,7 @@ public class Player {
                             }
                             else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
                                 //blueprint factory or (replicate or moveharvest)
-                                int val = blueprintFactory(unit, mykarbs, units, 20l);
+                                int val = blueprintFactory(unit, toKarb, units, 20l);
                                 if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
                                     nikhil_num_workers+=(val-2);
                                 } else { //did not degenerate
@@ -174,13 +248,13 @@ public class Player {
                                 }
                             }
                             else {
-                                workerharvest(unit, mykarbs);
-                                workermove(unit, mykarbs);
+                                workerharvest(unit, toKarb);
+                                workermove(unit, toKarb);
                             }
                         }
                     } else {
                         //replicate or move harvest
-                        nikhil_num_workers += replicateOrMoveHarvest(unit, mykarbs);
+                        nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb);
                     }
                 }
 
@@ -510,7 +584,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintRocket(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+    public static int blueprintRocket(Unit unit, Direction toKarb, VecUnit units, long rad) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -520,13 +594,13 @@ public class Player {
                 return 1;
             } else {
                 //cannot build blueprint
-                workerharvest(unit, mykarbs);
-                workermove(unit, mykarbs);
+                workerharvest(unit, toKarb);
+                workermove(unit, toKarb);
                 return 0;
             }
         } else {
             //not enough close workers
-            return (2+replicateOrMoveHarvest(unit, mykarbs)); //2+ lets parent method determine whether we replicated or not
+            return (2+replicateOrMoveHarvest(unit, toKarb)); //2+ lets parent method determine whether we replicated or not
         }
     }
 
@@ -574,7 +648,7 @@ public class Player {
     //If you cannot do either, harvest+move towards the factory, since you are out of range
     //If either of these three above scenarious occur, return true
     //If there are no factories within range, then return false
-    public static boolean buildRocket(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+    public static boolean buildRocket(Unit unit, Direction toKarb, VecUnit units, long rad) {
         VecUnit nearbyRockets = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Rocket);
 
         for(int i=0; i<nearbyRockets.size(); i++) {
@@ -590,7 +664,7 @@ public class Player {
                     gc.repair(unit.id(), k.id());
                     return true;
                 } else {
-                    workerharvest(unit, mykarbs);
+                    workerharvest(unit, toKarb);
                     Direction toRocket = unit.location().mapLocation().directionTo(nearbyRockets.get(0).location().mapLocation());
                     fuzzyMove(unit, toRocket);
                     return true;
@@ -604,7 +678,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintFactory(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+    public static int blueprintFactory(Unit unit, Direction toKarb, VecUnit units, long rad) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersFactory(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -614,13 +688,13 @@ public class Player {
                 return 1;
             } else {
                 //cannot build blueprint
-                workerharvest(unit, mykarbs);
-                workermove(unit, mykarbs);
+                workerharvest(unit, toKarb);
+                workermove(unit, toKarb);
                 return 0;
             }
         } else {
             //not enough close workers
-            return (2+replicateOrMoveHarvest(unit, mykarbs)); //2+ lets parent method determine whether we replicated or not
+            return (2+replicateOrMoveHarvest(unit, toKarb)); //2+ lets parent method determine whether we replicated or not
         }
     }
 
@@ -665,15 +739,13 @@ public class Player {
 
     //Replicate if you can, perform harvsestmove if not
     //Returns a number (1 or 0) to indicate number of workers gained
-    public static int replicateOrMoveHarvest(Unit unit, ArrayList<KarbDir> mykarbs) {
-        for (KarbDir k : mykarbs) {
-            if(gc.canReplicate(unit.id(), k.dir)) {
-                gc.replicate(unit.id(), k.dir);
-                return 1;
-            }
+    public static int replicateOrMoveHarvest(Unit unit, Direction toKarb) {
+        if(gc.canReplicate(unit.id(), toKarb)) {
+            gc.replicate(unit.id(), toKarb);
+            return 1;
         }
-        workerharvest(unit, mykarbs);
-        workermove(unit, mykarbs);
+        workerharvest(unit, toKarb);
+        workermove(unit, toKarb);
         return 0;
     }
 
@@ -682,7 +754,7 @@ public class Player {
     //If you cannot do either, harvest+move towards the factory, since you are out of range
     //If either of these three above scenarious occur, return true
     //If there are no factories within range, then return false
-    public static boolean buildFactory(Unit unit, ArrayList<KarbDir> mykarbs, VecUnit units, long rad) {
+    public static boolean buildFactory(Unit unit, Direction toKarb, VecUnit units, long rad) {
         VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Factory);
 
         for(int i=0; i<nearbyFactories.size(); i++) {
@@ -698,7 +770,7 @@ public class Player {
                     gc.repair(unit.id(), k.id());
                     return true;
                 } else {
-                    workerharvest(unit, mykarbs);
+                    workerharvest(unit, toKarb);
                     Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
                     fuzzyMove(unit, toFactory);
                     return true;
@@ -709,43 +781,46 @@ public class Player {
     }
 
     //harvest in the optimal direction
-    public static void workerharvest(Unit unit, ArrayList<KarbDir> mykarbs) {
+    public static void workerharvest(Unit unit, Direction toKarb) {
         MapLocation myLoc = unit.location().mapLocation();
-        for (KarbDir k : mykarbs) {
-            MapLocation newLoc = myLoc.add(k.dir);
-            if(gc.karboniteAt(newLoc)>0L) {
-                if(gc.canHarvest(unit.id(), k.dir)){
-                    gc.harvest(unit.id(), k.dir);
-                    return;
-                }
-            }
+        MapLocation newLoc = myLoc.add(toKarb);
+        if(gc.canHarvest(unit.id(), toKarb)){
+            gc.harvest(unit.id(), toKarb);
+            return;
         }
     }
 
-    public static void workermove(Unit unit, ArrayList<KarbDir> mykarbs) {
+    public static void workermove(Unit unit, Direction toKarb) {
         MapLocation myLoc = unit.location().mapLocation();
-        for (KarbDir k : mykarbs) {
-            MapLocation newLoc = myLoc.add(k.dir);
-            if(gc.karboniteAt(newLoc)>0L) {
-                if(gc.canMove(unit.id(), k.dir)) {
-                    if(gc.isMoveReady(unit.id())) {
-                        gc.moveRobot(unit.id(), k.dir);
-                        return;
+        MapLocation newLoc = myLoc.add(toKarb);
+        if(gc.canMove(unit.id(), toKarb)) {
+            if(gc.isMoveReady(unit.id())) {
+                gc.moveRobot(unit.id(), toKarb);
+            }
+        } else {
+            fuzzyMove(unit, toKarb);
+        }
+    }
+
+    public static MapLocation nearestKarbonite(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                if(map_memo[i][j] <= 0) continue;
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j)*(y-j)<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        if(gc.karboniteAt(m)>0L) {
+                            return m;
+                        }
                     }
                 }
             }
         }
-        Direction tonearkarb = nearestKarboniteDir(unit, myLoc, 7);
-        if(tonearkarb!=null) {
-            fuzzyMove(unit, tonearkarb);
-        } else {
-            if(current_round<(width+height)/2) {
-                fuzzyMove(unit, myLoc.directionTo(new MapLocation(myPlanet, (int)width/2, (int)height/2)));
-            } else {
-                moveOnRandomField(unit, myLoc);
-            }
-        }
-        return;
+        return null;
     }
 
     //helper method for workermove
@@ -1260,6 +1335,25 @@ public class Player {
         }
     }
 
+    //fuzzy move direction version
+    public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                return dirs[(dirindex+shifts[i]+8)%8];
+            }
+        }
+        return Direction.Center;
+    }
+
+
     //Moves unit on vector field
     //Should be used if no enemies in sight
     //If no optimal move is available (all blocked), unit will attempt fuzzymove in last dir
@@ -1285,6 +1379,31 @@ public class Player {
                 return;
             }
         }
+    }
+
+    //random field dir
+    public static Direction moveOnRandomFieldDir(Unit unit, MapLocation mapLocation) {
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location
+                buildRandomField();
+                return moveOnRandomFieldDir(unit, mapLocation);
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                return fuzzyMoveDir(unit, dir);
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                return dir;
+            }
+        }
+        for(int w=0; w<50; w++) {
+            Direction d = dirs[(int)Math.random()*9];
+            if(gc.canMove(unit.id(), d)) return d;
+        }
+        return Direction.Center;
     }
 
     //Takes a random llocation and builds vector fields
@@ -1498,5 +1617,112 @@ public class Player {
             long otherkarb = ((KarbDir) other).karb;
             return (int)(this.karb - otherkarb);
         }
+    }
+
+        static class KarbonitePath {
+        public int[][] distance_field;
+        public int[][] amount_field;
+        public Direction[][] movement_field;
+        public KarbonitePath(int[][] amount_field, int[][] distance_field, Direction[][] movement_field) {
+            this.distance_field = distance_field;
+            this.movement_field = movement_field;
+            this.amount_field = amount_field;
+        }
+    }
+
+    public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
+        ArrayList<KarbonitePath> R = new ArrayList<>();
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        for(int x=0; x<width; x++)
+            for(int y=0; y<height; y++) {
+                if(map_memo[x][y] > 0) {
+                    MapLocation m = new MapLocation(myPlanet, x, y);
+                    if(gc.canSenseLocation(m)) {
+                        map_memo[x][y] = (int)gc.karboniteAt(m);
+                    }
+                }
+            }
+        for(int bucket : buckets) {
+
+
+            Queue<int[]> queue = new LinkedList<int[]>();
+            int[][] distance_field = new int[51][51];
+            Direction[][] movement_field = new Direction[51][51];
+            int[][] amount_field = new int[51][51];
+            for(int x=0; x<width; x++)
+                for(int y=0; y<height; y++) {
+                    distance_field[x][y] = 50*50+1;
+                    if(map_memo[x][y] > bucket) {
+                        int[] j = {x, y, 0, 0, map_memo[x][y]};
+                        queue.add(j);
+                    }
+                }
+
+            while(queue.peek()!=null) {
+                int[] lcc = queue.poll();
+                int x = lcc[0];
+                int y = lcc[1];
+                int dir = lcc[2];
+                int depth = lcc[3];
+                int amount = lcc[4];
+
+                if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+                        map_memo[x][y]==-1 || //is not passable
+                        distance_field[x][y]<=depth) { //is an inferior move
+                    continue;
+                }
+                else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                    distance_field[x][y] = depth;
+                    movement_field[x][y] = dirs[dir];
+                    amount_field[x][y] = amount;
+                    int[] lc2 = {x+1,y,  5,depth+1,amount};
+                    queue.add(lc2);
+                    int[] lc3 = {x+1,y+1,6,depth+1,amount};
+                    queue.add(lc3);
+                    int[] lc4 = {x,y+1,  7,depth+1,amount};
+                    queue.add(lc4);
+                    int[] lc5 = {x-1,y+1,8,depth+1,amount};
+                    queue.add(lc5);
+                    int[] lc6 = {x-1,y,  1,depth+1,amount};
+                    queue.add(lc6);
+                    int[] lc7 = {x-1,y-1,2,depth+1,amount};
+                    queue.add(lc7);
+                    int[] lc8 = {x,y-1,  3,depth+1,amount};
+                    queue.add(lc8);
+                    int[] lc9 = {x+1,y-1,4,depth+1,amount};
+                }
+            }
+/*          if(bucket == 0) {
+                for(int x=0; x<map.getWidth(); x++) {
+                        for(int y=(int)map.getHeight()-1; y>=0; y--) {
+//                          System.out.print(movement_field[x][y]+" ");
+                        }
+//                      System.out.println();
+                    }
+                if(gc.round() > 18) System.exit(0);
+            }*/
+            R.add(new KarbonitePath(amount_field, distance_field, movement_field));
+/*          if(current_round == 200) {
+                for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
+                    String t = "";
+                    Direction d = movement_field[x][y];
+                        if(d==Direction.North) t = "N ";
+                        else if(d==Direction.Northeast) t="NE";
+                        else if(d==Direction.East)
+                                                  t = "E ";
+                        else if(d==Direction.Southeast)
+                                                  t= "SE";
+                        else if(d==Direction.South) t=  "S ";
+                        else if(d==Direction.Southwest)
+                                              t = "SW";
+                        else if(d==Direction.West) t= "W ";
+                        else if(d==Direction.Northwest)
+                                             t = "NW";
+                        else t = "C ";
+
+                    System.out.print(t+" "); }
+                    System.out.println();}}*/
+        }
+        return R;
     }
 }
