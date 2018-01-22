@@ -695,9 +695,7 @@ public class Player {
             if(gc.karboniteAt(newLoc)>0L) {
                 if(gc.canMove(unit.id(), k.dir)) {
                     if(gc.isMoveReady(unit.id())) {
-                        if (workermemes.containsKey(unit.id())) {
-                            workermemes.put(unit.id(), myLoc);
-                        }
+                        workermemes.put(unit.id(), myLoc);
                         gc.moveRobot(unit.id(), k.dir);
                         return;
                     }
@@ -705,7 +703,7 @@ public class Player {
             }
         }
         MapLocation karbloc = nearestKarbonite(unit, myLoc, 7);
-        if(nearkarb!=null) {
+        if(karbloc!=null) {
             Direction hyperdir = heuristicKarb(unit, myLoc, karbloc);
             fuzzyMove(unit, hyperdir);
         } else {
@@ -721,11 +719,21 @@ public class Player {
     public static Direction heuristicKarb(Unit unit, MapLocation myLoc, MapLocation karbLoc) {
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-        long optimal_sice = 0L;
+        long optimaldist = 10000000000000L;
+        Direction optimalDir = myLoc.directionTo(karbLoc);
         for (Direction dir: dirs) {
             MapLocation newLoc = myLoc.add(dir);
-            newLoc.distanceSquaredTo(karbloc)
+            long totdist = newLoc.distanceSquaredTo(karbLoc);
+            if(workermemes.containsKey(unit.id())) {
+                MapLocation oldLoc = workermemes.get(unit.id());
+                totdist = newLoc.distanceSquaredTo(karbLoc) - newLoc.distanceSquaredTo(oldLoc);
+            }
+            if(totdist<optimaldist) {
+                optimaldist=totdist;
+                optimalDir = dir;
+            }
         }
+        return optimalDir;
     }
     public static MapLocation nearestKarbonite(Unit unit, MapLocation myLoc, int visionrad) {
         int visrad = visionrad;
@@ -1253,6 +1261,7 @@ public class Player {
         }
         for(int i=0; i<5; i++) {
             if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                workermemes.put(unit.id(), unit.location().mapLocation());
                 gc.moveRobot(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
                 return;
             }
@@ -1280,6 +1289,7 @@ public class Player {
                 return;
             }
             else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                workermemes.put(unit.id(), mapLocation);
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
@@ -1414,6 +1424,7 @@ public class Player {
                 return;
             }
             else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                workermemes.put(unit.id(), mapLocation);
                 gc.moveRobot(unit.id(), dir);
                 return;
             }
