@@ -1578,7 +1578,7 @@ public class Player {
 	public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
 		ArrayList<KarbonitePath> R = new ArrayList<>();
 		Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-/*		for(int x=0; x<width; x++)
+		for(int x=0; x<width; x++)
 			for(int y=0; y<height; y++) {
 				if(map_memo[x][y] > 0) {
 					MapLocation m = new MapLocation(myPlanet, x, y);
@@ -1586,7 +1586,7 @@ public class Player {
 						map_memo[x][y] = (int)gc.karboniteAt(m);
 					}
 				}
-			}*/
+			}
 		for(int bucket : buckets) {
 
 
