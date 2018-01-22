@@ -19,6 +19,11 @@ public class Player {
     public static int initial_workers = 0;
     public static int current_round = 0;
     public static AsteroidPattern asteroid_pattern = gc.asteroidPattern();
+    public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+	public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
+	public static ArrayList<KarbonitePath> karbonite_path;
+
+
 
     //Stuff we create
     public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
@@ -99,7 +104,12 @@ public class Player {
         }
 
         minworkers=nikhil_num_workers*16; //write a method that does this better
-
+		
+		map_memo = new int[51][51];
+		for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
+			if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
+			else map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
+		}
         //TODO: optimize how we go thorugh units (toposort?)
         //TODO: if enemy dead, build rockets??
         //TODO: Better way of checking tech levels
@@ -115,7 +125,11 @@ public class Player {
             if(myPlanet==Planet.Earth)
                 updateLandingPriorities();
             buildSnipeTargets(); //build snipe targets
-
+												//TODO: Tune this variable
+			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
+				karbonite_path = karbonitePath(new int[] {0, 20, 50});
+			}
+			
             VecUnit units = gc.myUnits();
             num_rangers = 0;
             num_healers = 0;
@@ -1267,6 +1281,23 @@ public class Player {
             }
         }
     }
+       public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                return dirs[(dirindex+shifts[i]+8)%8];
+            }
+        }
+		return Direction.Center;
+
+    }
 
     //Moves unit on vector field
     //Should be used if no enemies in sight
@@ -1294,6 +1325,29 @@ public class Player {
                 return;
             }
         }
+    }
+    public static Direction moveOnRandomFieldDir(Unit unit, MapLocation mapLocation) {
+        UnitType myUnitType = unit.unitType();
+        int x = mapLocation.getX();
+        int y = mapLocation.getY();
+        for(int movedir=0; movedir<random_movement_field[x][y].size(); movedir++) { //loops over all possible move directions
+            Direction dir = random_movement_field[x][y].get(movedir);
+            if(dir == Direction.Center) { //reruns vector field if reaches enemy start location
+                buildRandomField();
+                return moveOnRandomFieldDir(unit, mapLocation);
+            }
+            else if(movedir==random_movement_field[x][y].size()-1) { //fuzzy moves last possible direction
+                return fuzzyMoveDir(unit, dir);
+            }
+            else if(gc.canMove(unit.id(), dir)) { //verifies can move in selected direction
+                return dir;
+			}
+        }
+		for(int w=0; w<50; x++) {
+			Direction d = dirs[(int)Math.random()*9];
+			if(gc.canMove(unit.id(), d)) return d;
+		}
+		return Direction.Center;
     }
 
     //Takes a random llocation and builds vector fields
@@ -1509,4 +1563,111 @@ public class Player {
             return (int)(this.karb - otherkarb);
         }
     }
+    
+    	static class KarbonitePath {
+		public int[][] distance_field;
+		public int[][] amount_field;
+		public Direction[][] movement_field;
+		public KarbonitePath(int[][] amount_field, int[][] distance_field, Direction[][] movement_field) {
+			this.distance_field = distance_field;
+			this.movement_field = movement_field;
+			this.amount_field = amount_field;
+		}
+	}
+
+	public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
+		ArrayList<KarbonitePath> R = new ArrayList<>();
+		Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+/*		for(int x=0; x<width; x++)
+			for(int y=0; y<height; y++) {
+				if(map_memo[x][y] > 0) {
+					MapLocation m = new MapLocation(myPlanet, x, y);
+					if(gc.canSenseLocation(m)) {
+						map_memo[x][y] = (int)gc.karboniteAt(m);
+					}
+				}
+			}*/
+		for(int bucket : buckets) {
+
+
+			Queue<int[]> queue = new LinkedList<int[]>();
+			int[][] distance_field = new int[51][51];
+			Direction[][] movement_field = new Direction[51][51];
+			int[][] amount_field = new int[51][51];
+			for(int x=0; x<width; x++)
+				for(int y=0; y<height; y++) {
+					distance_field[x][y] = 50*50+1;
+					if(map_memo[x][y] > bucket) {
+						int[] j = {x, y, 0, 0, map_memo[x][y]};
+						queue.add(j);
+					}
+				}
+
+			while(queue.peek()!=null) {
+				int[] lcc = queue.poll();
+				int x = lcc[0];
+				int y = lcc[1];
+				int dir = lcc[2];
+				int depth = lcc[3];
+				int amount = lcc[4];
+
+				if(x<0 || y<0 || x>=width || y>=height ||  //border checks
+						map_memo[x][y]==-1 || //is not passable
+						distance_field[x][y]<=depth) { //is an inferior move
+					continue;
+				}
+				else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+					distance_field[x][y] = depth;
+					movement_field[x][y] = dirs[dir];
+					amount_field[x][y] = amount;
+					int[] lc2 = {x+1,y,  5,depth+1,amount};
+					queue.add(lc2);
+					int[] lc3 = {x+1,y+1,6,depth+1,amount};
+					queue.add(lc3);
+					int[] lc4 = {x,y+1,  7,depth+1,amount};
+					queue.add(lc4);
+					int[] lc5 = {x-1,y+1,8,depth+1,amount};
+					queue.add(lc5);
+					int[] lc6 = {x-1,y,  1,depth+1,amount};
+					queue.add(lc6);
+					int[] lc7 = {x-1,y-1,2,depth+1,amount};
+					queue.add(lc7);
+					int[] lc8 = {x,y-1,  3,depth+1,amount};
+					queue.add(lc8);
+					int[] lc9 = {x+1,y-1,4,depth+1,amount};
+				}
+			}
+/*			if(bucket == 0) {
+				for(int x=0; x<map.getWidth(); x++) {
+						for(int y=(int)map.getHeight()-1; y>=0; y--) {
+//							System.out.print(movement_field[x][y]+" ");
+						}
+//						System.out.println();
+					}
+				if(gc.round() > 18) System.exit(0);
+			}*/
+			R.add(new KarbonitePath(amount_field, distance_field, movement_field));
+/*			if(current_round == 200) {
+				for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
+					String t = "";
+					Direction d = movement_field[x][y];
+						if(d==Direction.North) t = "N ";
+						else if(d==Direction.Northeast) t="NE";
+						else if(d==Direction.East)
+												  t = "E ";
+						else if(d==Direction.Southeast)
+												  t= "SE";
+						else if(d==Direction.South) t=  "S ";
+						else if(d==Direction.Southwest)
+											  t = "SW";
+						else if(d==Direction.West) t= "W ";
+						else if(d==Direction.Northwest)
+											 t = "NW";
+						else t = "C ";
+
+					System.out.print(t+" "); }
+					System.out.println();}}*/
+		}
+		return R;
+	}
 }
