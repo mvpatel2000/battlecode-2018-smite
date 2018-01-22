@@ -212,7 +212,7 @@ public class Player {
 							if(toNearest == null)
 								toNearest = nearestKarboniteDir(unit, loc, 7);
 							if(toNearest != null) toKarb = toNearest;
-							else if(current_round < (width+height)) {
+							else if(current_round < (width+height)/2) {
 								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
 											width/2, height/2)));
 							} else {
