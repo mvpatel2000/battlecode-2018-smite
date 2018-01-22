@@ -125,11 +125,25 @@ public class Player {
                 updateLandingPriorities();
             buildSnipeTargets(); //build snipe targets
 												//TODO: Tune this variable
-			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
-				karbonite_path = karbonitePath(new int[] {0, 20});
-			}
 
             VecUnit units = gc.myUnits();
+			if(current_round == 1 || current_round % 15 == 0) {
+				if((myPlanet == Planet.Earth && current_round < 750) ||
+						(myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
+					karbonite_path = karbonitePath(new int[] {0, 20});
+				}
+			}
+
+			// TODO: check for next asteroids within ~50 rounds
+			if(myPlanet == Planet.Mars) {
+				if(asteroid_pattern.hasAsteroid(current_round)) {
+					AsteroidStrike a = asteroid_pattern.asteroid(current_round);
+					MapLocation loc = a.getLocation();
+					if(map_memo[loc.getX()][loc.getY()] != -1)
+						map_memo[loc.getX()][loc.getY()] += a.getKarbonite();
+				}
+			}
+
             num_rangers = 0;
             num_healers = 0;
             num_knights = 0;
@@ -195,10 +209,10 @@ public class Player {
 						else if(distance > 5) {
 							toKarb = fuzzyMoveDir(unit, toKarb);
 						} else {
-							//if(toNearest == null)
-						//		toNearest = nearestKarboniteDir(unit, loc, 7);
-						//	if(toNearest != null) toKarb = toNearest;
-						/*else */if(current_round < (width+height)) {
+							if(toNearest == null)
+								toNearest = nearestKarboniteDir(unit, loc, 7);
+							if(toNearest != null) toKarb = toNearest;
+							else if(current_round < (width+height)) {
 								toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
 											width/2, height/2)));
 							} else {
@@ -760,8 +774,9 @@ public class Player {
         int y = myLoc.getY();
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+				if(map_memo[i][j] <= 0) continue;
                 MapLocation m = new MapLocation(myPlanet, i, j);
-                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                if((x-i)*(x-i) + (y-j)*(y-j)<unit.visionRange()) {
                     if(gc.canSenseLocation(m)) {
                         if(gc.karboniteAt(m)>0L) {
                             return m;
