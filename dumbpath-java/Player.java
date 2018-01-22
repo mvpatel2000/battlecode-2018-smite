@@ -1389,7 +1389,7 @@ public class Player {
                 return dir;
 			}
         }
-		for(int w=0; w<50; x++) {
+		for(int w=0; w<50; w++) {
 			Direction d = dirs[(int)Math.random()*9];
 			if(gc.canMove(unit.id(), d)) return d;
 		}
