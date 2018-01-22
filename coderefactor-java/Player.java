@@ -90,7 +90,7 @@ public class Player {
         }
 
         if(doesPathExist==false) {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
+            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
                                     UnitType.Ranger, UnitType.Ranger, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
@@ -100,8 +100,8 @@ public class Player {
                                     UnitType.Rocket, UnitType.Worker, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
-        }        
-        
+        }
+
         canSnipe = false;
 
         current_round = 0;
@@ -113,7 +113,7 @@ public class Player {
         int minworkers=initial_workers*24; //replicate each dude *4 before creating factories
 
         //TODO: optimize how we go thorugh units (toposort?)
-        //TODO: if enemy dead, build rockets??        
+        //TODO: if enemy dead, build rockets??
         while (true) {
             current_round = (int)gc.round();
             int factories_active = 0; //tracks amount of factories producing units
@@ -129,6 +129,8 @@ public class Player {
                 buildSnipeTargets();
 												//TODO: Tune this variable
 			if(current_round == 1 || (current_round % 20 == 0 && current_round < 750)) {
+                System.runFinalization();
+                System.gc();
 				karbonite_path = karbonitePath(new int[] {0, 20, 50});
 			}
 
@@ -166,7 +168,7 @@ public class Player {
 					}
 					if(toKarb == null || value < -10000000 || fallback) {
 						ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
-						if(a.get(0).karb > 0L) 
+						if(a.get(0).karb > 0L)
 							toKarb = a.get(0).dir;
 						else {
 							if(toNearest == null)
@@ -693,7 +695,7 @@ public class Player {
     //max garrison, about to die, or turn 749
     public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
         if(num_in_garrison==maxcapacity)
-            return true;        
+            return true;
         if(current_round>=749)
             return true;
         int hp = (int)unit.health();
@@ -932,7 +934,7 @@ public class Player {
 
     //Takes MapLocation and a VecUnit
     //Finds unit from VecUnit closest to MapLocation and returns direction
-    //Returns towards unit if only workers 
+    //Returns towards unit if only workers
     public static Direction getNearestNonWorkerDirection(MapLocation myloc, VecUnit other_units) {
         Unit nearestUnit = null;
         MapLocation nearloc = null;
@@ -965,7 +967,7 @@ public class Player {
             }
         }
         return myloc.directionTo(nearloc);
-    }    
+    }
 
     //***********************************************************************************//
     //***************************** GENERAL BUILDING METHODS ****************************//
@@ -1307,9 +1309,11 @@ public class Player {
 		int[][] k = new int[51][51];
 		for(int x=0; x<width; x++)
 			for(int y=0; y<height; y++) {
-				MapLocation m = new MapLocation(myPlanet, x, y);
-				if(gc.canSenseLocation(m))
-					k[x][y] = (int)gc.karboniteAt(m);
+                if(k[x][y]!=0) {
+    				MapLocation m = new MapLocation(myPlanet, x, y);
+    				if(gc.canSenseLocation(m))
+    					k[x][y] = (int)gc.karboniteAt(m);
+                }
 			}
 		for(int bucket : buckets) {
 
