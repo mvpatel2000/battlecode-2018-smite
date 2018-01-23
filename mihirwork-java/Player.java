@@ -120,7 +120,6 @@ public class Player {
             else map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
         }
 
-        //TODO: Sort so rangers > healers > factories > workers
         while (true) {
             current_round = (int)gc.round();
             factories_active = 0; //tracks amount of factories producing units
@@ -135,7 +134,8 @@ public class Player {
             buildSnipeTargets(); //build snipe targets
 
             //TODO: Tune this variable
-            VecUnit units = gc.myUnits();
+            VecUnit unsorted_units = gc.myUnits();
+            ArrayList<Unit> units = sortUnits(unsorted_units);
             if(current_round == 1 || current_round % 1 == 0) {
                 if((myPlanet == Planet.Earth && current_round < 750) ||
                         (myPlanet == Planet.Mars)) { // TODO: check if rocket has left
@@ -235,7 +235,8 @@ public class Player {
             }
 
             //RunWorker on replicated units
-            VecUnit afterunits = gc.myUnits();
+            VecUnit unsorted_afterunits = gc.myUnits();
+            ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
             int additional_workers = 0;
             ArrayList<Unit> myaddworkers = new ArrayList<Unit>();
             for(int i=0; i<afterunits.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
@@ -285,10 +286,24 @@ public class Player {
         return ret;
     }
 
+    public static ArrayList<Unit> sortUnits(VecUnit units) {
+        ArrayList<Unit> ret = new ArrayList<Unit>();
+        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Healer, UnitType.Factory, UnitType.Worker};
+        for(int i=0; i<types.length; i++) {
+            UnitType ut = types[i];
+            for(int x=0; x<units.size(); x++) {
+                Unit cur = units.get(x);
+                if(cur.unitType()==ut)
+                    ret.add(cur);
+            }
+        }
+        return ret;
+    }
+
     //***********************************************************************************//
     //*********************************** WORKER METHODS ********************************//
     //***********************************************************************************//
-    public static void runWorker(Unit unit, MapLocation loc, VecUnit units) {
+    public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
         ArrayList<KarbDir> myKarbs = karboniteSort(unit, unit.location());
         Direction toKarb = generateKarbDirection(myKarbs, loc, unit, rand_permutation);
         if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
@@ -669,7 +684,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintRocket(Unit unit, Direction toKarb, VecUnit units, long rad, ArrayList<KarbDir> myKarbs) {
+    public static int blueprintRocket(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -733,7 +748,7 @@ public class Player {
     //If you cannot do either, harvest+move towards the factory, since you are out of range
     //If either of these three above scenarious occur, return true
     //If there are no factories within range, then return false
-    public static boolean buildRocket(Unit unit, Direction toKarb, VecUnit units, long rad) {
+    public static boolean buildRocket(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad) {
         VecUnit nearbyRockets = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Rocket);
 
         for(int i=0; i<nearbyRockets.size(); i++) {
@@ -763,7 +778,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintFactory(Unit unit, Direction toKarb, VecUnit units, long rad, ArrayList<KarbDir> myKarbs) {
+    public static int blueprintFactory(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersFactory(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -839,7 +854,7 @@ public class Player {
     //If you cannot do either, harvest+move towards the factory, since you are out of range
     //If either of these three above scenarious occur, return true
     //If there are no factories within range, then return false
-    public static boolean buildFactory(Unit unit, Direction toKarb, VecUnit units, long rad) {
+    public static boolean buildFactory(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad) {
         VecUnit nearbyFactories = gc.senseNearbyUnitsByType(unit.location().mapLocation(), rad, UnitType.Factory);
 
         for(int i=0; i<nearbyFactories.size(); i++) {
@@ -1019,7 +1034,7 @@ public class Player {
     public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
         if(num_in_garrison==maxcapacity)
             return true;
-        if(current_round>=749)
+        if(current_round>=745)
             return true;
         int hp = (int)unit.health();
         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxAttackRange, enemy);
