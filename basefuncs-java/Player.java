@@ -897,6 +897,9 @@ public class Player {
             if(k.team()!=ally) {
                 continue;
             }
+            if(nearbyWorkersFactory(k, k.location().mapLocation(), unit.location().mapLocation().distanceSquaredTo(k.location().mapLocation())-1L).size()>3) {
+                continue;
+            }
             if(k.health()!=k.maxHealth()) {
                 if(gc.canBuild(unit.id(), k.id())) {
                     gc.build(unit.id(), k.id());
@@ -969,6 +972,24 @@ public class Player {
             }
         }
         return null;
+    }
+
+    public static long totalVisibleKarb(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        totalkarb+=gc.karboniteAt(m);
+                    }
+                }
+            }
+        }
+        return totalkarb;
     }
 
     //helper method for workermove
