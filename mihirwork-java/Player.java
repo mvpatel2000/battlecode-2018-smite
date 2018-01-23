@@ -373,8 +373,12 @@ public class Player {
                     }
                 }
                 else {
-                    workerharvest(unit, toKarb);
-                    workermove(unit, toKarb, myKarbs);
+                    if(replicatingrequirements(unit, loc)) {
+                        nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+                    } else {
+                        workerharvest(unit, toKarb);
+                        workermove(unit, toKarb, myKarbs);
+                    }
                 }
             }
         } else {
@@ -382,6 +386,24 @@ public class Player {
             nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
         }
         return;
+    }
+
+    public static boolean replicatingrequirements(Unit myunit, MapLocation myLoc) {
+        int numworkers = nearbyWorkersFactory(myunit, myLoc, 2L).size();
+        long totalkarb=0L;
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        for(Direction dir: dirs) {
+            MapLocation newLoc = myLoc.add(dir);
+            if(gc.canSenseLocation(newLoc)) {
+                totalkarb+=gc.karboniteAt(newLoc);
+            }
+        }
+        System.out.println(totalkarb);
+        if(totalkarb/((long)numworkers)>40L) {
+            return true;
+        }
+        return false;
     }
 
     public static Direction generateKarbDirection(ArrayList<KarbDir> myKarbs, MapLocation loc, Unit unit, ArrayList<Integer> rand_permutation) {
@@ -979,6 +1001,24 @@ public class Player {
             }
         }
         return null;
+    }
+
+    public static long totalVisibleKarb(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        totalkarb+=gc.karboniteAt(m);
+                    }
+                }
+            }
+        }
+        return totalkarb;
     }
 
     public static long totalVisibleKarb(Unit unit, MapLocation myLoc, int visionrad) {
