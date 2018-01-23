@@ -23,13 +23,18 @@ public class Player {
     public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
     public static ArrayList<KarbonitePath> karbonite_path;
 
+
+
     //Stuff we create
     public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
+    public static ArrayList<int[]> ally_locations = new ArrayList<int[]>();
     public static int[][] distance_field = new int[width][height];
     public static ArrayList<Direction>[][] movement_field = new ArrayList[width][height];
+    public static HashMap<Integer, Integer> workers = new HashMap<>();
     public static int[][] random_distance_field = new int[width][height]; //generate random movement field
     public static ArrayList<Direction>[][] random_movement_field = new ArrayList[width][height];
     public static ArrayList<int[]> enemy_buildings = new ArrayList<int[]>();
+    public static ArrayList<Integer> rand_permutation = randomPermutation(9);
     public static boolean doesPathExist = false; //determine if a path exists
     public static double[][] mars_landing = new double[mars_width][mars_height];
     public static int rocket_homing = 0; //are rockets built / how many
@@ -46,7 +51,7 @@ public class Player {
     public static int total_workers = 0;
     public static int total_rangers = 0;
     public static int total_knights = 0;
-    public static int total_healers = 0;    
+    public static int total_healers = 0;
 
     //Constants
     public static final long maxAttackRange = 50L;
@@ -57,11 +62,11 @@ public class Player {
         enemy = Team.Red;   //this is evil team
         if(ally==Team.Red)
             enemy = Team.Blue;
-              
+
         if(myPlanet==Planet.Earth) { //generate landing priorities for rockets
-            generateLandingPriorities();            
+            generateLandingPriorities();
         }
-        
+
         VecUnit initial_units = map.getInitial_units();
         for(int i=0; i<initial_units.size(); i++) { //initial units
             Unit unit = initial_units.get(i);
@@ -70,16 +75,21 @@ public class Player {
                 int[] enemy_info = {enemy_location.getX(), enemy_location.getY(), 0, 0};
                 enemy_locations.add(enemy_info);
             }
-            else
+            else {
                 nikhil_num_workers+=1;
+                MapLocation ally_location = unit.location().mapLocation();
+                int[] ally_info = {ally_location.getX(), ally_location.getY()};
+                ally_locations.add(ally_info);
+            }
         }
-        
+
         buildFieldBFS();       //pathing
         buildRandomField();
-       
+
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
-            if(ally==unit.team()) {                
+            if(ally==unit.team()) {
+                nikhil_num_workers+=1;
                 MapLocation ally_location = unit.location().mapLocation();
                 if(distance_field[ally_location.getX()][ally_location.getY()]<50*50+1) {
                     doesPathExist = true;
@@ -99,22 +109,22 @@ public class Player {
                                     UnitType.Rocket, UnitType.Healer, UnitType.Ranger, UnitType.Ranger}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
-        }                            
+        }
 
-        minworkers=nikhil_num_workers*16; //write a method that does this better
+        minworkers=workerReplicateRatio();
+        rand_permutation = randomPermutation(9);
 
         map_memo = new int[51][51];
         for(int x=0; x<width; x++) for(int y=0; y<height; y++) {
             if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
             else map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
         }
-
+        
         //TODO: Sort so rangers > healers > factories > workers
-        //TODO: if enemy dead, build rockets??        
         while (true) {
-            current_round = (int)gc.round();            
+            current_round = (int)gc.round();
             factories_active = 0; //tracks amount of factories producing units
-            if(current_round%20==0) { //print round number and update random field
+            if(current_round%15==0) { //print round number and update random field
                 System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
                 System.runFinalization();
                 System.gc();
@@ -126,7 +136,7 @@ public class Player {
 
             //TODO: Tune this variable
             VecUnit units = gc.myUnits();
-            if(current_round == 1 || current_round % 15 == 0) {
+            if(current_round == 1 || current_round % 1 == 0) {
                 if((myPlanet == Planet.Earth && current_round < 750) ||
                         (myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
                     karbonite_path = karbonitePath(new int[] {0, 20});
@@ -142,7 +152,7 @@ public class Player {
                         map_memo[loc.getX()][loc.getY()] += a.getKarbonite();
                 }
             }
-
+            workers = new HashMap<>();
             num_rangers = 0;
             num_healers = 0;
             num_knights = 0;
@@ -155,114 +165,35 @@ public class Player {
                     num_healers++;
                 else if(unit_type==UnitType.Knight)
                     num_knights++;
-                else if(unit_type==UnitType.Worker)
+                else if(unit_type==UnitType.Worker) {
                     num_workers++;
+                    workers.put(units.get(i).id(), units.get(i).id());
+                }
             }
             total_rangers+=num_rangers;
             total_healers+=num_healers;
             total_knights+=num_knights;
             total_workers+=num_workers;
-            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {                
-                Unit unit = units.get(unit_counter); 
+            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
+                Unit unit = units.get(unit_counter);
                 if(unit.location().isInGarrison() || unit.location().isInSpace())
-                    continue; 
-                MapLocation myloc = unit.location().mapLocation();              
+                    continue;
+                MapLocation myloc = unit.location().mapLocation();
 
                 // WORKER CODE //
                 //TODO:
                 // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
                 // - tune worker ratio! account for more costly replication
-                if(unit.unitType()==UnitType.Worker) {
-                    MapLocation loc = unit.location().mapLocation();
-                    int x = loc.getX();
-                    int y = loc.getY();
-                    int value = -100000000;
-                    int amount = -1;
-                    Direction toKarb = Direction.Center;
-                    int distance = -1;
-                    for(KarbonitePath k : karbonite_path) {
-                        int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
-                        if(my_value > value) {
-                            value = my_value;
-                            amount = k.amount_field[x][y];
-                            distance = k.distance_field[x][y];
-                            toKarb = k.movement_field[x][y];
-                        }
-                    }
-                    boolean fallback = false;
-                    Direction toNearest = null;
-                    if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
-                        fallback = true;
-                    else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
-                        fallback = true;
-//                  else if(distance < 4) {
-//                      toNearest = nearestKarboniteDir(unit, loc, 7);
-//                      int t = Math.abs(nearestKarbLoc.getX()-x) + Math.abs(nearestKarbLoc.getY()-y);
-//                      if(t >= 4) fallback = true;
-//                  }
 
-                    if(value < -10000000 || fallback) {
-                        ArrayList<KarbDir> a = karboniteSort(unit, unit.location());
-                        if(a.get(0).karb > 0L)
-                            toKarb = a.get(0).dir;
-                        else if(distance > 5) {
-                            toKarb = fuzzyMoveDir(unit, toKarb);
-                        } else {
-                            if(toNearest == null)
-                                toNearest = nearestKarboniteDir(unit, loc, 7);
-                            if(toNearest != null) toKarb = toNearest;
-                            else if(current_round < (width+height)/2) {
-                                toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
-                                            width/2, height/2)));
-                            } else {
-                                toKarb = moveOnRandomFieldDir(unit, loc);
-                            }
-                        }
-                    }
-                    //ArrayList<KarbDir> mykarbs = karboniteSort(unit, unit.location());
-                    if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
-                        //execute build order
-                        if(buildRocket(unit, toKarb, units, 20l)==true) {
-                            continue;
-                        }
-                        else if(buildFactory(unit, toKarb, units, 20l)==true){
-                            continue;
-                        }
-                        else {
-                            if(current_round>225 || doesPathExist==false && current_round>75) { //rocket cap //225 is when we get tech!
-                                //blueprint rocket or (replicate or moveharvest)
-                                int val = blueprintRocket(unit, toKarb, units, 20l);
-                                if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                                    nikhil_num_workers+=(val-2);
-                                } else { //did not degenerate
-                                    num_rockets+=val;
-                                }
-                            }
-                            else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
-                                //blueprint factory or (replicate or moveharvest)
-                                int val = blueprintFactory(unit, toKarb, units, 20l);
-                                if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                                    nikhil_num_workers+=(val-2);
-                                } else { //did not degenerate
-                                    num_factories+=val;
-                                }
-                            }
-                            else {
-                                workerharvest(unit, toKarb);
-                                workermove(unit, toKarb);
-                            }
-                        }
-                    } else {
-                        //replicate or move harvest
-                        nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb);
-                    }
+                if(unit.unitType()==UnitType.Worker) {
+                    runWorker(unit, myloc, units);
                 }
 
                 // RANGER CODE //
                 //TODO: Give rolling fire with snipetarget?
                 //TODO: Charge mechanic
                 //TODO: make rangerAttack not a sort
-                else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {                    
+                else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                     runRanger(unit, myloc);
                 }
 
@@ -285,7 +216,7 @@ public class Player {
 
                 // HEALER CODE //
                 //TODO: Verify overcharge
-                else if(unit.unitType()==UnitType.Healer) {                    
+                else if(unit.unitType()==UnitType.Healer) {
                     runHealer(unit, myloc);
                 }
 
@@ -297,14 +228,161 @@ public class Player {
 
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
-                //TODO: Handle all load sqaures are blocked by workers then wat
+                //TODO: Load less workers
                 else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                     runRocket(unit, myloc);
                 }
             }
 
+            //RunWorker on replicated units
+            VecUnit afterunits = gc.myUnits();
+            int additional_workers = 0;
+            ArrayList<Unit> myaddworkers = new ArrayList<Unit>();
+            for(int i=0; i<afterunits.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
+                Unit myUnit = afterunits.get(i);
+                UnitType unit_type = myUnit.unitType();
+                if(unit_type==UnitType.Worker) {
+                    if(!workers.containsKey(myUnit.id())) {
+                        num_workers++;
+                        additional_workers++;
+                        myaddworkers.add(myUnit);
+                        workers.put(myUnit.id(), myUnit.id());
+                    }
+                }
+            }
+            total_workers+=additional_workers;
+            for(int i=0; i<myaddworkers.size(); i++) {
+                Unit myUnit = myaddworkers.get(i);
+                runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
+            }
+
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    //DETERMINE RATIO
+    public static int workerReplicateRatio() {
+        if(myPlanet==Planet.Mars)
+            return 1;
+        int dist = 0;
+        for(int i=0; i<ally_locations.size(); i++) {
+            int[] ally_loc = ally_locations.get(i);
+            dist+=distance_field[ally_loc[0]][ally_loc[1]];
+        }
+        dist = dist / ally_locations.size();
+        int ret = 0;
+        if(dist<15)
+            ret = 8;
+        else if(dist<60)
+            ret = 10;
+        else
+            ret = 12;
+        System.out.println("Path length: "+dist+" Worker Ratio: "+ret);
+        return ret;
+    }
+
+    //***********************************************************************************//
+    //*********************************** WORKER METHODS ********************************//
+    //***********************************************************************************//
+    public static void runWorker(Unit unit, MapLocation loc, VecUnit units) {
+        ArrayList<KarbDir> myKarbs = karboniteSort(unit, unit.location());
+        Direction toKarb = generateKarbDirection(myKarbs, loc, unit, rand_permutation);
+        if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
+            //execute build order
+            if(buildRocket(unit, toKarb, units, 20l)==true) {
+                return;
+            }
+            else if(buildFactory(unit, toKarb, units, 20l)==true){
+                return;
+            }
+            else {
+                if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
+                    //blueprint rocket or (replicate or moveharvest)
+                    int val = blueprintRocket(unit, toKarb, units, 20l, myKarbs);
+                    if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
+                        nikhil_num_workers+=(val-2);
+                    } else { //did not degenerate
+                        num_rockets+=val;
+                    }
+                }
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
+                    //blueprint factory or (replicate or moveharvest)
+                    int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
+                    if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
+                        nikhil_num_workers+=(val-2);
+                    } else { //did not degenerate
+                        num_factories+=val;
+                    }
+                }
+                else {
+                    workerharvest(unit, toKarb);
+                    workermove(unit, toKarb, myKarbs);
+                }
+            }
+        } else {
+            //replicate or move harvest
+            nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+        }
+        return;
+    }
+
+    public static Direction generateKarbDirection(ArrayList<KarbDir> myKarbs, MapLocation loc, Unit unit, ArrayList<Integer> rand_permutation) {
+        int x = loc.getX();
+        int y = loc.getY();
+        int value = -100000000;
+        int amount = -1;
+        Direction toKarb = Direction.Center;
+        int distance = -1;
+        for(KarbonitePath k : karbonite_path) {
+            if(k.movement_field[x][y] == null) continue;
+            int my_value = k.amount_field[x][y]-k.distance_field[x][y]*6;
+            if(my_value > value) {
+                value = my_value;
+                amount = k.amount_field[x][y];
+                distance = k.distance_field[x][y];
+                Collections.shuffle(rand_permutation);
+                for(int z : rand_permutation) {
+                    if(z >= k.movement_field[x][y].size()) continue;
+                    Direction d = k.movement_field[x][y].get(z);
+                    if(gc.canMove(unit.id(), d)) {
+                        toKarb = d;
+                        break;
+                    }
+                }
+            }
+        }
+        boolean fallback = false;
+        Direction toNearest = null;
+        if(toKarb == Direction.Center && gc.karboniteAt(loc) == 0)
+            fallback = true;
+        else if(toKarb == null || !gc.canMove(unit.id(), toKarb))
+            fallback = true;
+        if(value < -10000000 || fallback) {
+            if(myKarbs.get(0).karb > 0L)
+                toKarb = myKarbs.get(0).dir;
+            else if(distance > 5) {
+                toKarb = fuzzyMoveDir(unit, toKarb);
+            } else {
+                if(toNearest == null)
+                    toNearest = nearestKarboniteDir(unit, loc, 7);
+                if(toNearest != null) toKarb = toNearest;
+                else if(current_round < (width+height)/2) {
+                    toKarb = fuzzyMoveDir(unit, loc.directionTo(new MapLocation(myPlanet,
+                                width/2, height/2)));
+                } else {
+                    toKarb = moveOnRandomFieldDir(unit, loc);
+                }
+            }
+        }
+        return toKarb;
+    }
+    public static ArrayList<Integer> randomPermutation(int l) {
+        ArrayList<Integer> a = new ArrayList<>();
+        for(int x=0; x<l; x++) {
+            a.add(x);
+        }
+        Collections.shuffle(a);
+        return a;
     }
 
     //***********************************************************************************//
@@ -339,7 +417,7 @@ public class Player {
             gc.produceRobot(unit.id(), UnitType.Healer);
         else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
             gc.produceRobot(unit.id(), UnitType.Healer);
-        else
+        else if(num_rangers<60)
             gc.produceRobot(unit.id(), UnitType.Ranger);
     }
 
@@ -361,9 +439,9 @@ public class Player {
         }
         else { //non-combat state
             if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
-                moveOnRandomField(unit, myloc);                        
+                moveOnRandomField(unit, myloc);
             else
-                moveOnVectorField(unit, myloc);                    
+                moveOnVectorField(unit, myloc);
         }
     }
 
@@ -434,9 +512,9 @@ public class Player {
         }
         else { //non-combat state
             if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
-                moveOnRandomField(unit, myloc);                        
+                moveOnRandomField(unit, myloc);
             else
-                moveOnVectorField(unit, myloc);                    
+                moveOnVectorField(unit, myloc);
         }
     }
 
@@ -585,7 +663,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintRocket(Unit unit, Direction toKarb, VecUnit units, long rad) {
+    public static int blueprintRocket(Unit unit, Direction toKarb, VecUnit units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -596,12 +674,12 @@ public class Player {
             } else {
                 //cannot build blueprint
                 workerharvest(unit, toKarb);
-                workermove(unit, toKarb);
+                workermove(unit, toKarb, myKarbs);
                 return 0;
             }
         } else {
             //not enough close workers
-            return (2+replicateOrMoveHarvest(unit, toKarb)); //2+ lets parent method determine whether we replicated or not
+            return (2+replicateOrMoveHarvest(unit, toKarb, myKarbs)); //2+ lets parent method determine whether we replicated or not
         }
     }
 
@@ -679,7 +757,7 @@ public class Player {
     //Blueprint a factory ONLY if there are 2+ workers within range (long rad). In this case, return 1
     //Else, replicate (or moveHarvest, if replication not possible).
     // Return 2(if moveharvest) or 3(if replication succesful)
-    public static int blueprintFactory(Unit unit, Direction toKarb, VecUnit units, long rad) {
+    public static int blueprintFactory(Unit unit, Direction toKarb, VecUnit units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersFactory(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
@@ -690,12 +768,12 @@ public class Player {
             } else {
                 //cannot build blueprint
                 workerharvest(unit, toKarb);
-                workermove(unit, toKarb);
+                workermove(unit, toKarb, myKarbs);
                 return 0;
             }
         } else {
             //not enough close workers
-            return (2+replicateOrMoveHarvest(unit, toKarb)); //2+ lets parent method determine whether we replicated or not
+            return (2+replicateOrMoveHarvest(unit, toKarb, myKarbs)); //2+ lets parent method determine whether we replicated or not
         }
     }
 
@@ -740,13 +818,13 @@ public class Player {
 
     //Replicate if you can, perform harvsestmove if not
     //Returns a number (1 or 0) to indicate number of workers gained
-    public static int replicateOrMoveHarvest(Unit unit, Direction toKarb) {
+    public static int replicateOrMoveHarvest(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
         if(gc.canReplicate(unit.id(), toKarb)) {
             gc.replicate(unit.id(), toKarb);
             return 1;
         }
         workerharvest(unit, toKarb);
-        workermove(unit, toKarb);
+        workermove(unit, toKarb, myKarbs);
         return 0;
     }
 
@@ -791,8 +869,20 @@ public class Player {
         }
     }
 
-    public static void workermove(Unit unit, Direction toKarb) {
+    public static void workermove(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
+        for (KarbDir k : myKarbs) {
+            MapLocation newLoc = myLoc.add(k.dir);
+            if(gc.karboniteAt(newLoc)>0L) {
+                if(gc.canMove(unit.id(), k.dir)) {
+                    if(gc.isMoveReady(unit.id())) {
+                        gc.moveRobot(unit.id(), k.dir);
+                        return;
+                    }
+                }
+            }
+        }
+        //NO KARBONITE NEXT TO WORKER
         MapLocation newLoc = myLoc.add(toKarb);
         if(gc.canMove(unit.id(), toKarb)) {
             if(gc.isMoveReady(unit.id())) {
@@ -801,6 +891,7 @@ public class Player {
         } else {
             fuzzyMove(unit, toKarb);
         }
+        return;
     }
 
     public static MapLocation nearestKarbonite(Unit unit, MapLocation myLoc, int visionrad) {
@@ -921,7 +1012,7 @@ public class Player {
     //max garrison, about to die, or turn 749
     public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
         if(num_in_garrison==maxcapacity)
-            return true;        
+            return true;
         if(current_round>=749)
             return true;
         int hp = (int)unit.health();
@@ -1019,7 +1110,7 @@ public class Player {
         int h = strikeloc.getY();
         int[] shifts = {-1, 0, 1};
         int karblocation = (int)strike.getKarbonite();
-        double karbshift = karblocation/1000.0;   
+        double karbshift = karblocation/1000.0;
         for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
             for(int ysi=0; ysi<shifts.length; ysi++) {
                 int shifted_x = w+shifts[xsi];
@@ -1036,7 +1127,7 @@ public class Player {
 
     //generates count of open adjacent spaces for locations on mars
     //used to land rockets
-    public static void generateLandingPriorities() {        
+    public static void generateLandingPriorities() {
         for(int w=0; w<mars_width; w++) //default initialization
             for(int h=0; h<mars_height; h++)
                 mars_landing[w][h] = 8.0;
@@ -1069,7 +1160,7 @@ public class Player {
         for(int w=0; w<mars_width; w++) {
             for(int h=0; h<mars_height; h++) {
                 int karblocation = (int)mars_map.initialKarboniteAt(new MapLocation(Planet.Mars, w, h));
-                double karbshift = karblocation/1000.0;   
+                double karbshift = karblocation/1000.0;
                 for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
                     for(int ysi=0; ysi<shifts.length; ysi++) {
                         int shifted_x = w+shifts[xsi];
@@ -1284,7 +1375,7 @@ public class Player {
             }
         }
         return myloc.directionTo(nearloc);
-    }    
+    }
 
     //***********************************************************************************//
     //***************************** GENERAL BUILDING METHODS ****************************//
@@ -1336,7 +1427,6 @@ public class Player {
         }
     }
 
-    //fuzzy move direction version
     public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
         int[] shifts = {0, -1, 1, -2, 2};
         int dirindex = 0;
@@ -1353,7 +1443,6 @@ public class Player {
         }
         return Direction.Center;
     }
-
 
     //Moves unit on vector field
     //Should be used if no enemies in sight
@@ -1381,8 +1470,6 @@ public class Player {
             }
         }
     }
-
-    //random field dir
     public static Direction moveOnRandomFieldDir(Unit unit, MapLocation mapLocation) {
         UnitType myUnitType = unit.unitType();
         int x = mapLocation.getX();
@@ -1623,8 +1710,8 @@ public class Player {
         static class KarbonitePath {
         public int[][] distance_field;
         public int[][] amount_field;
-        public Direction[][] movement_field;
-        public KarbonitePath(int[][] amount_field, int[][] distance_field, Direction[][] movement_field) {
+        public ArrayList<Direction>[][] movement_field;
+        public KarbonitePath(int[][] amount_field, int[][] distance_field, ArrayList<Direction>[][] movement_field) {
             this.distance_field = distance_field;
             this.movement_field = movement_field;
             this.amount_field = amount_field;
@@ -1648,7 +1735,7 @@ public class Player {
 
             Queue<int[]> queue = new LinkedList<int[]>();
             int[][] distance_field = new int[51][51];
-            Direction[][] movement_field = new Direction[51][51];
+            ArrayList<Direction>[][] movement_field = new ArrayList[51][51];
             int[][] amount_field = new int[51][51];
             for(int x=0; x<width; x++)
                 for(int y=0; y<height; y++) {
@@ -1668,13 +1755,17 @@ public class Player {
                 int amount = lcc[4];
 
                 if(x<0 || y<0 || x>=width || y>=height ||  //border checks
-                        map_memo[x][y]==-1 || //is not passable
-                        distance_field[x][y]<=depth) { //is an inferior move
+                        map_memo[x][y] == -1 || //is not passable
+                        distance_field[x][y] < depth) { //is an inferior move
                     continue;
+                }
+                else if(distance_field[x][y]==depth) { //add equivalently optimal Direction
+                    movement_field[x][y].add(dirs[dir]);
                 }
                 else if(distance_field[x][y]>depth) { //replace old Directions with more optimal ones
                     distance_field[x][y] = depth;
-                    movement_field[x][y] = dirs[dir];
+                    movement_field[x][y] = new ArrayList<Direction>();
+                    movement_field[x][y].add(dirs[dir]);
                     amount_field[x][y] = amount;
                     int[] lc2 = {x+1,y,  5,depth+1,amount};
                     queue.add(lc2);
@@ -1691,6 +1782,7 @@ public class Player {
                     int[] lc8 = {x,y-1,  3,depth+1,amount};
                     queue.add(lc8);
                     int[] lc9 = {x+1,y-1,4,depth+1,amount};
+                    queue.add(lc9);
                 }
             }
 /*          if(bucket == 0) {
@@ -1703,10 +1795,11 @@ public class Player {
                 if(gc.round() > 18) System.exit(0);
             }*/
             R.add(new KarbonitePath(amount_field, distance_field, movement_field));
-/*          if(current_round == 200) {
-                for(int x=height-1; x>=0; x--) {for(int y=0; y<width; y++) {
+/*          if(current_round == 1 && bucket == 0) {
+                for(int y=height-1; y>=0; y--) {for(int x=0; x<width; x++) {
                     String t = "";
-                    Direction d = movement_field[x][y];
+                    Direction d;
+                    if(movement_field[x][y] == null) d = Direction.Center; else d = movement_field[x][y].get(0);
                         if(d==Direction.North) t = "N ";
                         else if(d==Direction.Northeast) t="NE";
                         else if(d==Direction.East)
@@ -1719,10 +1812,10 @@ public class Player {
                         else if(d==Direction.West) t= "W ";
                         else if(d==Direction.Northwest)
                                              t = "NW";
-                        else t = "C ";
+                        else t = "o ";
 
                     System.out.print(t+" "); }
-                    System.out.println();}}*/
+                    System.out.println();}} */
         }
         return R;
     }
