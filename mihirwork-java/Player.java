@@ -216,19 +216,21 @@ public class Player {
 
                 // HEALER CODE //
                 //TODO: Verify overcharge
+                //TODO: Follow rangers on mars
                 else if(unit.unitType()==UnitType.Healer) {
                     runHealer(unit, myloc);
                 }
 
                 // FACTORY CODE //
-                //TODO: Heuristic to shut off production
+                //TODO:Anti-samosa unloading
                 else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
                     runFactory(unit, myloc);
                 }
 
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
-                //TODO: Load less workers
+                //TODO: Load less healers / more rangers / mages
+                //TODO: optmize launch
                 else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                     runRocket(unit, myloc);
                 }
