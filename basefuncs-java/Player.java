@@ -273,7 +273,9 @@ public class Player {
         }
         dist = dist / ally_locations.size();
         int ret = 0;
-        if(dist<15)
+        if(doesPathExist==false)
+            ret = 6;
+        else if(dist<15)
             ret = 8;
         else if(dist<60)
             ret = 10;

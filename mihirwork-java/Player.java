@@ -273,7 +273,9 @@ public class Player {
         }
         dist = dist / ally_locations.size();
         int ret = 0;
-        if(dist<15)
+        if(doesPathExist==false)
+            ret = 6;
+        else if(dist<15)
             ret = 8;
         else if(dist<60)
             ret = 10;
@@ -307,7 +309,7 @@ public class Player {
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
