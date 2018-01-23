@@ -253,7 +253,7 @@ public class Player {
             total_workers+=additional_workers;
             for(int i=0; i<myaddworkers.size(); i++) {
                 Unit myUnit = myaddworkers.get(i);
-                if(myUnit.location().isInGarrison() || myUnit.location().isInSpace()) {
+                if(!myUnit.location().isInGarrison() && !myUnit.location().isInSpace()) {
                     runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                 }
             }
