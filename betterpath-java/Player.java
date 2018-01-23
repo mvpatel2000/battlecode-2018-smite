@@ -273,7 +273,9 @@ public class Player {
         }
         dist = dist / ally_locations.size();
         int ret = 0;
-        if(dist<15)
+        if(doesPathExist==false)
+            ret = 6;
+        else if(dist<15)
             ret = 8;
         else if(dist<60)
             ret = 10;
@@ -298,7 +300,7 @@ public class Player {
                 return;
             }
             else {
-                if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
+                if(current_round>175 || doesPathExist==false && current_round>125) { //rocket cap
                     //blueprint rocket or (replicate or moveharvest)
                     int val = blueprintRocket(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
@@ -309,7 +311,6 @@ public class Player {
                 }
                 else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
-                    System.out.println("DO SOMETHING");
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
                         nikhil_num_workers+=(val-2);
@@ -318,8 +319,12 @@ public class Player {
                     }
                 }
                 else {
-                    workerharvest(unit, toKarb);
-                    workermove(unit, toKarb, myKarbs);
+                    if(replicatingrequirements(unit, loc)) {
+                        nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+                    } else {
+                        workerharvest(unit, toKarb);
+                        workermove(unit, toKarb, myKarbs);
+                    }
                 }
             }
         } else {
@@ -329,6 +334,23 @@ public class Player {
         return;
     }
 
+    public static boolean replicatingrequirements(Unit myunit, MapLocation myLoc) {
+        int numworkers = nearbyWorkersFactory(myunit, myLoc, 2L).size();
+        long totalkarb=0L;
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        for(Direction dir: dirs) {
+            MapLocation newLoc = myLoc.add(dir);
+            if(gc.canSenseLocation(newLoc)) {
+                totalkarb+=gc.karboniteAt(newLoc);
+            }
+        }
+        System.out.println(totalkarb);
+        if(totalkarb/((long)numworkers)>40L) {
+            return true;
+        }
+        return false;
+    }
     public static Direction generateKarbDirection(ArrayList<KarbDir> myKarbs, MapLocation loc, Unit unit, ArrayList<Integer> rand_permutation) {
         int x = loc.getX();
         int y = loc.getY();
@@ -412,7 +434,9 @@ public class Player {
             return;
         if(total_knights<0)
             gc.produceRobot(unit.id(),UnitType.Knight);
-        else if(num_workers<=0 && gc.canProduceRobot(unit.id(), UnitType.Worker))
+        else if(num_workers<2 && gc.canProduceRobot(unit.id(), UnitType.Worker))
+            gc.produceRobot(unit.id(),UnitType.Worker);
+        else if(current_round>550 && num_workers<4 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
         else if(num_rangers<7)
             gc.produceRobot(unit.id(), UnitType.Ranger);
@@ -844,6 +868,9 @@ public class Player {
             if(k.team()!=ally) {
                 continue;
             }
+            if(nearbyWorkersFactory(k, k.location().mapLocation(), unit.location().mapLocation().distanceSquaredTo(k.location().mapLocation())-1L).size()>3) {
+                continue;
+            }
             if(k.health()!=k.maxHealth()) {
                 if(gc.canBuild(unit.id(), k.id())) {
                     gc.build(unit.id(), k.id());
@@ -918,6 +945,23 @@ public class Player {
         return null;
     }
 
+    public static long totalVisibleKarb(Unit unit, MapLocation myLoc, int visionrad) {
+        int visrad = visionrad;
+        long totalkarb = 0L;
+        int x = myLoc.getX();
+        int y = myLoc.getY();
+        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
+            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
+                MapLocation m = new MapLocation(myPlanet, i, j);
+                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                    if(gc.canSenseLocation(m)) {
+                        totalkarb+=gc.karboniteAt(m);
+                    }
+                }
+            }
+        }
+        return totalkarb;
+    }
     //helper method for workermove
     //returns direction of nearest karbonite, in case there is no karbonite immediately around worker
     //Computationally inefficient, O(n^2), n=visionradius
@@ -979,7 +1023,7 @@ public class Player {
             int allyctr = 0;
             while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                 Unit ally_to_load = allies_to_load.get(allyctr);
-                if(gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<=2)) {
+                if(gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<2)) {
                     gc.load(unit.id(), ally_to_load.id());
                     num_in_garrison++;
                     if(ally_to_load.unitType()==UnitType.Worker)
@@ -1322,38 +1366,6 @@ public class Player {
     //***********************************************************************************//
     //******************************* GENERAL UNIT METHODS ******************************//
     //***********************************************************************************//
-    //TODO: Sort so rangers > healers > factories > workers
-    public static ArrayList<Unit> sortUnits(VecUnit units) {
-        int[][] heuristics = new int[(int)units.size()][2];
-        for(int i=0; i<units.size(); i++) {
-            int hval = 0;
-            Unit enemy = units.get(i);
-            UnitType enemyType = enemy.unitType();
-            if(enemyType==UnitType.Ranger) //is knight and can kill
-                hval=4;
-            if(enemyType==UnitType.Healer) //is knight and can kill
-                hval=5;
-            if(enemyType==UnitType.Factory)
-                hval=6;
-            if(enemyType==UnitType.Worker)
-                hval=7;
-            else {
-                hval=8; //weakest unit
-            }
-            heuristics[i][0] = hval;
-            heuristics[i][1] = i;
-        }
-        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
-            public int compare(int[] a, int[] b) {
-                return b[0] - a[0];
-            }
-        });
-        ArrayList<Unit> sortedUnits = new ArrayList<Unit>();
-        for(int i=0; i<units.size(); i++) {
-            sortedUnits.add(units.get(heuristics[i][1]));
-        }
-        return sortedUnits;
-    }
 
     //Takes MapLocation and a VecUnit
     //Finds unit from VecUnit closest to MapLocation
