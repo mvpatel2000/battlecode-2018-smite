@@ -19,6 +19,7 @@ public class Player {
     public static int initial_workers = 0;
     public static int current_round = 0;
     public static AsteroidPattern asteroid_pattern = gc.asteroidPattern();
+    public static OrbitPattern orbit_pattern = gc.orbitPattern();
     public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
     public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
     public static ArrayList<KarbonitePath> karbonite_path;
@@ -1100,9 +1101,7 @@ public class Player {
 
     //check if rocket launch conditions are met
     //max garrison, about to die, or turn 749
-    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
-        if(num_in_garrison==maxcapacity)
-            return true;
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {        
         if(current_round>=745)
             return true;
         int hp = (int)unit.health();
@@ -1115,6 +1114,9 @@ public class Player {
                 if(hp<=0)
                     return true;
             }
+        }
+        if(num_in_garrison==maxcapacity && orbit_pattern.duration(current_round)<orbit_pattern.duration(current_round+1)+1) {
+            return true;
         }
         return false;
     }
