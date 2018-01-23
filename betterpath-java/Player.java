@@ -122,146 +122,187 @@ public class Player {
         }
 
         while (true) {
-            current_round = (int)gc.round();
-            factories_active = 0; //tracks amount of factories producing units
-            if(current_round%15==0) { //print round number and update random field
-                System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
-                System.runFinalization();
-                System.gc();
-                buildRandomField();
-            }
-            if(myPlanet==Planet.Earth)
-                updateLandingPriorities();
-            buildSnipeTargets(); //build snipe targets
-
-            //TODO: Tune this variable
-            VecUnit unsorted_units = gc.myUnits();
-            ArrayList<Unit> units = sortUnits(unsorted_units);
-            if(current_round == 1 || current_round % 1 == 0) {
-                if((myPlanet == Planet.Earth && current_round < 750) ||
-                        (myPlanet == Planet.Mars)) { // TODO: check if rocket has left
-                    karbonite_path = karbonitePath(new int[] {0, 20});
+            try {
+                current_round = (int)gc.round();
+                factories_active = 0; //tracks amount of factories producing units
+                if(current_round%15==0) { //print round number and update random field
+                    System.out.println("Current round: "+current_round+" Current time: "+gc.getTimeLeftMs());
+                    System.runFinalization();
+                    System.gc();
+                    buildRandomField();
                 }
-            }
+                if(myPlanet==Planet.Earth)
+                    updateLandingPriorities();
+                buildSnipeTargets(); //build snipe targets
 
-            // TODO: check for next asteroids within ~50 rounds
-            if(myPlanet == Planet.Mars) {
-                if(asteroid_pattern.hasAsteroid(current_round)) {
-                    AsteroidStrike a = asteroid_pattern.asteroid(current_round);
-                    MapLocation loc = a.getLocation();
-                    if(map_memo[loc.getX()][loc.getY()] != -1)
-                        map_memo[loc.getX()][loc.getY()] += a.getKarbonite();
-                }
-            }
-            workers = new HashMap<>();
-            num_rangers = 0;
-            num_healers = 0;
-            num_knights = 0;
-            num_workers = 0;
-            for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
-                UnitType unit_type = units.get(i).unitType();
-                if(unit_type==UnitType.Ranger)
-                    num_rangers++;
-                else if(unit_type==UnitType.Healer)
-                    num_healers++;
-                else if(unit_type==UnitType.Knight)
-                    num_knights++;
-                else if(unit_type==UnitType.Worker) {
-                    num_workers++;
-                    workers.put(units.get(i).id(), units.get(i).id());
-                }
-            }
-            total_rangers+=num_rangers;
-            total_healers+=num_healers;
-            total_knights+=num_knights;
-            total_workers+=num_workers;
-            for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
-                Unit unit = units.get(unit_counter);
-                if(unit.location().isInGarrison() || unit.location().isInSpace())
-                    continue;
-                MapLocation myloc = unit.location().mapLocation();
-
-                // WORKER CODE //
-                //TODO:
-                // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
-                // - tune worker ratio! account for more costly replication
-
-                if(unit.unitType()==UnitType.Worker) {
-                    runWorker(unit, myloc, units);
-                }
-
-                // RANGER CODE //
-                //TODO: Give rolling fire with snipetarget?
-                //TODO: Charge mechanic
-                //TODO: make rangerAttack not a sort
-                else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
-                    runRanger(unit, myloc);
-                }
-
-                // KNIGHT CODE //
-                //TODO: update movement method priority
-                //TODO: Move towards better enemy
-                //TODO: Figure javelin
-                else if(unit.unitType()==UnitType.Knight) {
-                    runKnight(unit, myloc);
-                }
-
-                // MAGE CODE //
-                //TODO: Update Mage attack
-                //TODO: Update movement method priority
-                //TODO: move in a better way
-                //TODO: Figure out blink
-                else if(unit.unitType()==UnitType.Mage) {
-                    runMage(unit, myloc);
-                }
-
-                // HEALER CODE //
-                //TODO: Verify overcharge
-                //TODO: Follow rangers on mars
-                else if(unit.unitType()==UnitType.Healer) {
-                    runHealer(unit, myloc);
-                }
-
-                // FACTORY CODE //
-                //TODO:Anti-samosa unloading
-                else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
-                    runFactory(unit, myloc);
-                }
-
-                // ROCKET CODE //
-                //TODO: make units go away from rocket b4 launch
-                //TODO: Load less healers / more rangers / mages
-                //TODO: optmize launch timing to improve speed
-                else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
-                    runRocket(unit, myloc);
-                }
-            }
-
-            //RunWorker on replicated units
-            VecUnit unsorted_afterunits = gc.myUnits();
-            ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
-            int additional_workers = 0;
-            ArrayList<Unit> myaddworkers = new ArrayList<Unit>();
-            for(int i=0; i<afterunits.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
-                Unit myUnit = afterunits.get(i);
-                UnitType unit_type = myUnit.unitType();
-                if(unit_type==UnitType.Worker) {
-                    if(!workers.containsKey(myUnit.id())) {
-                        num_workers++;
-                        additional_workers++;
-                        myaddworkers.add(myUnit);
-                        workers.put(myUnit.id(), myUnit.id());
+                //TODO: Tune this variable
+                VecUnit unsorted_units = gc.myUnits();
+                ArrayList<Unit> units = sortUnits(unsorted_units);
+                if(current_round == 1 || current_round % 1 == 0) {
+                    if((myPlanet == Planet.Earth && current_round < 750) ||
+                            (myPlanet == Planet.Mars)) { // TODO: check if rocket has left
+                        karbonite_path = karbonitePath(new int[] {0, 20});
                     }
                 }
-            }
-            total_workers+=additional_workers;
-            for(int i=0; i<myaddworkers.size(); i++) {
-                Unit myUnit = myaddworkers.get(i);
-                if(!myUnit.location().isInGarrison() && !myUnit.location().isInSpace()) {
-                    runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
-                }
-            }
 
+                // TODO: check for next asteroids within ~50 rounds
+                if(myPlanet == Planet.Mars) {
+                    if(asteroid_pattern.hasAsteroid(current_round)) {
+                        AsteroidStrike a = asteroid_pattern.asteroid(current_round);
+                        MapLocation loc = a.getLocation();
+                        if(map_memo[loc.getX()][loc.getY()] != -1)
+                            map_memo[loc.getX()][loc.getY()] += a.getKarbonite();
+                    }
+                }
+                workers = new HashMap<>();
+                num_rangers = 0;
+                num_healers = 0;
+                num_knights = 0;
+                num_workers = 0;
+                for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
+                    UnitType unit_type = units.get(i).unitType();
+                    if(unit_type==UnitType.Ranger)
+                        num_rangers++;
+                    else if(unit_type==UnitType.Healer)
+                        num_healers++;
+                    else if(unit_type==UnitType.Knight)
+                        num_knights++;
+                    else if(unit_type==UnitType.Worker) {
+                        num_workers++;
+                        workers.put(units.get(i).id(), units.get(i).id());
+                    }
+                }
+                total_rangers+=num_rangers;
+                total_healers+=num_healers;
+                total_knights+=num_knights;
+                total_workers+=num_workers;
+
+                //primary loop
+                for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
+                    try {
+                        Unit unit = units.get(unit_counter);
+                        if(unit.location().isInGarrison() || unit.location().isInSpace())
+                            continue;
+                        MapLocation myloc = unit.location().mapLocation();
+
+                        // WORKER CODE //
+                        //TODO:
+                        // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
+                        // - tune worker ratio! account for more costly replication
+
+                        if(unit.unitType()==UnitType.Worker) {
+                            try {
+                                runWorker(unit, myloc, units);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // RANGER CODE //
+                        //TODO: Give rolling fire with snipetarget?
+                        //TODO: Charge mechanic
+                        //TODO: make rangerAttack not a sort
+                        else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
+                            try {
+                                runRanger(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // KNIGHT CODE //
+                        //TODO: update movement method priority
+                        //TODO: Move towards better enemy
+                        //TODO: Figure javelin
+                        else if(unit.unitType()==UnitType.Knight) {
+                            try {
+                                runKnight(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // MAGE CODE //
+                        //TODO: Update Mage attack
+                        //TODO: Update movement method priority
+                        //TODO: move in a better way
+                        //TODO: Figure out blink
+                        else if(unit.unitType()==UnitType.Mage) {
+                            try {
+                                runMage(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // HEALER CODE //
+                        //TODO: Verify overcharge
+                        //TODO: Follow rangers on mars
+                        else if(unit.unitType()==UnitType.Healer) {
+                            try {
+                                runHealer(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // FACTORY CODE //
+                        //TODO:Anti-samosa unloading
+                        else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
+                            try {
+                                runFactory(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+
+                        // ROCKET CODE //
+                        //TODO: make units go away from rocket b4 launch
+                        //TODO: Load less healers / more rangers / mages
+                        //TODO: optmize launch timing to improve speed
+                        else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
+                            try {
+                                runRocket(unit, myloc);
+                            } catch(Exception e) {
+                                System.out.println("Error: "+e); 
+                            }
+                        }
+                    } catch(Exception e) {
+                        System.out.println("Error: "+e); 
+                    }
+                }
+
+                //RunWorker on replicated units
+                VecUnit unsorted_afterunits = gc.myUnits();
+                ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
+                int additional_workers = 0;
+                ArrayList<Unit> myaddworkers = new ArrayList<Unit>();
+                for(int i=0; i<afterunits.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
+                    Unit myUnit = afterunits.get(i);
+                    UnitType unit_type = myUnit.unitType();
+                    if(unit_type==UnitType.Worker) {
+                        if(!workers.containsKey(myUnit.id())) {
+                            num_workers++;
+                            additional_workers++;
+                            myaddworkers.add(myUnit);
+                            workers.put(myUnit.id(), myUnit.id());
+                        }
+                    }
+                }
+                total_workers+=additional_workers;
+                for(int i=0; i<myaddworkers.size(); i++) {
+                    try {
+                        Unit myUnit = myaddworkers.get(i);
+                        if(!myUnit.location().isInGarrison() && !myUnit.location().isInSpace()) {
+                            runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
+                        }
+                    } catch(Exception e) {
+                        System.out.println("Error: "+e); 
+                    }
+                }
+            } catch(Exception e) {
+                System.out.println("Error: "+e); 
+            }
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
@@ -1150,6 +1191,9 @@ public class Player {
         }
         if(num_in_garrison==maxcapacity && orbit_pattern.duration(current_round)<orbit_pattern.duration(current_round+1)+1) {
             return true;
+        }
+        else if(num_in_garrison==maxcapacity) {
+            removeRocketLocation(unit, myloc);
         }
         return false;
     }
