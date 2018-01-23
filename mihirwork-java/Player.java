@@ -200,7 +200,6 @@ public class Player {
 
                         // RANGER CODE //
                         //TODO: Give rolling fire with snipetarget?
-                        //TODO: Charge mechanic
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                             try {
@@ -237,7 +236,6 @@ public class Player {
 
                         // HEALER CODE //
                         //TODO: Verify overcharge
-                        //TODO: Follow rangers on mars
                         else if(unit.unitType()==UnitType.Healer) {
                             try {
                                 runHealer(unit, myloc);
@@ -258,7 +256,6 @@ public class Player {
 
                         // ROCKET CODE //
                         //TODO: make units go away from rocket b4 launch
-                        //TODO: Load less healers / more rangers / mages
                         //TODO: optmize launch timing to improve speed
                         else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                             try {
