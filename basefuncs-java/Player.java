@@ -273,17 +273,50 @@ public class Player {
             dist+=distance_field[ally_loc[0]][ally_loc[1]];
         }
         dist = dist / ally_locations.size();
+        int karbfactor = karboniteNearWorker();
+        System.out.println(karbfactor);
+
         int ret = 0;
         if(doesPathExist==false)
             ret = 6;
         else if(dist<15)
             ret = 8;
+        else if(dist<60 && karbfactor>200)
+            ret = 14;
         else if(dist<60)
             ret = 10;
+        else if(karbfactor>400)
+            ret = 20;
+        else if(karbfactor>200)
+            ret = 16;
         else
             ret = 12;
-        System.out.println("Path length: "+dist+" Worker Ratio: "+ret);
+        System.out.println("Karb Factor: "+karbfactor+" Path length: "+dist+" Worker Ratio: "+ret);
         return ret;
+    }
+
+    //calcualtes karbonite near workers for ratio determination
+    public static int karboniteNearWorker() {
+        int total_karb_level = 0;
+        for(int i=0; i<ally_locations.size(); i++) {
+            int karbonite_level = 0;
+            int[] ally_loc = ally_locations.get(i);
+            int idealw = ally_loc[0];
+            int idealh = ally_loc[1];
+            int[] shifts = {-3, -2, -1, 0, 1, 2, 3}; //update available squares
+            for(int xsi=0; xsi<shifts.length; xsi++) {
+                for(int ysi=0; ysi<shifts.length; ysi++) {
+                    int shifted_x = idealw+shifts[xsi];
+                    int shifted_y = idealh+shifts[ysi];
+                    if(shifted_x>=0 && shifted_x<width && shifted_y>=0 && shifted_y<height) {
+                        karbonite_level+=(int)gc.karboniteAt(new MapLocation(myPlanet, shifted_x, shifted_y));
+                    }
+                }
+            }
+            total_karb_level+=karbonite_level;
+        }
+        total_karb_level = total_karb_level/ally_locations.size();
+        return total_karb_level;
     }
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
@@ -324,7 +357,7 @@ public class Player {
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<2)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && (gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
