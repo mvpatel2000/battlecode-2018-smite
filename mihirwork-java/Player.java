@@ -1021,24 +1021,6 @@ public class Player {
         return totalkarb;
     }
 
-    public static long totalVisibleKarb(Unit unit, MapLocation myLoc, int visionrad) {
-        int visrad = visionrad;
-        long totalkarb = 0L;
-        int x = myLoc.getX();
-        int y = myLoc.getY();
-        for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)map.getWidth()+1); i++) {
-            for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)map.getHeight()+1); j++) {
-                MapLocation m = new MapLocation(myPlanet, i, j);
-                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
-                    if(gc.canSenseLocation(m)) {
-                        totalkarb+=gc.karboniteAt(m);
-                    }
-                }
-            }
-        }
-        return totalkarb;
-    }
-
     //helper method for workermove
     //returns direction of nearest karbonite, in case there is no karbonite immediately around worker
     //Computationally inefficient, O(n^2), n=visionradius
