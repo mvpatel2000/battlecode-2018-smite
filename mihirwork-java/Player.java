@@ -364,7 +364,7 @@ public class Player {
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
         ArrayList<Unit> ret = new ArrayList<Unit>();
-        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Healer, UnitType.Factory, UnitType.Worker};
+        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Knight, UnitType.Mage, UnitType.Healer, UnitType.Factory, UnitType.Worker};
         for(int i=0; i<types.length; i++) {
             UnitType ut = types[i];
             for(int x=0; x<units.size(); x++) {
@@ -537,7 +537,10 @@ public class Player {
         if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) &&
             gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
-        if(total_knights<0)
+
+        int distance_to_enemy = distance_field[myloc.getX()][myloc.getY()];
+
+        if(distance_to_enemy<10 && total_knights<2)
             gc.produceRobot(unit.id(),UnitType.Knight);
         else if(num_workers<2 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
@@ -631,7 +634,7 @@ public class Player {
     //***********************************************************************************//
 
     public static void runKnight(Unit unit, MapLocation myloc)  {
-        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
+        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
             MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -801,7 +804,7 @@ public class Player {
     public static int blueprintRocket(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
-        if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
+        if(closeWorkers.size()>0) { //includes the original worker, we want three workers per factory
             Direction blueprintDirection = optimalDirectionRocket(unit, myLoc, closeWorkers);
             if(blueprintDirection!=null) {
                 gc.blueprint(unit.id(), UnitType.Rocket, blueprintDirection);
