@@ -99,7 +99,7 @@ public class Player {
         }
 
         if(doesPathExist==false) { //research
-            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger, 
+            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
                                     UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
@@ -119,7 +119,7 @@ public class Player {
             if(map.isPassableTerrainAt(new MapLocation(myPlanet, x, y))==0) map_memo[x][y] = -1;
             else map_memo[x][y] = (int)map.initialKarboniteAt(new MapLocation(myPlanet, x, y));
         }
-        
+
         //TODO: Sort so rangers > healers > factories > workers
         while (true) {
             current_round = (int)gc.round();
@@ -138,7 +138,7 @@ public class Player {
             VecUnit units = gc.myUnits();
             if(current_round == 1 || current_round % 1 == 0) {
                 if((myPlanet == Planet.Earth && current_round < 750) ||
-                        (myPlanet == Planet.Mars && current_round >= 400)) { // TODO: check if rocket has left
+                        (myPlanet == Planet.Mars)) { // TODO: check if rocket has left
                     karbonite_path = karbonitePath(new int[] {0, 20});
                 }
             }
@@ -253,7 +253,9 @@ public class Player {
             total_workers+=additional_workers;
             for(int i=0; i<myaddworkers.size(); i++) {
                 Unit myUnit = myaddworkers.get(i);
-                runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
+                if(myUnit.location().isInGarrison() || myUnit.location().isInSpace()) {
+                    runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
+                }
             }
 
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
@@ -404,7 +406,7 @@ public class Player {
     }
 
     public static void produceUnit(Unit unit, MapLocation myloc) {
-        if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) && 
+        if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) &&
             gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
         if(total_knights<0)
