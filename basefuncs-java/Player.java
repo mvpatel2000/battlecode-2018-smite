@@ -350,7 +350,7 @@ public class Player {
                 return;
             }
             else {
-                if(current_round>450 || doesPathExist==false && current_round>125) { //rocket cap
+                if(current_round>175 || doesPathExist==false && current_round>125) { //rocket cap
                     //blueprint rocket or (replicate or moveharvest)
                     int val = blueprintRocket(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
