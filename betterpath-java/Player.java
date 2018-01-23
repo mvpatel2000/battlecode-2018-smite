@@ -341,6 +341,9 @@ public class Player {
     public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
         ArrayList<KarbDir> myKarbs = karboniteSort(unit, unit.location());
         Direction toKarb = generateKarbDirection(myKarbs, loc, unit, rand_permutation);
+        if(enemy_locations.size()==0) { //add enemy locations
+            updateEnemies();
+        }
         if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
             //execute build order
             if(buildRocket(unit, toKarb, units, 20l)==true) {
@@ -629,6 +632,9 @@ public class Player {
     public static void runHealer(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_range = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
         if(true && enemies_in_range.size()>0) {      //combat state //ADD CHARGE MECHANIC
+            if(enemy_locations.size()==0) { //add enemy locations
+                updateEnemies();
+            }
             Direction toMoveDir = getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
             fuzzyMove(unit, toMoveDir);
         }
@@ -1045,19 +1051,26 @@ public class Player {
             VecUnit allies_to_load = gc.senseNearbyUnitsByTeam(myloc, 2, ally);
             VecUnitID garrison = unit.structureGarrison();
             int workers_in_garrison = 0;
-            for(int i=0; i<garrison.size(); i++)
-                if(gc.unit(garrison.get(i)).unitType()==UnitType.Worker)
+            int healers_in_garrison = 0;
+            for(int i=0; i<garrison.size(); i++) {
+                UnitType test = gc.unit(garrison.get(i)).unitType();
+                if(test==UnitType.Worker)
                     workers_in_garrison++;
+                if(test==UnitType.Healer)
+                    healers_in_garrison++;
+            }
             int maxcapacity = (int)unit.structureMaxCapacity();
             int num_in_garrison = (int)garrison.size();
             int allyctr = 0;
             while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                 Unit ally_to_load = allies_to_load.get(allyctr);
-                if(gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<2)) {
+                if(gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<2) && (ally_to_load.unitType()!=UnitType.Healer || healers_in_garrison<3)) {
                     gc.load(unit.id(), ally_to_load.id());
                     num_in_garrison++;
                     if(ally_to_load.unitType()==UnitType.Worker)
                         workers_in_garrison++;
+                    if(ally_to_load.unitType()==UnitType.Healer)
+                        healers_in_garrison++;
                 }
                 allyctr++;
             }
