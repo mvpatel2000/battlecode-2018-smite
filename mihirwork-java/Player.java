@@ -387,10 +387,10 @@ public class Player {
         }
         if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
             //execute build order
-            if(buildRocket(unit, toKarb, units, 20l)==true) {
+            if(buildRocket(unit, toKarb, units, 8L)==true) {
                 return;
             }
-            else if(buildFactory(unit, toKarb, units, 20l)==true){
+            else if(buildFactory(unit, toKarb, units, 20L)==true){
                 return;
             }
             else {

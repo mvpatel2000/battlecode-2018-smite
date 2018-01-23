@@ -390,7 +390,7 @@ public class Player {
             if(buildRocket(unit, toKarb, units, 20l)==true) {
                 return;
             }
-            else if(buildFactory(unit, toKarb, units, 20l)==true){
+            else if(buildFactory(unit, toKarb, units, 8L)==true){
                 return;
             }
             else {
