@@ -277,7 +277,6 @@ public class Player {
         }
         dist = dist / ally_locations.size();
         int karbfactor = karboniteNearWorker();
-        System.out.println(karbfactor);
 
         int ret = 0;
         if(doesPathExist==false)
@@ -381,7 +380,17 @@ public class Player {
                     }
                 }
             }
-        } else {
+        }
+        else if(myPlanet==Planet.Mars) {
+            if(replicatingrequirements(unit, loc)) {
+                nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+            } 
+            else {
+                workerharvest(unit, toKarb);
+                workermove(unit, toKarb, myKarbs);
+            }
+        } 
+        else {
             //replicate or move harvest
             nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
         }
@@ -399,7 +408,7 @@ public class Player {
                 totalkarb+=gc.karboniteAt(newLoc);
             }
         }
-        System.out.println(totalkarb);
+        //System.out.println(totalkarb);
         if(totalkarb/((long)numworkers)>40L) {
             return true;
         }
@@ -1131,11 +1140,13 @@ public class Player {
         for(int i=0; i<enemies_in_range.size(); i++) {
             Unit enem = enemies_in_range.get(i);
             int dist = (int)enem.location().mapLocation().distanceSquaredTo(myloc);
-            if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
-                hp -= enem.damage();
-                if(hp<=0)
-                    return true;
-            }
+            try {
+                if((int)enem.attackHeat()-10<10 && enem.attackRange()>dist) { //can do damage
+                    hp -= enem.damage();
+                    if(hp<=0)
+                        return true;
+                }
+            } catch(Exception e) {}
         }
         if(num_in_garrison==maxcapacity && orbit_pattern.duration(current_round)<orbit_pattern.duration(current_round+1)+1) {
             return true;
