@@ -403,7 +403,7 @@ public class Player {
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && (gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && ((int)gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
@@ -423,7 +423,7 @@ public class Player {
             }
         }
         else if(myPlanet==Planet.Mars) {
-            if(replicatingrequirements(unit, loc)) {
+            if(replicatingrequirements(unit, loc) || (int)gc.karbonite()>300 || current_round>750) {
                 nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
             } 
             else {
@@ -549,7 +549,7 @@ public class Player {
             gc.produceRobot(unit.id(), UnitType.Healer);
         else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
             gc.produceRobot(unit.id(), UnitType.Healer);
-        else if(num_rangers<60)
+        else if(num_rangers<60 || (int)gc.karbonite()>500)
             gc.produceRobot(unit.id(), UnitType.Ranger);
     }
 
@@ -1462,7 +1462,7 @@ public class Player {
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Ranger, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index
