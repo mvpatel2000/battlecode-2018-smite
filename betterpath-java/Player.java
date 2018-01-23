@@ -1323,11 +1323,9 @@ public class Player {
     //******************************* GENERAL UNIT METHODS ******************************//
     //***********************************************************************************//
     //TODO: Sort so rangers > healers > factories > workers
-    /*
     public static ArrayList<Unit> sortUnits(VecUnit units) {
-        ArrayList<Integer[]> heuristic = new ArrayList<Integer[]>();
+        int[][] heuristics = new int[(int)units.size()][2];
         for(int i=0; i<units.size(); i++) {
-            Integer[] heuro = new INteger[2];
             int hval = 0;
             Unit enemy = units.get(i);
             UnitType enemyType = enemy.unitType();
@@ -1342,21 +1340,20 @@ public class Player {
             else {
                 hval=8; //weakest unit
             }
-            heuro[0]=i;
-            heuro[1]=hval;
-            heuristic.add(heuro);
+            heuristics[i][0] = hval;
+            heuristics[i][1] = i;
         }
-        Collections.sort(heuristic, new Comparator<Integer[]>() { //sort by heuristic
-            public int compare(Integer[] a, Integer[] b) {
-                return b[1] - a[1];
+        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
+            public int compare(int[] a, int[] b) {
+                return b[0] - a[0];
             }
         });
         ArrayList<Unit> sortedUnits = new ArrayList<Unit>();
         for(int i=0; i<units.size(); i++) {
-            sortedUnits.add(units.get(heuristic.get(i)[0]));
+            sortedUnits.add(units.get(heuristics[i][1]));
         }
         return sortedUnits;
-    }*/
+    }
 
     //Takes MapLocation and a VecUnit
     //Finds unit from VecUnit closest to MapLocation
