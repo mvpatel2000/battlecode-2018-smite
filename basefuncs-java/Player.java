@@ -230,7 +230,7 @@ public class Player {
                 // ROCKET CODE //
                 //TODO: make units go away from rocket b4 launch
                 //TODO: Load less healers / more rangers / mages
-                //TODO: optmize launch
+                //TODO: optmize launch timing to improve speed
                 else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                     runRocket(unit, myloc);
                 }
