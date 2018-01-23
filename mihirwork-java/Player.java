@@ -573,8 +573,9 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
+            }
             else
                 moveOnVectorField(unit, myloc);
         }
@@ -646,8 +647,9 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
+            }
             else
                 moveOnVectorField(unit, myloc);
         }
@@ -715,7 +717,7 @@ public class Player {
             fuzzyMove(unit, toMoveDir);
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
             }
             else {
@@ -1382,7 +1384,7 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
             }
             else {
