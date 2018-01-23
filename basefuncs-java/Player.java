@@ -307,7 +307,7 @@ public class Player {
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<1)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>25 && (gc.karbonite()>200+(50-width))) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
