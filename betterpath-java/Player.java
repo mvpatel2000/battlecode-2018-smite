@@ -100,14 +100,16 @@ public class Player {
         }
 
         if(doesPathExist==false) { //research
-            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
-                                    UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer}; //research queue
+            //50 75 100 200 300 325 //425 525 725 825 900 975
+            UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
+                                    UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
-                                    UnitType.Rocket, UnitType.Healer, UnitType.Ranger, UnitType.Ranger}; //research queue
+            //25 50 150 200 225 325 //425 525 725 825 900 975
+            UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
@@ -959,6 +961,13 @@ public class Player {
         if(gc.canReplicate(unit.id(), toKarb)) {
             gc.replicate(unit.id(), toKarb);
             return 1;
+        } else {
+            for (KarbDir k : mykarbs) {
+                if(gc.canReplicate(unit.id(), k.dir)) {
+                    gc.replicate(unit.id(), k.dir);
+                    return 1;
+                }
+            }
         }
         workerharvest(unit, toKarb);
         workermove(unit, toKarb, myKarbs);
@@ -1100,6 +1109,7 @@ public class Player {
         }
         return null;
     }
+
     //sort directions, regardless of movement ability, by karbonite content
     public static ArrayList<KarbDir> onlyKarbs(Unit unit, Location theloc) {
         MapLocation myLoc = theloc.mapLocation();
@@ -1427,6 +1437,8 @@ public class Player {
 
     //updates snipe list to contain all buildings
     public static void buildSnipeTargets() {
+        if(current_round%10==0)
+            enemy_buildings.clear();
         VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy); //all enemies
         for(int i = 0; i<total_enemies.size(); i++) {
             Unit enemy_unit = total_enemies.get(i);
@@ -1455,6 +1467,45 @@ public class Player {
                     continue;
                 MapLocation enem_loc = enemy_unit.location().mapLocation();
                 int[] building_info = {7, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Healer) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Mage) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Worker) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
                 enemy_buildings.add(building_info);
             }
         }
