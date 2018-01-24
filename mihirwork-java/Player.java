@@ -100,14 +100,16 @@ public class Player {
         }
 
         if(doesPathExist==false) { //research
-            UnitType[] rarray = {UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
-                                    UnitType.Healer, UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer}; //research queue
+            //50 75 100 200 300 325 //425 525 725 825 900 975
+            UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Worker, UnitType.Rocket, UnitType.Rocket, UnitType.Ranger,
+                                    UnitType.Healer, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
         else {
-            UnitType[] rarray = {UnitType.Worker, UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Rocket,
-                                    UnitType.Rocket, UnitType.Healer, UnitType.Ranger, UnitType.Ranger}; //research queue
+            //25 50 150 200 225 325 //425 525 725 825 900 975
+            UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket, 
+                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 gc.queueResearch(rarray[i]);
         }
@@ -1001,11 +1003,16 @@ public class Player {
 
     //harvest in the optimal direction
     public static void workerharvest(Unit unit, Direction toKarb) {
+        ArrayList<KarbDir> whatkarbs = onlyKarbs(unit, unit.location());
         MapLocation myLoc = unit.location().mapLocation();
-        MapLocation newLoc = myLoc.add(toKarb);
-        if(gc.canHarvest(unit.id(), toKarb)){
-            gc.harvest(unit.id(), toKarb);
-            return;
+        for (KarbDir k : whatkarbs) {
+            MapLocation newLoc = myLoc.add(k.dir);
+            if(gc.karboniteAt(newLoc)>0L) {
+                if(gc.canHarvest(unit.id(), k.dir)){
+                    gc.harvest(unit.id(), k.dir);
+                    return;
+                }
+            }
         }
     }
 
@@ -1094,6 +1101,24 @@ public class Player {
             }
         }
         return null;
+    }
+
+    //sort directions, regardless of movement ability, by karbonite content
+    public static ArrayList<KarbDir> onlyKarbs(Unit unit, Location theloc) {
+        MapLocation myLoc = theloc.mapLocation();
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        ArrayList<KarbDir> karboniteDirections = new ArrayList<KarbDir>();
+        long mykarb = 0L;
+        for (int i=0; i<dirs.length; i++) {
+            try {
+                MapLocation newloc = myLoc.add(dirs[i]);
+                long thiskarb = gc.karboniteAt(newloc);
+                karboniteDirections.add(new KarbDir(dirs[i], thiskarb));
+            } catch(Exception e) {}
+        }
+        Collections.sort(karboniteDirections, Collections.reverseOrder()); //sort high to low
+        return karboniteDirections;
     }
 
     //sort directions by karbonite content
@@ -1405,6 +1430,8 @@ public class Player {
 
     //updates snipe list to contain all buildings
     public static void buildSnipeTargets() {
+        if(current_round%10==0)
+            enemy_buildings.clear();
         VecUnit total_enemies = gc.senseNearbyUnitsByTeam(new MapLocation(myPlanet, width/2, height/2), width*height/2, enemy); //all enemies
         for(int i = 0; i<total_enemies.size(); i++) {
             Unit enemy_unit = total_enemies.get(i);
@@ -1433,6 +1460,45 @@ public class Player {
                     continue;
                 MapLocation enem_loc = enemy_unit.location().mapLocation();
                 int[] building_info = {7, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Healer) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Mage) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+                enemy_buildings.add(building_info);
+            }
+            else if(enemy_unit.unitType()==UnitType.Worker) { //if rocket
+                for(int targs=0; targs<enemy_buildings.size(); targs++) { //check if already marked
+                    if(enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
                 enemy_buildings.add(building_info);
             }
         }
