@@ -200,7 +200,6 @@ public class Player {
 
                         // RANGER CODE //
                         //TODO: Give rolling fire with snipetarget?
-                        //TODO: Charge mechanic
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                             try {
@@ -237,7 +236,6 @@ public class Player {
 
                         // HEALER CODE //
                         //TODO: Verify overcharge
-                        //TODO: Follow rangers on mars
                         else if(unit.unitType()==UnitType.Healer) {
                             try {
                                 runHealer(unit, myloc);
@@ -258,7 +256,6 @@ public class Player {
 
                         // ROCKET CODE //
                         //TODO: make units go away from rocket b4 launch
-                        //TODO: Load less healers / more rangers / mages
                         //TODO: optmize launch timing to improve speed
                         else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                             try {
@@ -396,14 +393,14 @@ public class Player {
             else {
                 if(current_round>175 || doesPathExist==false && current_round>125) { //rocket cap
                     //blueprint rocket or (replicate or moveharvest)
-                    int val = blueprintRocket(unit, toKarb, units, 8l, myKarbs);
+                    int val = blueprintRocket(unit, toKarb, units, 8L, myKarbs);
                     if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
                         nikhil_num_workers+=(val-2);
                     } else { //did not degenerate
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && ((int)gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && ((int)gc.karbonite()>200+(50-width)) && num_factories<7) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
@@ -573,8 +570,9 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
+            }
             else
                 moveOnVectorField(unit, myloc);
         }
@@ -646,8 +644,9 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0)
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
+            }
             else
                 moveOnVectorField(unit, myloc);
         }
@@ -715,7 +714,7 @@ public class Player {
             fuzzyMove(unit, toMoveDir);
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
             }
             else {
@@ -1002,11 +1001,16 @@ public class Player {
 
     //harvest in the optimal direction
     public static void workerharvest(Unit unit, Direction toKarb) {
+        ArrayList<KarbDir> whatkarbs = onlyKarbs(unit, unit.location());
         MapLocation myLoc = unit.location().mapLocation();
-        MapLocation newLoc = myLoc.add(toKarb);
-        if(gc.canHarvest(unit.id(), toKarb)){
-            gc.harvest(unit.id(), toKarb);
-            return;
+        for (KarbDir k : whatkarbs) {
+            MapLocation newLoc = myLoc.add(k.dir);
+            if(gc.karboniteAt(newLoc)>0L) {
+                if(gc.canHarvest(unit.id(), k.dir)){
+                    gc.harvest(unit.id(), k.dir);
+                    return;
+                }
+            }
         }
     }
 
@@ -1095,6 +1099,23 @@ public class Player {
             }
         }
         return null;
+    }
+    //sort directions, regardless of movement ability, by karbonite content
+    public static ArrayList<KarbDir> onlyKarbs(Unit unit, Location theloc) {
+        MapLocation myLoc = theloc.mapLocation();
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        ArrayList<KarbDir> karboniteDirections = new ArrayList<KarbDir>();
+        long mykarb = 0L;
+        for (int i=0; i<dirs.length; i++) {
+            try {
+                MapLocation newloc = myLoc.add(dirs[i]);
+                long thiskarb = gc.karboniteAt(newloc);
+                karboniteDirections.add(new KarbDir(dirs[i], thiskarb));
+            } catch(Exception e) {}
+        }
+        Collections.sort(karboniteDirections, Collections.reverseOrder()); //sort high to low
+        return karboniteDirections;
     }
 
     //sort directions by karbonite content
@@ -1382,7 +1403,7 @@ public class Player {
             }
         }
         else { //non-combat state
-            if( (doesPathExist==false && rocket_homing==0) || enemy_locations.size()==0) {
+            if( (doesPathExist==false && myPlanet==Planet.Earth && rocket_homing==0) || enemy_locations.size()==0) {
                 moveOnRandomField(unit, myloc);
             }
             else {
