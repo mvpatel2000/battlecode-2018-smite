@@ -194,7 +194,7 @@ public class Player {
                             try {
                                 runWorker(unit, myloc, units);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -206,7 +206,7 @@ public class Player {
                             try {
                                 runRanger(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -218,7 +218,7 @@ public class Player {
                             try {
                                 runKnight(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -231,7 +231,7 @@ public class Player {
                             try {
                                 runMage(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -242,7 +242,7 @@ public class Player {
                             try {
                                 runHealer(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -252,7 +252,7 @@ public class Player {
                             try {
                                 runFactory(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -264,11 +264,11 @@ public class Player {
                             try {
                                 runRocket(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
 
@@ -297,11 +297,11 @@ public class Player {
                             runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
             } catch(Exception e) {
-                System.out.println("Error: "+e); 
+                System.out.println("Error: "+e);
             }
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
@@ -364,7 +364,7 @@ public class Player {
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
         ArrayList<Unit> ret = new ArrayList<Unit>();
-        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Healer, UnitType.Factory, UnitType.Worker};
+        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Knight, UnitType.Mage, UnitType.Healer, UnitType.Factory, UnitType.Worker};
         for(int i=0; i<types.length; i++) {
             UnitType ut = types[i];
             for(int x=0; x<units.size(); x++) {
@@ -387,23 +387,23 @@ public class Player {
         }
         if(nikhil_num_workers>=minworkers && myPlanet==Planet.Earth) {
             //execute build order
-            if(buildRocket(unit, toKarb, units, 20l)==true) {
+            if(buildRocket(unit, toKarb, units, 8L)==true) {
                 return;
             }
-            else if(buildFactory(unit, toKarb, units, 20l)==true){
+            else if(buildFactory(unit, toKarb, units, 20L)==true){
                 return;
             }
             else {
                 if(current_round>175 || doesPathExist==false && current_round>125) { //rocket cap
                     //blueprint rocket or (replicate or moveharvest)
-                    int val = blueprintRocket(unit, toKarb, units, 20l, myKarbs);
+                    int val = blueprintRocket(unit, toKarb, units, 8l, myKarbs);
                     if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
                         nikhil_num_workers+=(val-2);
                     } else { //did not degenerate
                         num_rockets+=val;
                     }
                 }
-                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && (gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
+                else if( (doesPathExist && num_factories<4) || (doesPathExist && width>35 && ((int)gc.karbonite()>200+(50-width)) && num_factories<6) || (!doesPathExist && num_factories<2)) { //factory cap
                     //blueprint factory or (replicate or moveharvest)
                     int val = blueprintFactory(unit, toKarb, units, 20l, myKarbs);
                     if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
@@ -423,14 +423,14 @@ public class Player {
             }
         }
         else if(myPlanet==Planet.Mars) {
-            if(replicatingrequirements(unit, loc)) {
+            if(replicatingrequirements(unit, loc) || (int)gc.karbonite()>300 || current_round>750) {
                 nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
-            } 
+            }
             else {
                 workerharvest(unit, toKarb);
                 workermove(unit, toKarb, myKarbs);
             }
-        } 
+        }
         else {
             //replicate or move harvest
             nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
@@ -537,7 +537,10 @@ public class Player {
         if(!(gc.canProduceRobot(unit.id(), UnitType.Ranger) && gc.canProduceRobot(unit.id(), UnitType.Healer) &&
             gc.canProduceRobot(unit.id(), UnitType.Knight) && gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
-        if(total_knights<0)
+
+        int distance_to_enemy = distance_field[myloc.getX()][myloc.getY()];
+
+        if(distance_to_enemy<10 && total_knights<2)
             gc.produceRobot(unit.id(),UnitType.Knight);
         else if(num_workers<2 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
@@ -549,7 +552,7 @@ public class Player {
             gc.produceRobot(unit.id(), UnitType.Healer);
         else if((num_rangers-4)/(1.0*num_healers)>2.0/1.0)
             gc.produceRobot(unit.id(), UnitType.Healer);
-        else if(num_rangers<60)
+        else if(num_rangers<60 || (int)gc.karbonite()>500)
             gc.produceRobot(unit.id(), UnitType.Ranger);
     }
 
@@ -631,7 +634,7 @@ public class Player {
     //***********************************************************************************//
 
     public static void runKnight(Unit unit, MapLocation myloc)  {
-        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, maxVisionRange, enemy);
+        VecUnit enemies_in_sight = gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             Unit nearestUnit = getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
             MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -801,7 +804,7 @@ public class Player {
     public static int blueprintRocket(Unit unit, Direction toKarb, ArrayList<Unit> units, long rad, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
         ArrayList<Unit> closeWorkers = nearbyWorkersRocket(unit, myLoc, rad);
-        if(closeWorkers.size()>2) { //includes the original worker, we want three workers per factory
+        if(closeWorkers.size()>0) { //includes the original worker, we want three workers per factory
             Direction blueprintDirection = optimalDirectionRocket(unit, myLoc, closeWorkers);
             if(blueprintDirection!=null) {
                 gc.blueprint(unit.id(), UnitType.Rocket, blueprintDirection);
@@ -1173,7 +1176,7 @@ public class Player {
 
     //check if rocket launch conditions are met
     //max garrison, about to die, or turn 749
-    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {        
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
         if(current_round>=745)
             return true;
         int hp = (int)unit.health();
@@ -1462,7 +1465,7 @@ public class Player {
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
             else
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
-            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Ranger, UnitType.Healer}; //unit priorities
+            UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Ranger, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
                     hval+=10*utctr; //later units have higher priorities because weight based on index

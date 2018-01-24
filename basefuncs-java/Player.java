@@ -194,7 +194,7 @@ public class Player {
                             try {
                                 runWorker(unit, myloc, units);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -206,7 +206,7 @@ public class Player {
                             try {
                                 runRanger(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -218,7 +218,7 @@ public class Player {
                             try {
                                 runKnight(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -231,7 +231,7 @@ public class Player {
                             try {
                                 runMage(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -242,7 +242,7 @@ public class Player {
                             try {
                                 runHealer(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -252,7 +252,7 @@ public class Player {
                             try {
                                 runFactory(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -264,11 +264,11 @@ public class Player {
                             try {
                                 runRocket(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
 
@@ -297,11 +297,11 @@ public class Player {
                             runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
             } catch(Exception e) {
-                System.out.println("Error: "+e); 
+                System.out.println("Error: "+e);
             }
             gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
@@ -396,7 +396,7 @@ public class Player {
             else {
                 if(current_round>175 || doesPathExist==false && current_round>125) { //rocket cap
                     //blueprint rocket or (replicate or moveharvest)
-                    int val = blueprintRocket(unit, toKarb, units, 20l, myKarbs);
+                    int val = blueprintRocket(unit, toKarb, units, 8l, myKarbs);
                     if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
                         nikhil_num_workers+=(val-2);
                     } else { //did not degenerate
@@ -425,12 +425,12 @@ public class Player {
         else if(myPlanet==Planet.Mars) {
             if(replicatingrequirements(unit, loc) || (int)gc.karbonite()>300 || current_round>750) {
                 nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
-            } 
+            }
             else {
                 workerharvest(unit, toKarb);
                 workermove(unit, toKarb, myKarbs);
             }
-        } 
+        }
         else {
             //replicate or move harvest
             nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
@@ -1176,7 +1176,7 @@ public class Player {
 
     //check if rocket launch conditions are met
     //max garrison, about to die, or turn 749
-    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {        
+    public static boolean shouldLaunchRocket(Unit unit, MapLocation myloc, int num_in_garrison, int maxcapacity) {
         if(current_round>=745)
             return true;
         int hp = (int)unit.health();
