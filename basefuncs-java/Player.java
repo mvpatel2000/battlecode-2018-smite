@@ -961,6 +961,13 @@ public class Player {
         if(gc.canReplicate(unit.id(), toKarb)) {
             gc.replicate(unit.id(), toKarb);
             return 1;
+        } else {
+            for (KarbDir k : myKarbs) {
+                if(gc.canReplicate(unit.id(), k.dir)) {
+                    gc.replicate(unit.id(), k.dir);
+                    return 1;
+                }
+            }
         }
         workerharvest(unit, toKarb);
         workermove(unit, toKarb, myKarbs);
