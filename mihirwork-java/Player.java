@@ -539,7 +539,7 @@ public class Player {
 
         int distance_to_enemy = distance_field[myloc.getX()][myloc.getY()];
 
-        if(distance_to_enemy<10 && total_knights<2)
+        if(current_round<100 && distance_to_enemy<10 && total_knights<2)
             gc.produceRobot(unit.id(),UnitType.Knight);
         else if(num_workers<2 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
