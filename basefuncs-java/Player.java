@@ -188,10 +188,8 @@ public class Player {
                         MapLocation myloc = unit.location().mapLocation();
 
                         // WORKER CODE //
-                        //TODO:
-                        // - update factory function based on karbonite levels / size of map USE DISTANCE FIELD!
-                        // - tune worker ratio! account for more costly replication
-
+                        //TODO: u can do actions before replication but not after
+                        //TODO: replication needs to be more aggressive
                         if(unit.unitType()==UnitType.Worker) {
                             try {
                                 runWorker(unit, myloc, units);
@@ -201,7 +199,6 @@ public class Player {
                         }
 
                         // RANGER CODE //
-                        //TODO: Give rolling fire with snipetarget?
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                             try {
@@ -238,6 +235,7 @@ public class Player {
 
                         // HEALER CODE //
                         //TODO: Verify overcharge
+                        //TODO: Update overcharge priority to overcharge unit closest to enemy via distance field
                         else if(unit.unitType()==UnitType.Healer) {
                             try {
                                 runHealer(unit, myloc);
@@ -247,7 +245,7 @@ public class Player {
                         }
 
                         // FACTORY CODE //
-                        //TODO:Anti-samosa unloading
+                        //TODO: Anti-samosa unloading
                         else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
                             try {
                                 runFactory(unit, myloc);
@@ -259,6 +257,7 @@ public class Player {
                         // ROCKET CODE //
                         //TODO: make units go away from rocket b4 launch
                         //TODO: optmize launch timing to improve speed
+                        //TODO: launch at same time
                         else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
                             try {
                                 runRocket(unit, myloc);
