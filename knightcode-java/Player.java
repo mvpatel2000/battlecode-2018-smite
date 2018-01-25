@@ -543,7 +543,6 @@ public class Player {
         /*if((true || ( current_round<100 && distance_to_enemy<10)) && total_knights<2)*/
         if(current_round<100 && distance_to_enemy<10 && total_knights<2)
             gc.produceRobot(unit.id(),UnitType.Knight);
-		else if(true) return;
         else if(num_workers<2 && gc.canProduceRobot(unit.id(), UnitType.Worker))
             gc.produceRobot(unit.id(),UnitType.Worker);
         else if(current_round>550 && num_workers<4 && gc.canProduceRobot(unit.id(), UnitType.Worker))
