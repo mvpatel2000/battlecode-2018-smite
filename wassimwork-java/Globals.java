@@ -16,7 +16,7 @@ public class Globals {
     public static int initial_workers = 0;
     public static int current_round = 0;
     public static AsteroidPattern asteroid_pattern = gc.asteroidPattern();
-    public static OrbitPattern orbit_pattern = gc.orbitPattern();   
+    public static OrbitPattern orbit_pattern = gc.orbitPattern();
     public static Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
     public static int[][] map_memo; // 1 if possible karbonite, -1 if not passable
     public static ArrayList<KarbonitePath> karbonite_path;
@@ -35,6 +35,7 @@ public class Globals {
     public static ArrayList<Integer> rand_permutation = randomPermutation(9);
     public static boolean doesPathExist = false; //determine if a path exists
     public static double[][] mars_landing = new double[mars_width][mars_height];
+    public static HashMap<Integer, Queue<Direction>> paths; //used in knightcode
     public static int rocket_homing = 0; //are rockets built / how many
     public static int minworkers = 0;
     public static int factories_active = 0;
@@ -56,7 +57,7 @@ public class Globals {
     public static final long maxVisionRange = 100L;
 
     /* dummy duplicate function in here so that Globals can compile independently
-     * of the other stuff... u can blame jz that we need such a hack -_- 
+     * of the other stuff... u can blame jz that we need such a hack -_-
      * You will also note that I made the variable names appropriate.
      */
 

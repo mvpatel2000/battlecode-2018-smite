@@ -53,12 +53,13 @@ public class Player {
         }
         else {
             //25 50 150 200 225 325 //425 525 725 825 900 975
-            UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket, 
+            UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket,
                                     UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
             for(int i=0; i<rarray.length; i++)
                 Globals.gc.queueResearch(rarray[i]);
         }
 
+        Globals.paths = new HashMap<>();
         Globals.minworkers = Worker.workerReplicateRatio();
         Globals.rand_permutation = randomPermutation(9);
 
@@ -139,7 +140,7 @@ public class Player {
                             try {
                                 Worker.runWorker(unit, myloc, units);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -149,7 +150,7 @@ public class Player {
                             try {
                                 Ranger.runRanger(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -161,7 +162,7 @@ public class Player {
                             try {
                                 Knight.runKnight(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -174,7 +175,7 @@ public class Player {
                             try {
                                 Mage.runMage(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -185,7 +186,7 @@ public class Player {
                             try {
                                 Healer.runHealer(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -195,7 +196,7 @@ public class Player {
                             try {
                                 Factory.runFactory(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
 
@@ -207,11 +208,11 @@ public class Player {
                             try {
                                 Rocket.runRocket(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e); 
+                                System.out.println("Error: "+e);
                             }
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
 
@@ -240,15 +241,15 @@ public class Player {
                             Worker.runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e); 
+                        System.out.println("Error: "+e);
                     }
                 }
             } catch(Exception e) {
-                System.out.println("Error: "+e); 
+                System.out.println("Error: "+e);
             }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
-    }   
+    }
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
         ArrayList<Unit> ret = new ArrayList<Unit>();
