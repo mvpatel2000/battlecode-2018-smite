@@ -140,7 +140,7 @@ public class Player {
                             try {
                                 Worker.runWorker(unit, myloc, units);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Worker Error: "+e);
                             }
                         }
 
@@ -150,7 +150,7 @@ public class Player {
                             try {
                                 Ranger.runRanger(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Ranger Error: "+e);
                             }
                         }
 
@@ -162,7 +162,7 @@ public class Player {
                             try {
                                 Knight.runKnight(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Knight Error: "+e);
                             }
                         }
 
@@ -175,7 +175,7 @@ public class Player {
                             try {
                                 Mage.runMage(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Mage Error: "+e);
                             }
                         }
 
@@ -186,7 +186,7 @@ public class Player {
                             try {
                                 Healer.runHealer(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Healer Error: "+e);
                             }
                         }
 
@@ -196,7 +196,7 @@ public class Player {
                             try {
                                 Factory.runFactory(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Factory Error: "+e);
                             }
                         }
 
@@ -208,7 +208,7 @@ public class Player {
                             try {
                                 Rocket.runRocket(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Rocket Error: "+e);
                             }
                         }
                     } catch(Exception e) {

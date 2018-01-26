@@ -71,7 +71,9 @@ public class Helpers {
 		if(include_units) {
 			VecUnit units = Globals.gc.units();
 			for(int x=0; x<units.size(); x++) {
+				try {
 				unitLocations.add(units.get(x).location().mapLocation());
+				} catch (Exception e) {} // in space or in a structure's garrison
 			}
 		}
 

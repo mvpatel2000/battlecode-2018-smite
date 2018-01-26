@@ -45,6 +45,7 @@ public class Knight {
 				if(units.get(x).unitType() == UnitType.Factory) {
 					factories.add(new FactoryDist(units.get(x),
 							units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+					
 				}
 			}
 			Collections.sort(factories);
@@ -58,6 +59,7 @@ public class Knight {
 				}
 			}
 		} else toMove = true;
+		
 		if(!toMove) {
 			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 			if(enemies_in_sight.size()>0) {      //combat state
