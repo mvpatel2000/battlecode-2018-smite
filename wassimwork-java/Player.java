@@ -162,6 +162,7 @@ public class Player {
                             try {
                                 Knight.runKnight(unit, myloc);
                             } catch(Exception e) {
+								e.printStackTrace(System.out);
                                 System.out.println("Knight Error: "+e);
                             }
                         }
