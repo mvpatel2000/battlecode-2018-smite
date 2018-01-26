@@ -97,4 +97,79 @@ public class Ranger {
             }
         }
     }
+	//updates snipe list to contain all buildings
+	public static void buildSnipeTargets() {
+		if(Globals.current_round%10==0)
+			Globals.enemy_buildings.clear();
+		VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+		for(int i = 0; i<total_enemies.size(); i++) {
+			Unit enemy_unit = total_enemies.get(i);
+			boolean isDuplicate = false;
+			if(enemy_unit.unitType()==UnitType.Factory) { //if factory
+				for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
+					if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+						isDuplicate = true;
+						break;
+					}
+				}
+				if(isDuplicate)
+					continue;
+				MapLocation enem_loc = enemy_unit.location().mapLocation();
+				int[] building_info = {10, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+				Globals.enemy_buildings.add(building_info);
+			}
+			else if(enemy_unit.unitType()==UnitType.Rocket) { //if rocket
+				for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
+					if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+						isDuplicate = true;
+						break;
+					}
+				}
+				if(isDuplicate)
+					continue;
+				MapLocation enem_loc = enemy_unit.location().mapLocation();
+				int[] building_info = {7, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+				Globals.enemy_buildings.add(building_info);
+			}
+			else if(enemy_unit.unitType()==UnitType.Healer) { //if rocket
+				for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
+					if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+						isDuplicate = true;
+						break;
+					}
+				}
+				if(isDuplicate)
+					continue;
+				MapLocation enem_loc = enemy_unit.location().mapLocation();
+				int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+				Globals.enemy_buildings.add(building_info);
+			}
+			else if(enemy_unit.unitType()==UnitType.Mage) { //if rocket
+				for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
+					if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+						isDuplicate = true;
+						break;
+					}
+				}
+				if(isDuplicate)
+					continue;
+				MapLocation enem_loc = enemy_unit.location().mapLocation();
+				int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+				Globals.enemy_buildings.add(building_info);
+			}
+			else if(enemy_unit.unitType()==UnitType.Worker) { //if rocket
+				for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
+					if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
+						isDuplicate = true;
+						break;
+					}
+				}
+				if(isDuplicate)
+					continue;
+				MapLocation enem_loc = enemy_unit.location().mapLocation();
+				int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
+				Globals.enemy_buildings.add(building_info);
+			}
+		}
+	}
 }

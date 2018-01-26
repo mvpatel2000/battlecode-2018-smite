@@ -10,7 +10,7 @@ public class Player {
             Globals.enemy = Team.Blue;
 
         if(Globals.myPlanet==Planet.Earth) { //generate landing priorities for rockets
-            generateLandingPriorities();
+            Rocket.generateLandingPriorities();
         }
 
         VecUnit initial_units = Globals.map.getInitial_units();
@@ -80,8 +80,8 @@ public class Player {
                     PathShits.buildRandomField();
                 }
                 if(Globals.myPlanet==Planet.Earth)
-                    updateLandingPriorities();
-                buildSnipeTargets(); //build snipe targets
+                    Rocket.updateLandingPriorities();
+                Ranger.buildSnipeTargets(); //build snipe targets
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
@@ -274,80 +274,6 @@ public class Player {
         Collections.shuffle(a);
         return a;
     }
-      //used to land rockets
-    public static void generateLandingPriorities() {
-        for(int w=0; w<Globals.mars_width; w++) //default initialization
-            for(int h=0; h<Globals.mars_height; h++)
-                Globals.mars_landing[w][h] = 8.0;
-        for(int w=0; w<Globals.mars_width; w++) { //correct for borders horizontally
-            Globals.mars_landing[w][0]--;
-            Globals.mars_landing[w][Globals.mars_height-1]--;
-        }
-        for(int h=0; h<Globals.mars_height; h++) { //correct for borders vertically
-            Globals.mars_landing[0][h]--;
-            Globals.mars_landing[Globals.mars_width-1][h]--;
-        }
-        int[] shifts = {-1, 0, 1};
-        for(int w=0; w<Globals.mars_width; w++) {
-            for(int h=0; h<Globals.mars_height; h++) {
-                if(Globals.mars_map.isPassableTerrainAt(new MapLocation(Planet.Mars, w, h))==0) { //not passable
-                    for(int xsi=0; xsi<3; xsi++) {
-                        for(int ysi=0; ysi<3; ysi++) {
-                            int shifted_x = w+shifts[xsi];
-                            int shifted_y = h+shifts[ysi];
-                            if(shifted_x>=0 && shifted_x<Globals.mars_width && shifted_y>=0 && shifted_y<Globals.mars_height)
-                                Globals.mars_landing[shifted_x][shifted_y]--;
-                        }
-                    }
-                    Globals.mars_landing[w][h] = -100.0;
-                }
-            }
-        }
-
-        // get mars Globals.map and update initial karbonite levels
-        for(int w=0; w<Globals.mars_width; w++) {
-            for(int h=0; h<Globals.mars_height; h++) {
-                int karblocation = (int)Globals.mars_map.initialKarboniteAt(new MapLocation(Planet.Mars, w, h));
-                double karbshift = karblocation/1000.0;
-                for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
-                    for(int ysi=0; ysi<shifts.length; ysi++) {
-                        int shifted_x = w+shifts[xsi];
-                        int shifted_y = h+shifts[ysi];
-                        if(shifted_x>=0 && shifted_x<Globals.mars_width && shifted_y>=0 && shifted_y<Globals.mars_height) {
-                            if(xsi==1 && ysi==1)
-                                Globals.mars_landing[shifted_x][shifted_y]-=karbshift; //this square
-                            else
-                                Globals.mars_landing[shifted_x][shifted_y]+=karbshift;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public static void updateLandingPriorities() {
-        if(!Globals.asteroid_pattern.hasAsteroid(Globals.current_round))
-            return;
-        AsteroidStrike strike = Globals.asteroid_pattern.asteroid(Globals.current_round);
-        MapLocation strikeloc = strike.getLocation();
-        int w = strikeloc.getX();
-        int h = strikeloc.getY();
-        int[] shifts = {-1, 0, 1};
-        int karblocation = (int)strike.getKarbonite();
-        double karbshift = karblocation/1000.0;
-        for(int xsi=0; xsi<shifts.length; xsi++) { //penalize this square and boost all nearby squares
-            for(int ysi=0; ysi<shifts.length; ysi++) {
-                int shifted_x = w+shifts[xsi];
-                int shifted_y = h+shifts[ysi];
-                if(shifted_x>=0 && shifted_x<Globals.mars_width && shifted_y>=0 && shifted_y<Globals.mars_height) {
-                    if(xsi==1 && ysi==1)
-                        Globals.mars_landing[shifted_x][shifted_y]-=karbshift; //this square
-                    else
-                        Globals.mars_landing[shifted_x][shifted_y]+=karbshift;
-                }
-            }
-        }
-    }
 
     public static long countKarbonite() {
         long totalkarb = 0L;
@@ -375,82 +301,6 @@ public class Player {
             }
         }
         return totalkarb;
-    }
-
-    //updates snipe list to contain all buildings
-    public static void buildSnipeTargets() {
-        if(Globals.current_round%10==0)
-            Globals.enemy_buildings.clear();
-        VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
-        for(int i = 0; i<total_enemies.size(); i++) {
-            Unit enemy_unit = total_enemies.get(i);
-            boolean isDuplicate = false;
-            if(enemy_unit.unitType()==UnitType.Factory) { //if factory
-                for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
-                    if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if(isDuplicate)
-                    continue;
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {10, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
-                Globals.enemy_buildings.add(building_info);
-            }
-            else if(enemy_unit.unitType()==UnitType.Rocket) { //if rocket
-                for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
-                    if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if(isDuplicate)
-                    continue;
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {7, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
-                Globals.enemy_buildings.add(building_info);
-            }
-            else if(enemy_unit.unitType()==UnitType.Healer) { //if rocket
-                for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
-                    if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if(isDuplicate)
-                    continue;
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
-                Globals.enemy_buildings.add(building_info);
-            }
-            else if(enemy_unit.unitType()==UnitType.Mage) { //if rocket
-                for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
-                    if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if(isDuplicate)
-                    continue;
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
-                Globals.enemy_buildings.add(building_info);
-            }
-            else if(enemy_unit.unitType()==UnitType.Worker) { //if rocket
-                for(int targs=0; targs<Globals.enemy_buildings.size(); targs++) { //check if already marked
-                    if(Globals.enemy_buildings.get(targs)[3]==enemy_unit.id()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if(isDuplicate)
-                    continue;
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
-                int[] building_info = {4, enem_loc.getX(), enem_loc.getY(), enemy_unit.id()};
-                Globals.enemy_buildings.add(building_info);
-            }
-        }
     }
 
 }
