@@ -71,7 +71,7 @@ public class Player {
         }
 
         while (true) {
-            try {
+            //try {
                 Globals.current_round = (int)Globals.gc.round();
                 Globals.factories_active = 0; //tracks amount of factories producing units
                 if(Globals.current_round%15==0) { //print round number and update random field
@@ -141,7 +141,7 @@ public class Player {
                             try {
                                 Worker.runWorker(unit, myloc, units);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Worker Error: "+e);
                             }
                         }
 
@@ -151,7 +151,7 @@ public class Player {
                             try {
                                 Ranger.runRanger(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Ranger Error: "+e);
                             }
                         }
 
@@ -163,7 +163,7 @@ public class Player {
                             try {
                                 Knight.runKnight(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Knight Error: "+e);
                             }
                         }
 
@@ -176,7 +176,7 @@ public class Player {
                             try {
                                 Mage.runMage(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Mage Error: "+e);
                             }
                         }
 
@@ -187,7 +187,7 @@ public class Player {
                             try {
                                 Healer.runHealer(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Healer Error: "+e);
                             }
                         }
 
@@ -197,7 +197,7 @@ public class Player {
                             try {
                                 Factory.runFactory(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Factory Error: "+e);
                             }
                         }
 
@@ -209,11 +209,11 @@ public class Player {
                             try {
                                 Rocket.runRocket(unit, myloc);
                             } catch(Exception e) {
-                                System.out.println("Error: "+e);
+                                System.out.println("Rocket Error: "+e);
                             }
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e);
+                        System.out.println("Unit Loop Error: "+e);
                     }
                 }
 
@@ -242,21 +242,67 @@ public class Player {
                             Worker.runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                         }
                     } catch(Exception e) {
-                        System.out.println("Error: "+e);
+                        System.out.println("Replicated Worker Error: "+e);
                     }
                 }
-            } catch(Exception e) {
-                System.out.println("Error: "+e);
-            }
+            // } catch(Exception e) {
+            //     System.out.println("Turn Error: "+e);
+            // }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
         ArrayList<Unit> ret = new ArrayList<Unit>();
-        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Knight, UnitType.Mage, UnitType.Healer, UnitType.Factory, UnitType.Worker};
+        UnitType[] types = {UnitType.Rocket, UnitType.Ranger, UnitType.Knight, UnitType.Mage};
         for(int i=0; i<types.length; i++) {
             UnitType ut = types[i];
+            for(int x=0; x<units.size(); x++) {
+                Unit cur = units.get(x);
+                if(cur.unitType()==ut)
+                    ret.add(cur);
+            }
+        }
+
+        ArrayList<Unit> healers = new ArrayList<Unit>();
+        for(int x=0; x<units.size(); x++) {
+            Unit cur = units.get(x);
+            if(cur.unitType()==UnitType.Healer)
+                healers.add(cur);
+        }
+        if(healers.size()>0) {
+            int[][] hsort = new int[healers.size()][2];
+            for(int i=0; i<healers.size(); i++) {
+                Unit mHealer = healers.get(i);
+                if(!mHealer.location().isInSpace() && !mHealer.location().isInGarrison()) {
+                    MapLocation hloc = mHealer.location().mapLocation();
+                    hsort[i][0] = Globals.distance_field[hloc.getX()][hloc.getY()];
+                }
+                else {
+                    hsort[i][0] = 50*50+1;
+                }
+                hsort[i][1] = i;
+            }
+            for(int x=0; x<hsort.length-1; x++) {
+                for(int y=x+1; y<hsort.length; y++) {
+                    if(hsort[x][0] > hsort[y][0]) {
+                        int tempdist = hsort[x][0];
+                        int tempind = hsort[x][1];
+                        hsort[x][0] = hsort[y][0];
+                        hsort[x][1] = hsort[y][1];
+                        hsort[y][0] = tempdist;
+                        hsort[y][1] = tempind;
+                    }
+                }
+            }
+            for(int i=0; i<hsort.length; i++) {
+                ret.add(units.get(hsort[i][1]));
+            }
+        }
+
+        UnitType[] typestwo = {UnitType.Factory, UnitType.Worker};
+        for(int i=0; i<typestwo.length; i++) {
+            UnitType ut = typestwo[i];
             for(int x=0; x<units.size(); x++) {
                 Unit cur = units.get(x);
                 if(cur.unitType()==ut)
