@@ -273,7 +273,8 @@ public class Player {
         Collections.shuffle(a);
         return a;
     }
-      //used to land rockets
+    
+    //used to land rockets
     public static void generateLandingPriorities() {
         for(int w=0; w<Globals.mars_width; w++) //default initialization
             for(int h=0; h<Globals.mars_height; h++)

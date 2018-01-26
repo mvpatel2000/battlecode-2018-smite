@@ -46,7 +46,7 @@ public class Ranger {
         }
     }
 
-        public static void runRanger(Unit unit, MapLocation myloc) {
+    public static void runRanger(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
