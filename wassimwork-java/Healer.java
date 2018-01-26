@@ -34,27 +34,43 @@ public class Healer
         int ally_score = 0;
         for(int i=0; i<allies_in_range.size(); i++) {
             Unit test_to_heal = allies_in_range.get(0);
-            if(test_to_heal.unitType()!=UnitType.Ranger)
+            UnitType testtype = test_to_heal.unitType();
+            if(testtype==UnitType.Worker || testtype==UnitType.Rocket || testtype==UnitType.Factory || testtype==UnitType.Healer)
                 continue;
-            int test_score = 0;
+            MapLocation testloc = test_to_heal.location().mapLocation();
+            int test_score = Globals.distance_field[testloc.getX()][testloc.getY()]*100;
+            if(testtype==UnitType.Mage)
+                test_score+=80;
+            else if(testtype==UnitType.Knight)
+                test_score+=70;
+            else if(testtype==UnitType.Ranger)
+                test_score+=60;
             int attack_heat = (int)test_to_heal.attackHeat();
             int movement_heat = (int)test_to_heal.movementHeat();
             if(attack_heat>=20)
-                test_score+=2000;
+                test_score+=20;
             else if(attack_heat>=10)
-                test_score+=1000;
+                test_score+=10;
             if(movement_heat>=20)
-                test_score+=200;
+                test_score+=2;
             else if(movement_heat>=10)
-                test_score+=100;
+                test_score+=1;
             if(test_score>ally_score) {
                 ally_to_heal = test_to_heal;
                 ally_score = test_score;
             }
         }
+        if(ally_to_heal==null)
+            return;
         if(ally_to_heal!=null && Globals.gc.canOvercharge(unit.id(), ally_to_heal.id())) {
             Globals.gc.overcharge(unit.id(), ally_to_heal.id());
-            Ranger.runRanger(ally_to_heal, ally_to_heal.location().mapLocation());
+            UnitType ally_type = ally_to_heal.unitType();
+            if(ally_type==UnitType.Ranger)
+                Ranger.runRanger(ally_to_heal, ally_to_heal.location().mapLocation());
+            else if(ally_type==UnitType.Knight)
+                Knight.runKnight(ally_to_heal, ally_to_heal.location().mapLocation());
+            else if(ally_type==UnitType.Mage)
+                Mage.runMage(ally_to_heal, ally_to_heal.location().mapLocation());
         }
     }
 
