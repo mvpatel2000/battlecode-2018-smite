@@ -21,7 +21,7 @@ public class Knight {
 			for(int x=0; x<enemies_in_range.size(); x++) {
 				Unit u = enemies_in_range.get(x);
 				if(u.team() != Globals.ally && u.unitType() == UnitType.Factory)
-					return;
+					return; // if we're near a factory, stay there
 			}
 		}
 		boolean toMove = false;
@@ -67,9 +67,9 @@ public class Knight {
 		}
 		if(!moved && toMove) {
 			Direction d = Globals.paths.get(unit.id()).poll();
-			if(Globals.gc.isMoveReady(unit.id()) && Globals.map.isPassableTerrainAt(unit.location().mapLocation().add(d)) != 0) {
+			if(Globals.gc.isMoveReady(unit.id()) && Globals.gc.canMove(unit.id(), d)) {
 				Globals.gc.moveRobot(unit.id(), d);
-			} else if(Globals.gc.isMoveReady(unit.id())) {
+			} else {
 				// trying to move in impassable terrain
 				// clear the current path
 				// TODO: BOUND NUMBER OF A* calls
