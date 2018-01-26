@@ -69,7 +69,7 @@ public class Knight {
 				return;
 			}
 		}
-		if(!toMove) {
+		if(!toMove && Globals.enemy_locations.size() > 0) {
 			MapLocation m = new MapLocation(Globals.myPlanet, Globals.enemy_locations.get(0)[0], Globals.enemy_locations.get(0)[1]);
 			Queue<Direction> path =
 				Helpers.astar(unit, m, false);
