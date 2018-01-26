@@ -20,8 +20,8 @@ public class Knight {
 			knightAttack(unit, enemies_in_range);
 			for(int x=0; x<enemies_in_range.size(); x++) {
 				Unit u = enemies_in_range.get(x);
-				if(u.team() != Globals.ally && u.unitType() == UnitType.Factory)
-					return; // if we're near a factory, stay there
+				if(u.team() != Globals.ally && (u.unitType() == UnitType.Factory || u.unitType() == UnitType.Rocket))
+					return; // if we're near a factory or rocket, stay there
 			}
 		}
 	 																/* TODO: tune this number */
@@ -39,10 +39,10 @@ public class Knight {
 		boolean toMove = false;
 		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
 			VecUnit units = Globals.gc.units();
-			ArrayList<FactoryDist> factories = new ArrayList<>();
+			ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
 			for(int x=0; x<units.size(); x++) {
 				if(units.get(x).team() == Globals.ally) continue;
-				if(units.get(x).unitType() == UnitType.Factory) {
+				if(units.get(x).unitType() == UnitType.Factory || units.get(x).unitType() == UnitType.Rocket) {
 					factories.add(new FactoryDist(units.get(x),
 							units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
 					
@@ -54,6 +54,7 @@ public class Knight {
 					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), true);
 				if(path.size() > 0) {
 					Globals.paths.put(unit.id(), path);
+					System.out.println("R: "+Globals.current_round+" "+path);
 					toMove = true;
 					break;
 				}
@@ -61,6 +62,7 @@ public class Knight {
 		} else toMove = true;
 		
 		if(!toMove) {
+											// TODO: use Globals.enemy_locations
 			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 			if(enemies_in_sight.size()>0) {      //combat state
 				Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
@@ -107,6 +109,14 @@ public class Knight {
 		if(!Globals.gc.isAttackReady(unit.id()))
 			return;
 		int[][] heuristics = new int[(int)enemies_in_range.size()][2];
+		boolean hasFactory = false;
+		boolean hasRocket = false;
+		for(int x=0; x<enemies_in_range.size(); x++) {
+			if(enemies_in_range.get(x).unitType() == UnitType.Rocket)
+				hasRocket = true;
+			if(enemies_in_range.get(x).unitType() == UnitType.Factory)
+				hasFactory = true;
+		}
 		for(int i=0; i<enemies_in_range.size(); i++) {
 			int hval = 0;
 			Unit myenemy = enemies_in_range.get(i);
@@ -119,6 +129,10 @@ public class Knight {
 				hval+=8000;
 			if(enemyType==UnitType.Factory)
 				hval+=7000;
+			if(enemyType==UnitType.Worker && hasRocket) // workers that are repairing a rocket
+				hval+=8500;
+			else if(enemyType==UnitType.Worker && hasFactory) // workers that are repairing a factory
+				hval+=7500;
 			if(UnitType.Knight==myenemy.unitType())
 				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*100; //is knight and weakest unit
 			else
