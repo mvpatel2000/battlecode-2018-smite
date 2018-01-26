@@ -24,6 +24,18 @@ public class Knight {
 					return; // if we're near a factory, stay there
 			}
 		}
+	 																/* TODO: tune this number */
+		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 4, Globals.enemy);
+		if(close_enemies.size() > 0) {
+			 // if enemy is close enough, detour and attack them
+			Unit nearestUnit = PathShits.getNearestUnit(myloc, close_enemies);
+			MapLocation nearloc = nearestUnit.location().mapLocation();
+			PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+			Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
+			return;
+		}
+		
+
 		boolean toMove = false;
 		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
 			VecUnit units = Globals.gc.units();
@@ -38,7 +50,7 @@ public class Knight {
 			Collections.sort(factories);
 			for(int x=0; x<factories.size(); x++) {
 				Queue<Direction> path =
-					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), false);
+					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), true);
 				if(path.size() > 0) {
 					Globals.paths.put(unit.id(), path);
 					toMove = true;
@@ -46,17 +58,16 @@ public class Knight {
 				}
 			}
 		} else toMove = true;
-		boolean moved = false;
 		if(!toMove) {
-			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
+			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 			if(enemies_in_sight.size()>0) {      //combat state
 				Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
 				MapLocation nearloc = nearestUnit.location().mapLocation();
 				PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
-				moved = true;
+				return;
 			}
 		}
-		if(!toMove && !moved) {
+		if(!toMove) {
 			MapLocation m = new MapLocation(Globals.myPlanet, Globals.enemy_locations.get(0)[0], Globals.enemy_locations.get(0)[1]);
 			Queue<Direction> path =
 				Helpers.astar(unit, m, false);
@@ -65,7 +76,7 @@ public class Knight {
 				toMove = true;
 			}
 		}
-		if(!moved && toMove) {
+		if(toMove) {
 			Direction d = Globals.paths.get(unit.id()).poll();
 			if(Globals.gc.isMoveReady(unit.id()) && Globals.gc.canMove(unit.id(), d)) {
 				Globals.gc.moveRobot(unit.id(), d);
@@ -76,7 +87,7 @@ public class Knight {
 				// (THIS PART FORCES A* RE-RUN)
 				Globals.paths.put(unit.id(), new LinkedList<Direction>());
 			}
-		} else if(!moved && !toMove) { //non-combat state
+		} else { //non-combat state
 			if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
 				PathShits.moveOnRandomField(unit, myloc);
 			}
