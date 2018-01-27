@@ -68,7 +68,7 @@ public class Player {
         }
 
         while (true) {
-            //try {
+            try {
                 Globals.current_round = (int)Globals.gc.round();
                 Globals.factories_active = 0; //tracks amount of factories producing units
                 if(Globals.current_round%15==0) { //print round number and update random field
@@ -178,8 +178,6 @@ public class Player {
                         }
 
                         // HEALER CODE //
-                        //TODO: Verify overcharge
-                        //TODO: Update overcharge priority to overcharge unit closest to Globals.enemy via distance field
                         else if(unit.unitType()==UnitType.Healer) {
                             try {
                                 Healer.runHealer(unit, myloc);
@@ -242,9 +240,9 @@ public class Player {
                         System.out.println("Replicated Worker Error: "+e);
                     }
                 }
-            // } catch(Exception e) {
-            //     System.out.println("Turn Error: "+e);
-            // }
+            } catch(Exception e) {
+                System.out.println("Turn Error: "+e);
+            }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
