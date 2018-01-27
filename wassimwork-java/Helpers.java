@@ -71,6 +71,7 @@ public class Helpers {
 		if(include_units) {
 			VecUnit units = Globals.gc.units();
 			for(int x=0; x<units.size(); x++) {
+				if(units.get(x).team() != Globals.ally) continue; // only account for own units
 				try {
 				unitLocations.add(units.get(x).location().mapLocation().toString());
 				} catch (Exception e) {}	   // in space or in a structure's garrison
