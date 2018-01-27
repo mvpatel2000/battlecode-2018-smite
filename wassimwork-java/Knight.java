@@ -19,10 +19,19 @@ public class Knight {
 		if(enemies_in_range.size()>0) {
 			knightAttack(unit, enemies_in_range);
 			for(int x=0; x<enemies_in_range.size(); x++) {
+				Unit t = enemies_in_range.get(x);
+				if(t.unitType() == UnitType.Knight) {
+					// move away
+					PathShits.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
+					return;
+				}
+			}
+
+			/*for(int x=0; x<enemies_in_range.size(); x++) {
 				Unit u = enemies_in_range.get(x);
 				if(u.team() != Globals.ally && (u.unitType() == UnitType.Factory || u.unitType() == UnitType.Rocket))
 					return; // if we're near a factory or rocket, stay there
-			}
+			}*/
 		}
 	 																/* TODO: tune this number */
 		int detour_size = 6;
@@ -167,10 +176,12 @@ public class Knight {
 				hval+=8500;
 			else if(enemyType==UnitType.Worker && hasFactory) // workers that are repairing a factory
 				hval+=7500;
-			if(UnitType.Knight==myenemy.unitType())
-				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*100; //is knight and weakest unit
+			if(UnitType.Knight==myenemy.unitType()) {
+				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*1000; //is knight and weakest unit
+				System.out.println(hval);
+			}
 			else
-				hval += (10-((int)myenemy.health())/(unit.damage()))*100; //weakest unit
+				hval += (10-((int)myenemy.health())/(unit.damage()))*500; //weakest unit
 			UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
 			for(int utctr=0; utctr<priorities.length; utctr++) {
 				if(enemyType == priorities[utctr]) {
