@@ -44,17 +44,19 @@ public class Player {
             }
         }
 
-        if(Globals.doesPathExist==false) { //research
+        if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
             //50 75 175 275 300 375 //475 550 575 675 775 975
             UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage,
                                     UnitType.Mage, UnitType.Mage, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
             for(int i=0; i<rarray.length; i++)
                 Globals.gc.queueResearch(rarray[i]);
         }
-        else {
+        else if(Globals.myPlanet==Planet.Earth) {
             //25 125 225 250 325 425 //500 550 575 675 775 975
             UnitType[] rarray = {UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage, UnitType.Mage,
                                     UnitType.Mage, UnitType.Rocket, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                Globals.gc.queueResearch(rarray[i]);
         }
 
         Globals.paths = new HashMap<>();

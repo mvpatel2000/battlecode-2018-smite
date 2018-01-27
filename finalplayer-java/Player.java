@@ -44,17 +44,19 @@ public class Player {
             }
         }
 
-        if(Globals.doesPathExist==false) { //research
+        if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
             //50 75 175 275 300 375 //475 550 575 675 775 975
             UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage,
                                     UnitType.Mage, UnitType.Mage, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
             for(int i=0; i<rarray.length; i++)
                 Globals.gc.queueResearch(rarray[i]);
         }
-        else {
+        else if(Globals.myPlanet==Planet.Earth) {
             //25 125 225 250 325 425 //500 550 575 675 775 975
             UnitType[] rarray = {UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage, UnitType.Mage,
                                     UnitType.Mage, UnitType.Rocket, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                Globals.gc.queueResearch(rarray[i]);
         }
 
         Globals.paths = new HashMap<>();
@@ -68,7 +70,7 @@ public class Player {
         }
 
         while (true) {
-            //try {
+            try {
                 Globals.current_round = (int)Globals.gc.round();
                 Globals.factories_active = 0; //tracks amount of factories producing units
                 if(Globals.current_round%15==0) { //print round number and update random field
@@ -178,8 +180,6 @@ public class Player {
                         }
 
                         // HEALER CODE //
-                        //TODO: Verify overcharge
-                        //TODO: Update overcharge priority to overcharge unit closest to Globals.enemy via distance field
                         else if(unit.unitType()==UnitType.Healer) {
                             try {
                                 Healer.runHealer(unit, myloc);
@@ -242,9 +242,9 @@ public class Player {
                         System.out.println("Replicated Worker Error: "+e);
                     }
                 }
-            // } catch(Exception e) {
-            //     System.out.println("Turn Error: "+e);
-            // }
+            } catch(Exception e) {
+                System.out.println("Turn Error: "+e);
+            }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }
