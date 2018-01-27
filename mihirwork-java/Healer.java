@@ -31,31 +31,32 @@ public class Healer
         if(allies_in_range.size()<=0)
             return;
         Unit ally_to_heal = null;
-        int ally_score = -999999999;
+        int ally_score = -1;
         for(int i=0; i<allies_in_range.size(); i++) {
-            Unit test_to_heal = allies_in_range.get(0);
+            Unit test_to_heal = allies_in_range.get(i);
             UnitType testtype = test_to_heal.unitType();
             if(testtype==UnitType.Worker || testtype==UnitType.Rocket || testtype==UnitType.Factory || testtype==UnitType.Healer)
                 continue;
             MapLocation testloc = test_to_heal.location().mapLocation();
-            int test_score = -Globals.distance_field[testloc.getX()][testloc.getY()]*100;
+            int test_score = (50*50+1-Globals.distance_field[testloc.getX()][testloc.getY()])*100;
             if(testtype==UnitType.Mage)
-                test_score-=80;
+                test_score+=60;
             else if(testtype==UnitType.Knight)
-                test_score-=70;
+                test_score+=50;
             else if(testtype==UnitType.Ranger)
-                test_score-=60;
+                test_score+=40;
             int attack_heat = (int)test_to_heal.attackHeat();
             int movement_heat = (int)test_to_heal.movementHeat();
             if(attack_heat>=20)
-                test_score-=20;
+                test_score+=20;
             else if(attack_heat>=10)
-                test_score-=10;
+                test_score+=10;
             if(movement_heat>=20)
-                test_score-=2;
+                test_score+=2;
             else if(movement_heat>=10)
-                test_score-=1;
-            if(test_score>ally_score) { //Note heuristic values are negative! Closer to 0 is more advantageous
+                test_score+=1;
+            //System.out.println(i+" "+test_score+" "+ally_score+" "+allies_in_range.size());
+            if(test_score>ally_score) {
                 ally_to_heal = test_to_heal;
                 ally_score = test_score;
             }

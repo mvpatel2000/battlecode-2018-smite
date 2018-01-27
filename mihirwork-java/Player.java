@@ -53,11 +53,8 @@ public class Player {
         }
         else {
             //25 50 150 200 225 325 //425 525 725 825 900 975
-            //UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket,
-            //                        UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
-            UnitType[] rarray = {UnitType.Healer, UnitType.Healer, UnitType.Healer};
-            for(int i=0; i<rarray.length; i++)
-                Globals.gc.queueResearch(rarray[i]);
+            UnitType[] rarray = {UnitType.Healer, UnitType.Ranger, UnitType.Healer, UnitType.Rocket, UnitType.Worker, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Ranger, UnitType.Ranger, UnitType.Healer, UnitType.Worker, UnitType.Worker}; //research queue
         }
 
         Globals.paths = new HashMap<>();
