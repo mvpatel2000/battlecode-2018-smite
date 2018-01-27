@@ -7,7 +7,8 @@ public class Mage {
         if(enemies_in_sight.size()>0) {      //combat state
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
             MapLocation nearloc = nearestUnit.location().mapLocation();
-            if(nearestUnit.unitType()==UnitType.Knight) //repel knight
+            int distance = (int)myloc.distanceSquaredTo(nearloc);
+            if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
                 PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));
             else 
                 PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));

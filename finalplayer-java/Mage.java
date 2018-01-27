@@ -5,9 +5,13 @@ public class Mage {
   public static void runMage(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
-            Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+            Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
             MapLocation nearloc = nearestUnit.location().mapLocation();
-            PathShits.fuzzyMove(unit, myloc.directionTo(nearloc)); //move in a better way
+            int distance = (int)myloc.distanceSquaredTo(nearloc);
+            if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
+                PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));
+            else 
+                PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
 
             VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
             if(enemies_in_range.size()>0) {
@@ -31,12 +35,41 @@ public class Mage {
     public static void mageAttack(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {
         if(!Globals.gc.isAttackReady(unit.id()))
             return;
-        int[][] heuristics = new int[(int)enemies_in_range.size()][2];
+        VecUnit heuristic_enemies = Globals.gc.senseNearbyUnits(myloc, 42L);
+        int[][] heuristics = mageAttackHeuristic(unit, myloc, heuristic_enemies);
+        int target_score = 0;
+        Unit target_enemy = null;
+        for(int i=0; i<enemies_in_range.size(); i++) {
+            Unit enemy = enemies_in_range.get(i);
+            MapLocation enemloc = enemy.location().mapLocation();
+            int enemy_score = heuristics[enemloc.getX()][enemloc.getY()];
+            if(enemy_score>target_score) {
+                target_score = enemy_score;
+                target_enemy = enemy;
+            }
+        }
+        if(target_enemy!=null && Globals.gc.canAttack(unit.id(), target_enemy.id())) {
+            Globals.gc.attack(unit.id(), target_enemy.id());
+        }
+    }
+
+    //mage unti heuristic
+    public static int[][] mageAttackHeuristic(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {        
+        int curwidth = 0;
+        int curheight = 0;
+        if(Globals.myPlanet==Planet.Earth) {
+            curwidth = Globals.width;
+            curheight = Globals.height;
+        }
+        else {
+            curwidth = Globals.mars_width;
+            curheight = Globals.mars_height;
+        }
+        int[][] heuristics = new int[curwidth][curheight];
         for(int i=0; i<enemies_in_range.size(); i++) {
             int hval = 0;
             Unit enemy = enemies_in_range.get(i);
             UnitType enemyType = enemy.unitType();
-            int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
             if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
                 hval+=10000;
             else if(unit.damage()>(int)enemy.health()) //can kill
@@ -56,19 +89,21 @@ public class Mage {
                     break;
                 }
             }
-            heuristics[i][0] = hval;
-            heuristics[i][1] = i;
-        }
-        java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
-            public int compare(int[] a, int[] b) {
-                return b[0] - a[0];
+            if(enemy.team()==Globals.ally)
+                hval = hval*-1;
+            MapLocation enemloc = enemy.location().mapLocation();
+            int x = enemloc.getX();
+            int y = enemloc.getY();
+            int[] shifts = {-1, 0, 1};
+            for(int xs = 0; xs<shifts.length; xs++) {
+                for(int ys=0; ys<shifts.length; ys++) {
+                    int xtemp = x+shifts[xs];
+                    int ytemp = y+shifts[ys];
+                    if(xtemp>=0 && xtemp<curwidth && ytemp>=0 && ytemp<curheight)
+                        heuristics[xtemp][ytemp]+=hval;
+                }
             }
-        });
-        for(int i=0; i<heuristics.length; i++) {
-            if(Globals.gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
-                Globals.gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
-                return;
-            }
         }
+        return heuristics;
     }
 }
