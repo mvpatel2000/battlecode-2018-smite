@@ -25,7 +25,7 @@ public class Knight {
 			}
 		}
 	 																/* TODO: tune this number */
-		int detour_size = 5;
+		int detour_size = 6;
 		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
 		if(close_enemies.size() > 0) {
 			// if enemy is close enough, detour and attack them
