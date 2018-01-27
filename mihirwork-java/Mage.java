@@ -4,14 +4,26 @@ import java.util.*;
 public class Mage {
   public static void runMage(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
+        VecUnit enemies_in_blink = Globals.gc.senseNearbyUnitsByTeam(myloc, 56L, Globals.enemy);
+        if(enemies_in_blink.size()>0) {
+            Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_blink);
+            MapLocation nearloc = nearestUnit.location().mapLocation();
+            if(nearestUnit.unitType()!=UnitType.Knight) {
+                Direction blinkdir = myloc.directionTo(nearloc);
+                mageBlink(unit, myloc, blinkdir);
+            }
+        }
         if(enemies_in_sight.size()>0) {      //combat state
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
             MapLocation nearloc = nearestUnit.location().mapLocation();
             int distance = (int)myloc.distanceSquaredTo(nearloc);
+
+            Direction movedir = null;
             if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
-                PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));
+                movedir = nearloc.directionTo(myloc);
             else 
-                PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+                movedir = myloc.directionTo(nearloc);
+            PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));        
 
             VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
             if(enemies_in_range.size()>0) {
@@ -24,6 +36,69 @@ public class Mage {
             }
             else
                 PathShits.moveOnVectorField(unit, myloc);
+        }
+    }
+
+    //blinks as best as possible in optimal direction
+    public static void mageBlink(Unit unit, MapLocation myloc, Direction movedir) {
+        if(!Globals.gc.isBlinkReady(unit.id()))
+            return;
+
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {-1, 0, 1};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(movedir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+
+        int curwidth = 0;
+        int curheight = 0;
+        if(Globals.myPlanet==Planet.Earth) {
+            curwidth = Globals.width;
+            curheight = Globals.height;
+        }
+        else {
+            curwidth = Globals.mars_width;
+            curheight = Globals.mars_height;
+        }
+
+        MapLocation bestmove = null;
+        int bestscore = 0;
+        for(int xctr=0; xctr<3; xctr++) {
+            MapLocation shift_1 = myloc.add( dirs[(dirindex+xctr+8)%8] );
+            for(int yctr=0; yctr<3; yctr++) {
+                MapLocation shift_2 = shift_1.add( dirs[(dirindex+yctr+8)%8] );
+                int x = shift_2.getX();
+                int y = shift_2.getY();
+                if(x>=0 && x<curwidth && y>=0 && y<curheight && Globals.gc.isOccupiable(shift_2)==0) {
+                    int shiftscore = 50*50+1 - Globals.distance_field[x][y];
+                    if(shiftscore>bestscore) {
+                        bestscore = shiftscore;
+                        bestmove = shift_2;
+                    }
+                }
+            }
+        }
+
+        for(int yctr=0; yctr<3; yctr++) {
+            MapLocation shift_2 = myloc.add( dirs[(dirindex+yctr+8)%8] );
+            int x = shift_2.getX();
+            int y = shift_2.getY();
+            if(x>=0 && x<curwidth && y>=0 && y<curheight && Globals.gc.isOccupiable(shift_2)!=0) {
+                int shiftscore = 50*50+1 - Globals.distance_field[x][y];
+                if(shiftscore>bestscore) {
+                    bestscore = shiftscore;
+                    bestmove = shift_2;
+                }
+            }
+        }
+        System.out.println(myloc+" "+bestmove);
+        if(bestmove!=null && Globals.gc.canBlink(unit.id(), bestmove)) {
+            Globals.gc.blink(unit.id(), bestmove);
         }
     }
 

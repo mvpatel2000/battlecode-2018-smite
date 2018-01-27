@@ -55,7 +55,7 @@ public class PathShits {
         return nearestUnit;
     }
 
-      public static void buildRandomField() {
+    public static void buildRandomField() {
         MapLocation clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height)); //random movement target for cluster
         for(int i=0; i<100; i++) {
             if(Globals.gc.canSenseLocation(clustertarget)==true) //target already within sight range

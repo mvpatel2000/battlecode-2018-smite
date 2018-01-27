@@ -9,7 +9,7 @@ public class Factory {
 
         int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
 
-        if(true==true)
+        if(Globals.current_round>200)
             Globals.gc.produceRobot(unit.id(),UnitType.Mage);
         else if(Globals.current_round<100 && distance_to_enemy<10 && Globals.total_knights<2)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
@@ -58,5 +58,6 @@ public class Factory {
             unload_dir = myloc.directionTo(new MapLocation(Globals.myPlanet, enemy_direction[0], enemy_direction[1]));
         }
         fuzzyUnload(unit, unload_dir);
+        PathShits.checkVectorField(unit, myloc);
     }
 }
