@@ -3,7 +3,7 @@ import java.util.*;
 
 public class Healer 
 {
-	 public static void runHealer(Unit unit, MapLocation myloc) {
+     public static void runHealer(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, Globals.maxVisionRange, Globals.enemy);
         if(true && enemies_in_range.size()>0) {      //combat state //ADD CHARGE MECHANIC
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
