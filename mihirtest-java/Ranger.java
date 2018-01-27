@@ -10,6 +10,7 @@ public class Ranger {
             int hval = 0;
             Unit enemy = enemies_in_range.get(i);
             UnitType enemyType = enemy.unitType();
+            int distance = (int)myloc.distanceSquaredTo(enemy.location().mapLocation()); //max value of 70
             if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
                 hval+=10000;
             else if(unit.damage()>(int)enemy.health()) //can kill
@@ -45,7 +46,7 @@ public class Ranger {
         }
     }
 
-    public static void runRanger(Unit unit, MapLocation myloc) {
+        public static void runRanger(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations

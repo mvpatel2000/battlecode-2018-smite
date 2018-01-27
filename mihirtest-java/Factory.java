@@ -10,7 +10,7 @@ public class Factory {
         int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
 
         if(true==true)
-            Globals.gc.produceRobot(unit.id(),UnitType.Mage);
+            Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.current_round<100 && distance_to_enemy<10 && Globals.total_knights<2)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
