@@ -207,20 +207,37 @@ public class Worker {
         for (Direction dir: dirs) {
             if(Globals.gc.canBlueprint(myUnit.id(), UnitType.Factory, dir)) {
                 MapLocation newLoc = myLoc.add(dir);
-                long mydist = 0L;
-                for (int j = 0; j < closeWorkers.size(); j++) {
-                    Unit otherworker = closeWorkers.get(j);
-                    if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
-                        mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                if(checkFactoryDirections(newLoc)>=3) {
+                    long mydist = 0L;
+                    for (int j = 0; j < closeWorkers.size(); j++) {
+                        Unit otherworker = closeWorkers.get(j);
+                        if(otherworker.unitType()==UnitType.Worker && !otherworker.location().isInGarrison() && !otherworker.location().isInSpace()) {
+                            mydist+= newLoc.distanceSquaredTo(otherworker.location().mapLocation());
+                        }
                     }
-                }
-                if(mydist<shortestdist) {
-                    shortestdist=mydist;
-                    bestdir=dir;
+                    if(mydist<shortestdist) {
+                        shortestdist=mydist;
+                        bestdir=dir;
+                    }
                 }
             }
         }
         return bestdir;
+    }
+
+    public static int checkFactoryDirections(MapLocation factoryLocation) {
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int passterr=0;
+        for (Direction dir: dirs) {
+            MapLocation newLoc = factoryLocation.add(dir);
+            if(Globals.map.onMap(newLoc)) {
+                if(Globals.map.isPassableTerrainAt(newLoc)!=0) { //it is passible
+                    passterr+=1;
+                }
+            }
+        }
+        return passterr;
     }
 
     public static ArrayList<Unit> nearbyWorkersFactory(Unit myUnit, MapLocation myLoc, long rad) {
