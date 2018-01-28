@@ -8,7 +8,7 @@ public class Factory {
             return;
 
 		int distance_to_factory = Globals.factory_field[myloc.getX()][myloc.getY()];
-		
+
 		int NUM_NONWORKERS_CUTOFF = 12;  // if num_nonworkers is greater, we don't produce knights
 		int NUM_RANGERS_CUTOFF = 2; // if number of nearby enemy rangers is greater, we don't produce knights
 
@@ -33,14 +33,14 @@ public class Factory {
 				num_rangers_near++;
 			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
 		}
-        
+
         if(distance_to_factory<=9 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
             Globals.gc.produceRobot(unit.id(), UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(), UnitType.Worker);
         else if(Globals.current_round>550 && Globals.num_workers<4 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(), UnitType.Worker);
-        else if(Globals.current_round>250 && Globals.num_mages<10 && Globals.num_rangers>num_mages*1.5 && Globals.num_healers>num_mages*1.25)
+        else if(Globals.current_round>250 && Globals.num_mages<10 && Globals.num_rangers>Globals.num_mages*1.5 && Globals.num_healers>Globals.num_mages*1.25)
             Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         else if(Globals.num_rangers<2)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
