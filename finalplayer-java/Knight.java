@@ -88,8 +88,10 @@ public class Knight {
 					bestDir = Helpers.opposite(dirs[ar[2]]);
 				}
 			}
-			PathShits.fuzzyMove(unit, bestDir);
-			return;
+			if(value < 100000) {
+				PathShits.fuzzyMove(unit, bestDir);
+				return;
+			}
 		}
 
 										// TODO: use Globals.enemy_locations
