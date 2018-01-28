@@ -28,6 +28,8 @@ public class Globals {
     public static ArrayList<int[]> ally_locations = new ArrayList<int[]>();
     public static int[][] distance_field = new int[width][height];
     public static ArrayList<Direction>[][] movement_field = new ArrayList[width][height];
+    public static ArrayList<int[]> enemy_factories = new ArrayList<int[]>(); //nearest enemy factory
+    public static int[][] factory_field = new int[width][height];
     public static HashMap<Integer, Integer> workers = new HashMap<>();
     public static int[][] random_distance_field = new int[width][height]; //generate random movement field
     public static ArrayList<Direction>[][] random_movement_field = new ArrayList[width][height];
