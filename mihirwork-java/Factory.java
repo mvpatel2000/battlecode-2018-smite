@@ -41,6 +41,8 @@ public class Factory {
         //     Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
             Globals.gc.produceRobot(unit.id(), UnitType.Knight);
+        else if(Globals.current_round<=60 && distance_to_factory<=17 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
+            Globals.gc.produceRobot(unit.id(), UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(), UnitType.Worker);
         else if(Globals.current_round>650 && Globals.num_rangers+Globals.num_healers+Globals.num_mages>10 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
