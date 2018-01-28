@@ -42,7 +42,7 @@ public class Worker {
                 if(buildRocket(unit, toKarb, myKarbs, units, 8L)==true) {
                     return;
                 }
-                else if(buildFactory(unit, toKarb, myKarbs, units, 40L)==true){
+                else if(buildFactory(unit, toKarb, myKarbs, units, 20L)==true){
                     return;
                 }
                 else {
@@ -57,7 +57,7 @@ public class Worker {
                     }
                     else if( (Globals.doesPathExist && Globals.num_factories<4) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<7) || (!Globals.doesPathExist && Globals.num_factories<2)) { //factory cap
                         //blueprint factory or (replicate or moveharvest)
-                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 40L);
+                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 20L);
                         if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
                             Globals.nikhil_num_workers+=(val-2);
                         } else { //did not degenerate
@@ -532,19 +532,19 @@ public class Worker {
 
         int ret = 0;
         if(Globals.doesPathExist==false)
-            ret = 6;
+            ret = 4;
         else if(dist<15)
-            ret = 8;
+            ret = 5;
         else if(dist<60 && karbfactor>200)
-            ret = 14;
+            ret = 12;
         else if(dist<60)
             ret = 10;
         else if(karbfactor>400)
-            ret = 20;
-        else if(karbfactor>200)
             ret = 16;
-        else
+        else if(karbfactor>200)
             ret = 12;
+        else
+            ret = 10;
         System.out.println("Karb Factor: "+karbfactor+" Path length: "+dist+" Worker Ratio: "+ret);
         return ret;
     }
