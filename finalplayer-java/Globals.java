@@ -49,11 +49,13 @@ public class Globals {
     public static int num_workers = 0;
     public static int num_rangers = 0;
     public static int num_knights = 0;
+    public static int num_mages = 0;
     public static int num_healers = 0;
     public static int total_workers = 0;
     public static int total_rangers = 0;
     public static int total_knights = 0;
     public static int total_healers = 0;
+    public static int total_mages = 0;
 
     //Constants
     public static final long maxAttackRange = 50L;

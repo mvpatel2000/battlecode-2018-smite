@@ -117,6 +117,7 @@ public class Player {
                 Globals.num_healers = 0;
                 Globals.num_knights = 0;
                 Globals.num_workers = 0;
+                Globals.num_mages = 0;
                 for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
                     UnitType unit_type = units.get(i).unitType();
                     if(unit_type==UnitType.Ranger)
@@ -125,6 +126,8 @@ public class Player {
                         Globals.num_healers++;
                     else if(unit_type==UnitType.Knight)
                         Globals.num_knights++;
+                    else if(unit_type==UnitType.Mage)
+                        Globals.num_mages++;
                     else if(unit_type==UnitType.Worker) {
                         Globals.num_workers++;
                         Globals.workers.put(units.get(i).id(), units.get(i).id());
@@ -134,6 +137,7 @@ public class Player {
                 Globals.total_healers+=Globals.num_healers;
                 Globals.total_knights+=Globals.num_knights;
                 Globals.total_workers+=Globals.num_workers;
+                Globals.total_mages+=Globals.num_mages;
 
                 //primary loop
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {

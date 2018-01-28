@@ -32,6 +32,7 @@ public class Player {
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
         PathShits.buildFactoryField();
+		PathShits.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
@@ -45,12 +46,12 @@ public class Player {
             }
         }
 
-        if(true) {
-            UnitType[] rarray = {UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket}; //research queue
-            for(int i=0; i<rarray.length; i++)
-                Globals.gc.queueResearch(rarray[i]);
-        }
-        else if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
+        // if(true) {
+        //     UnitType[] rarray = {UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket}; //research queue
+        //     for(int i=0; i<rarray.length; i++)
+        //         Globals.gc.queueResearch(rarray[i]);
+        // }
+        if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
             //50 75 175 275 300 375 //475 550 575 675 775 975
             UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage,
                                     UnitType.Mage, UnitType.Mage, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
@@ -116,6 +117,7 @@ public class Player {
                 Globals.num_healers = 0;
                 Globals.num_knights = 0;
                 Globals.num_workers = 0;
+                Globals.num_mages = 0;
                 for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
                     UnitType unit_type = units.get(i).unitType();
                     if(unit_type==UnitType.Ranger)
@@ -124,6 +126,8 @@ public class Player {
                         Globals.num_healers++;
                     else if(unit_type==UnitType.Knight)
                         Globals.num_knights++;
+                    else if(unit_type==UnitType.Mage)
+                        Globals.num_mages++;
                     else if(unit_type==UnitType.Worker) {
                         Globals.num_workers++;
                         Globals.workers.put(units.get(i).id(), units.get(i).id());
@@ -133,6 +137,7 @@ public class Player {
                 Globals.total_healers+=Globals.num_healers;
                 Globals.total_knights+=Globals.num_knights;
                 Globals.total_workers+=Globals.num_workers;
+                Globals.total_mages+=Globals.num_mages;
 
                 //primary loop
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {

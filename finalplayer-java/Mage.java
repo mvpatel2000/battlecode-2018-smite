@@ -4,16 +4,16 @@ import java.util.*;
 public class Mage {
   public static void runMage(Unit unit, MapLocation myloc) {        
         VecUnit enemies_in_blink = Globals.gc.senseNearbyUnitsByTeam(myloc, 56L, Globals.enemy);
-        if(enemies_in_blink.size()>0) {
+        if(enemies_in_blink.size()>0 && Globals.gc.isMoveReady(unit.id())) {
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_blink);
             MapLocation nearloc = nearestUnit.location().mapLocation();
             if(nearestUnit.unitType()!=UnitType.Knight) {
                 Direction blinkdir = myloc.directionTo(nearloc);
-                System.out.println("1. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
+                //System.out.println("1. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
                 mageBlink(unit, myloc, blinkdir);
                 unit = Globals.gc.unit(unit.id());
                 myloc = unit.location().mapLocation();
-                System.out.println("2. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
+                //System.out.println("2. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
             }
         }        
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
@@ -59,17 +59,6 @@ public class Mage {
             }
         }
 
-        int curwidth = 0;
-        int curheight = 0;
-        if(Globals.myPlanet==Planet.Earth) {
-            curwidth = Globals.width;
-            curheight = Globals.height;
-        }
-        else {
-            curwidth = Globals.mars_width;
-            curheight = Globals.mars_height;
-        }
-
         MapLocation bestmove = null;
         int bestscore = 0;
         for(int xctr=0; xctr<3; xctr++) {
@@ -78,7 +67,7 @@ public class Mage {
                 MapLocation shift_2 = shift_1.add( dirs[(dirindex+yctr+8)%8] );
                 int x = shift_2.getX();
                 int y = shift_2.getY();
-                if(x>=0 && x<curwidth && y>=0 && y<curheight && Globals.gc.isOccupiable(shift_2)==0) {
+                if(x>=0 && x<Globals.width && y>=0 && y<Globals.height && Globals.gc.isOccupiable(shift_2)!=0) {
                     int shiftscore = 50*50+1 - Globals.distance_field[x][y];
                     if(shiftscore>bestscore) {
                         bestscore = shiftscore;
@@ -92,7 +81,7 @@ public class Mage {
             MapLocation shift_2 = myloc.add( dirs[(dirindex+yctr+8)%8] );
             int x = shift_2.getX();
             int y = shift_2.getY();
-            if(x>=0 && x<curwidth && y>=0 && y<curheight && Globals.gc.isOccupiable(shift_2)!=0) {
+            if(x>=0 && x<Globals.width && y>=0 && y<Globals.height && Globals.gc.isOccupiable(shift_2)!=0) {
                 int shiftscore = 50*50+1 - Globals.distance_field[x][y];
                 if(shiftscore>bestscore) {
                     bestscore = shiftscore;
@@ -100,8 +89,9 @@ public class Mage {
                 }
             }
         }
-        System.out.println("BLINKED! "+Globals.current_round+" "+myloc+" "+bestmove);
+        
         if(bestmove!=null && Globals.gc.canBlink(unit.id(), bestmove)) {
+            //System.out.println("BLINKED! "+Globals.current_round+" "+myloc+" "+bestmove+" [Distance]: "+(50*50+1-bestscore)+" "+Globals.distance_field[myloc.getX()][myloc.getY()]);
             Globals.gc.blink(unit.id(), bestmove);
         }
     }

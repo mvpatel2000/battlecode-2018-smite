@@ -33,18 +33,20 @@ public class Factory {
 				num_rangers_near++;
 			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
 		}
-
+        
         if(distance_to_factory<=9 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
-            Globals.gc.produceRobot(unit.id(),UnitType.Knight);
+            Globals.gc.produceRobot(unit.id(), UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
-            Globals.gc.produceRobot(unit.id(),UnitType.Worker);
+            Globals.gc.produceRobot(unit.id(), UnitType.Worker);
         else if(Globals.current_round>550 && Globals.num_workers<4 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
-            Globals.gc.produceRobot(unit.id(),UnitType.Worker);
-        else if(Globals.num_rangers<3)
+            Globals.gc.produceRobot(unit.id(), UnitType.Worker);
+        else if(Globals.current_round>250 && Globals.num_mages<10 && Globals.num_rangers>num_mages*1.5 && Globals.num_healers>num_mages*1.25)
+            Globals.gc.produceRobot(unit.id(), UnitType.Mage);
+        else if(Globals.num_rangers<2)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
         else if(Globals.num_rangers>30 && (Globals.num_rangers)/(1.0*Globals.num_healers)>3.0/2.0)
             Globals.gc.produceRobot(unit.id(), UnitType.Healer);
-        else if((Globals.num_rangers-4)/(1.0*Globals.num_healers)>2.0/1.0)
+        else if((Globals.num_rangers-2)/(1.0*Globals.num_healers)>3.0/2.0)
             Globals.gc.produceRobot(unit.id(), UnitType.Healer);
         else if(Globals.num_rangers<60 || (int)Globals.gc.karbonite()>500)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
