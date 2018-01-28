@@ -24,14 +24,19 @@ public class Factory {
 			if(num_nonworkers > NUM_NONWORKERS_CUTOFF) break;
 		}
 
-		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy);
+		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 16, Globals.enemy);
 		int num_rangers_near = 0;
+		boolean knight_near = false;
 		// final value won't be correct: don't use this variable
 
 
 		for(int x=0; x<nearenemies.size(); x++) {
 			if(nearenemies.get(x).unitType() == UnitType.Ranger)
 				num_rangers_near++;
+			if(nearenemies.get(x).unitType() == UnitType.Knight) {
+				knight_near = true;
+				break;
+			}
 			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
 		}
 
@@ -40,7 +45,9 @@ public class Factory {
         //     Globals.gc.produceRobot(unit.id(), UnitType.Knight);
         // else if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
         //     Globals.gc.produceRobot(unit.id(), UnitType.Mage);
-        if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
+		if(knight_near)
+            Globals.gc.produceRobot(unit.id(), UnitType.Knight);
+		else if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
             Globals.gc.produceRobot(unit.id(), UnitType.Knight);
         else if(Globals.current_round<=60 && distance_to_factory<=17 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
             Globals.gc.produceRobot(unit.id(), UnitType.Knight);
