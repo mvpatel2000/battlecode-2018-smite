@@ -55,7 +55,7 @@ public class Worker {
                             Globals.num_rockets+=val;
                         }
                     }
-                    else if( (Globals.doesPathExist && Globals.num_factories<4) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<7) || (!Globals.doesPathExist && Globals.num_factories<2)) { //factory cap
+                    else if( (Globals.doesPathExist && Globals.num_factories<6) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<9) || (!Globals.doesPathExist && Globals.num_factories<3)) { //factory cap
                         //blueprint factory or (replicate or moveharvest)
                         int val = blueprintFactory(unit, toKarb, myKarbs, units, 20L);
                         if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
