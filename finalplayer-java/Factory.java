@@ -24,7 +24,7 @@ public class Factory {
 			if(num_nonworkers > NUM_NONWORKERS_CUTOFF) break;
 		}
 
-		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 16, Globals.enemy);
+		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 9, Globals.enemy);
 		int num_rangers_near = 0;
 		boolean knight_near = false;
 		// final value won't be correct: don't use this variable
