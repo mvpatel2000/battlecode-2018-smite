@@ -80,6 +80,7 @@ public class Player {
         while (true) {
             //try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
+					System.out.println(":(");
                     Globals.gc.nextTurn();
                 }
                 Globals.current_round = (int)Globals.gc.round();
@@ -94,8 +95,10 @@ public class Player {
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
 
-                PathShits.updateFieldWithBuildings();
-                PathShits.updateFactoryField();
+				if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
+					PathShits.updateFieldWithBuildings();
+					PathShits.updateFactoryField();
+				}
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
