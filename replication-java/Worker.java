@@ -180,7 +180,7 @@ public class Worker {
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)Globals.map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)Globals.map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(Globals.myPlanet, i, j);
-                if( ((x-i)*(x-i) + (y-j)*(y-j)) < unit.visionRange()) {
+                if(((x-i)*(x-i) + (y-j)*(y-j))<unit.visionRange()) {
                     if(Globals.gc.canSenseLocation(m)) {
                         if(Globals.gc.karboniteAt(m)>0L) {
                             return myLoc.directionTo(m);
@@ -347,8 +347,15 @@ public class Worker {
         if(closeWorkers.size()>2) { //includes the original worker, we want three Globals.workers per factory
             Direction blueprintDirection = optimalDirectionFactory(unit, myLoc, closeWorkers);
             if(blueprintDirection!=null) {
-                Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
-                return 1;
+                if(PathShits.getNearestNonWorkerEnemy(myLoc, Globals.gc.senseNearbyUnitsByTeam(myLoc, unit.visionRange(), Globals.enemy))>50) {
+                    Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
+                    return 1;
+                } else {
+                    //should not build blueprint, it will die
+                    workerharvest(unit, toKarb, myKarbs);
+                    workermove(unit, toKarb, myKarbs);
+                    return 0;
+                }
             } else {
                 //cannot build blueprint
                 workerharvest(unit, toKarb, myKarbs);
