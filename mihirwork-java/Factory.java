@@ -34,8 +34,11 @@ public class Factory {
 			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
 		}
 
-        if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
+        if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF && 
+                                    Globals.num_knights/(1.0*Globals.num_mages) < 3.0/2.0 )
             Globals.gc.produceRobot(unit.id(), UnitType.Knight);
+        else if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
+            Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         else if(Globals.total_knights<=0 && Globals.total_mages<=0)
             Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
