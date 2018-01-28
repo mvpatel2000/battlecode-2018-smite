@@ -32,6 +32,7 @@ public class Player {
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
         PathShits.buildFactoryField();
+		PathShits.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
