@@ -4,7 +4,7 @@ import java.util.*;
 public class Mage {
   public static void runMage(Unit unit, MapLocation myloc) {        
         VecUnit enemies_in_blink = Globals.gc.senseNearbyUnitsByTeam(myloc, 56L, Globals.enemy);
-        if(enemies_in_blink.size()>0 && Globals.gc.isMoveReady(unit.id())) {
+        if(enemies_in_blink.size()>0 && Globals.gc.isBlinkReady(unit.id())) {
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_blink);
             MapLocation nearloc = nearestUnit.location().mapLocation();
             if(nearestUnit.unitType()!=UnitType.Knight) {
