@@ -34,7 +34,7 @@ public class Worker {
             PathShits.updateEnemies();
         }
         if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
-            System.out.println("Because shouldReplicate is true!");
+            //System.out.println("Because shouldReplicate is true!");
             Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
         } else {
             if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
@@ -67,7 +67,7 @@ public class Worker {
                     }
                     else {
                         if(shouldReplicate) {
-                            System.out.println("Because of the factory limit!");
+                            //System.out.println("Because of the factory limit!");
                             Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
                         } else {
                             workerharvest(unit, toKarb, myKarbs);
@@ -85,7 +85,7 @@ public class Worker {
                 }
             } else {
                 //replicate or move harvest
-                System.out.println("Because I'm a relic!");
+                //System.out.println("Because I'm a relic!");
                 Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
             }
         }
@@ -262,23 +262,23 @@ public class Worker {
                 if(Globals.movement_field[myLoc.getX()][myLoc.getY()].size()>0) {
                     Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
                     if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
-                        System.out.println("Replicating my ass off");
-                        System.out.println(myLoc);
+                        //System.out.println("Replicating my ass off");
+                        //System.out.println(myLoc);
                         Globals.gc.replicate(unit.id(), optimalDir);
                         return 1;
                     }
                 }
             }
             if(Globals.gc.canReplicate(unit.id(), toKarb)) {
-                System.out.println("Replicating my ass off");
-                System.out.println(myLoc);
+                //System.out.println("Replicating my ass off");
+                //System.out.println(myLoc);
                 Globals.gc.replicate(unit.id(), toKarb);
                 return 1;
             } else {
                 for (KarbDir k : myKarbs) {
                     if(Globals.gc.canReplicate(unit.id(), k.dir)) {
-                        System.out.println("Replicating my ass off");
-                        System.out.println(myLoc);
+                        //System.out.println("Replicating my ass off");
+                        //System.out.println(myLoc);
                         Globals.gc.replicate(unit.id(), k.dir);
                         return 1;
                     }
