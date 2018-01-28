@@ -252,10 +252,12 @@ public class Worker {
         workermove(unit, toKarb, myKarbs);
         MapLocation myLoc = unit.location().mapLocation();
         if(Globals.current_round<(Globals.width+Globals.height)/2) {
-            Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
-            if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
-                Globals.gc.replicate(unit.id(), optimalDir);
-                return 1;
+            if(Globals.movement_field[myLoc.getX()][myLoc.getY()].size()>0) {
+                Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
+                if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
+                    Globals.gc.replicate(unit.id(), optimalDir);
+                    return 1;
+                }
             }
         }
         if(Globals.gc.canReplicate(unit.id(), toKarb)) {
