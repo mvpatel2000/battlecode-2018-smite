@@ -30,7 +30,7 @@ public class Factory {
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
         else if(Globals.current_round>550 && Globals.num_workers<4 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
-        else if(Globals.num_rangers<7)
+        else if(Globals.num_rangers<3)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
         else if(Globals.num_rangers>30 && (Globals.num_rangers)/(1.0*Globals.num_healers)>3.0/2.0)
             Globals.gc.produceRobot(unit.id(), UnitType.Healer);

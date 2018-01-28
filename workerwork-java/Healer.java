@@ -3,7 +3,7 @@ import java.util.*;
 
 public class Healer 
 {
-	 public static void runHealer(Unit unit, MapLocation myloc) {
+     public static void runHealer(Unit unit, MapLocation myloc) {
         VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, Globals.maxVisionRange, Globals.enemy);
         if(true && enemies_in_range.size()>0) {      //combat state //ADD CHARGE MECHANIC
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
@@ -31,20 +31,20 @@ public class Healer
         if(allies_in_range.size()<=0)
             return;
         Unit ally_to_heal = null;
-        int ally_score = 0;
+        int ally_score = -1;
         for(int i=0; i<allies_in_range.size(); i++) {
-            Unit test_to_heal = allies_in_range.get(0);
+            Unit test_to_heal = allies_in_range.get(i);
             UnitType testtype = test_to_heal.unitType();
             if(testtype==UnitType.Worker || testtype==UnitType.Rocket || testtype==UnitType.Factory || testtype==UnitType.Healer)
                 continue;
             MapLocation testloc = test_to_heal.location().mapLocation();
-            int test_score = Globals.distance_field[testloc.getX()][testloc.getY()]*100;
+            int test_score = (50*50+1-Globals.distance_field[testloc.getX()][testloc.getY()])*100;
             if(testtype==UnitType.Mage)
-                test_score+=80;
-            else if(testtype==UnitType.Knight)
-                test_score+=70;
-            else if(testtype==UnitType.Ranger)
                 test_score+=60;
+            else if(testtype==UnitType.Knight)
+                test_score+=50;
+            else if(testtype==UnitType.Ranger)
+                test_score+=40;
             int attack_heat = (int)test_to_heal.attackHeat();
             int movement_heat = (int)test_to_heal.movementHeat();
             if(attack_heat>=20)
@@ -55,6 +55,7 @@ public class Healer
                 test_score+=2;
             else if(movement_heat>=10)
                 test_score+=1;
+            //System.out.println(i+" "+test_score+" "+ally_score+" "+allies_in_range.size());
             if(test_score>ally_score) {
                 ally_to_heal = test_to_heal;
                 ally_score = test_score;

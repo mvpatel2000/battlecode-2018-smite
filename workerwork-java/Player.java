@@ -31,6 +31,7 @@ public class Player {
 
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
+        PathShits.buildFactoryField();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
@@ -44,7 +45,11 @@ public class Player {
             }
         }
 
-
+        // if(true) {
+        //     UnitType[] rarray = {UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket}; //research queue
+        //     for(int i=0; i<rarray.length; i++)
+        //         Globals.gc.queueResearch(rarray[i]);
+        // }
         if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
             //50 75 175 275 300 375 //475 550 575 675 775 975
             UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage,
@@ -83,6 +88,9 @@ public class Player {
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
+
+                PathShits.updateFieldWithBuildings();
+                PathShits.updateFactoryField();
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
