@@ -4,6 +4,46 @@ import bc.*;
 /* moving and path related shits */
 
 public class PathShits {
+
+    public static void updateFactoryField() {
+        VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+        Globals.enemy_factories = new ArrayList<int[]>();
+        for(int i = 0; i<total_enemies.size(); i++) {
+            Unit enemy_unit = total_enemies.get(i);
+            if(enemy_unit.unitType()==UnitType.Factory) { //if factory
+                MapLocation enem_loc = enemy_unit.location().mapLocation();         
+                int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
+                Globals.enemy_factories.add(building_info);
+            }                
+        }
+        buildFactoryField();
+    }
+
+    public static void updateFieldWithBuildings() {
+        VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+        int initsize = Globals.enemy_locations.size();
+        for(int i = 0; i<total_enemies.size(); i++) {
+            Unit enemy_unit = total_enemies.get(i);
+            boolean isDuplicate = false;
+            if(enemy_unit.unitType()==UnitType.Factory || enemy_unit.unitType()==UnitType.Rocket) { //if factory
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
+                for(int targs=0; targs<Globals.enemy_locations.size(); targs++) { //check if already marked
+                    int[] enem_loc_info = Globals.enemy_locations.get(targs);
+                    if(enem_loc.getX()==enem_loc_info[0] && enem_loc.getY()==enem_loc_info[1]) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if(isDuplicate)
+                    continue;                
+                int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
+                Globals.enemy_locations.add(building_info);
+            }                
+        }
+        if(initsize==Globals.enemy_locations.size())
+            buildFieldBFS(); //check if size changed
+    }
+
     public static Direction getNearestNonWorkerOppositeDirection(MapLocation myloc, VecUnit other_units) {
         Unit nearestUnit = null;
         MapLocation nearloc = null;
@@ -53,68 +93,7 @@ public class PathShits {
             }
         }
         return nearestUnit;
-    }
-
-      public static void buildRandomField() {
-        MapLocation clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height)); //random movement target for cluster
-        for(int i=0; i<100; i++) {
-            if(Globals.gc.canSenseLocation(clustertarget)==true) //target already within sight range
-                break;
-            clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height));
-        }
-        int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
-
-        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
-                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-
-        Queue<int[]> queue = new LinkedList<int[]>();
-        queue.add(randtarget);
-
-        for(int w=0; w<Globals.width; w++) {
-            for(int h=0; h<Globals.height; h++) {
-                Globals.random_distance_field[w][h] = (50*50+1);
-                Globals.random_movement_field[w][h] = new ArrayList<Direction>();
-            }
-        }
-
-        while(queue.peek()!=null) {
-            int[] lcc = queue.poll();
-            int x = lcc[0];
-            int y = lcc[1];
-            int dir = lcc[2];
-            int depth = lcc[3];
-
-            if(x<0 || y<0 || x>=Globals.width || y>=Globals.height ||  //border checks
-                    Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
-                    Globals.random_distance_field[x][y]<depth) { //is an inferior move
-                continue;
-            }
-            else if(Globals.random_distance_field[x][y]==depth) { //add equivalently optimal Direction
-                Globals.random_movement_field[x][y].add(dirs[dir]);
-            }
-            else if(Globals.random_distance_field[x][y]>depth) { //replace old Directions with more optimal ones
-                Globals.random_distance_field[x][y] = depth;
-                Globals.random_movement_field[x][y] = new ArrayList<Direction>();
-                Globals.random_movement_field[x][y].add(dirs[dir]);
-                int[] lc2 = {x+1,y,  5,depth+1};
-                queue.add(lc2);
-                int[] lc3 = {x+1,y+1,6,depth+1};
-                queue.add(lc3);
-                int[] lc4 = {x,y+1,  7,depth+1};
-                queue.add(lc4);
-                int[] lc5 = {x-1,y+1,8,depth+1};
-                queue.add(lc5);
-                int[] lc6 = {x-1,y,  1,depth+1};
-                queue.add(lc6);
-                int[] lc7 = {x-1,y-1,2,depth+1};
-                queue.add(lc7);
-                int[] lc8 = {x,y-1,  3,depth+1};
-                queue.add(lc8);
-                int[] lc9 = {x+1,y-1,4,depth+1};
-                queue.add(lc9);
-            }
-        }
-    }
+    }    
 
     public static void checkVectorField(Unit unit, MapLocation mapLocation) {
         UnitType myUnitType = unit.unitType();
@@ -148,7 +127,7 @@ public class PathShits {
         }
     }
 
-      public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
+    public static ArrayList<KarbonitePath> karbonitePath(int[] buckets) {
         ArrayList<KarbonitePath> R = new ArrayList<>();
         Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
         for(int x=0; x<Globals.width; x++)
@@ -224,7 +203,186 @@ public class PathShits {
         return R;
     }
 
+    public static void buildRandomFieldMars() {
+        MapLocation clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height)); //random movement target for cluster
+        for(int i=0; i<100; i++) {
+            if(Globals.gc.canSenseLocation(clustertarget)==true) //target already within sight range
+                break;
+            clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height));
+        }
+        int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
+
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        queue.add(randtarget);
+
+        for(int w=0; w<Globals.mars_width; w++) {
+            for(int h=0; h<Globals.mars_height; h++) {
+                Globals.random_distance_field[w][h] = (50*50+1);
+                Globals.random_movement_field[w][h] = new ArrayList<Direction>();
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.mars_width || y>=Globals.mars_height ||  //border checks
+                    Globals.mars_map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.random_distance_field[x][y]<depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.random_distance_field[x][y]==depth) { //add equivalently optimal Direction
+                Globals.random_movement_field[x][y].add(dirs[dir]);
+            }
+            else if(Globals.random_distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.random_distance_field[x][y] = depth;
+                Globals.random_movement_field[x][y] = new ArrayList<Direction>();
+                Globals.random_movement_field[x][y].add(dirs[dir]);
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
+
+    public static void buildRandomField() {
+        if(Globals.myPlanet==Planet.Mars)
+            buildRandomFieldMars();
+        MapLocation clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height)); //random movement target for cluster
+        for(int i=0; i<100; i++) {
+            if(Globals.gc.canSenseLocation(clustertarget)==true) //target already within sight range
+                break;
+            clustertarget = new MapLocation(Globals.myPlanet, (int)(Math.random()*Globals.width), (int)(Math.random()*Globals.height));
+        }
+        int[] randtarget = {clustertarget.getX(), clustertarget.getY(), 0, 0};
+
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        queue.add(randtarget);
+
+        for(int w=0; w<Globals.width; w++) {
+            for(int h=0; h<Globals.height; h++) {
+                Globals.random_distance_field[w][h] = (50*50+1);
+                Globals.random_movement_field[w][h] = new ArrayList<Direction>();
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.width || y>=Globals.height ||  //border checks
+                    Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.random_distance_field[x][y]<depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.random_distance_field[x][y]==depth) { //add equivalently optimal Direction
+                Globals.random_movement_field[x][y].add(dirs[dir]);
+            }
+            else if(Globals.random_distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.random_distance_field[x][y] = depth;
+                Globals.random_movement_field[x][y] = new ArrayList<Direction>();
+                Globals.random_movement_field[x][y].add(dirs[dir]);
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
+
+    public static void buildFieldBFSMars() {
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<Globals.enemy_locations.size(); i++)
+            queue.add(Globals.enemy_locations.get(i));
+        for(int w=0; w<Globals.mars_width; w++) {
+            for(int h=0; h<Globals.mars_height; h++) {
+                Globals.distance_field[w][h] = (50*50+1);
+                Globals.movement_field[w][h] = new ArrayList<Direction>();
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.mars_width || y>=Globals.mars_height ||  //border checks
+                    Globals.mars_map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.distance_field[x][y]<depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.distance_field[x][y]==depth) { //add equivalently optimal Direction
+                Globals.movement_field[x][y].add(dirs[dir]);
+            }
+            else if(Globals.distance_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.distance_field[x][y] = depth;
+                Globals.movement_field[x][y] = new ArrayList<Direction>();
+                Globals.movement_field[x][y].add(dirs[dir]);
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
+
     public static void buildFieldBFS() {
+        if(Globals.myPlanet==Planet.Mars)
+            buildFieldBFSMars();
         Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
                                 Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
 
@@ -277,6 +435,101 @@ public class PathShits {
         }
     }
 
+    public static void buildFactoryFieldMars() {
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<Globals.enemy_factories.size(); i++)
+            queue.add(Globals.enemy_factories.get(i));
+        for(int w=0; w<Globals.mars_width; w++) {
+            for(int h=0; h<Globals.mars_width; h++) {
+                Globals.factory_field[w][h] = (50*50+1);
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.mars_width || y>=Globals.mars_width ||  //border checks
+                    Globals.mars_map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.factory_field[x][y]<=depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.factory_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.factory_field[x][y] = depth;
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
+
+    public static void buildFactoryField() {
+        if(Globals.myPlanet==Planet.Mars)
+            buildFactoryFieldMars();
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<Globals.enemy_factories.size(); i++)
+            queue.add(Globals.enemy_factories.get(i));
+        for(int w=0; w<Globals.width; w++) {
+            for(int h=0; h<Globals.height; h++) {
+                Globals.factory_field[w][h] = (50*50+1);
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.width || y>=Globals.height ||  //border checks
+                    Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.factory_field[x][y]<=depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.factory_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.factory_field[x][y] = depth;
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+    }
 
 	public static void moveOnVectorField(Unit unit, MapLocation mapLocation) {
         if(!Globals.gc.isMoveReady(unit.id())) //checks if can move
@@ -360,7 +613,7 @@ public class PathShits {
         return Direction.Center;
     }
 
-     public static void fuzzyMove(Unit unit, Direction dir) {
+    public static void fuzzyMove(Unit unit, Direction dir) {
         if(!Globals.gc.isMoveReady(unit.id()) || dir==Direction.Center)
             return;
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,

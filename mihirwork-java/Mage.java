@@ -2,17 +2,21 @@ import bc.*;
 import java.util.*;
 
 public class Mage {
-  public static void runMage(Unit unit, MapLocation myloc) {
-        VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
+  public static void runMage(Unit unit, MapLocation myloc) {        
         VecUnit enemies_in_blink = Globals.gc.senseNearbyUnitsByTeam(myloc, 56L, Globals.enemy);
         if(enemies_in_blink.size()>0) {
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_blink);
             MapLocation nearloc = nearestUnit.location().mapLocation();
             if(nearestUnit.unitType()!=UnitType.Knight) {
                 Direction blinkdir = myloc.directionTo(nearloc);
+                System.out.println("1. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
                 mageBlink(unit, myloc, blinkdir);
+                unit = Globals.gc.unit(unit.id());
+                myloc = unit.location().mapLocation();
+                System.out.println("2. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
             }
-        }
+        }        
+        VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
             MapLocation nearloc = nearestUnit.location().mapLocation();
@@ -96,7 +100,7 @@ public class Mage {
                 }
             }
         }
-        System.out.println(myloc+" "+bestmove);
+        System.out.println("BLINKED! "+Globals.current_round+" "+myloc+" "+bestmove);
         if(bestmove!=null && Globals.gc.canBlink(unit.id(), bestmove)) {
             Globals.gc.blink(unit.id(), bestmove);
         }

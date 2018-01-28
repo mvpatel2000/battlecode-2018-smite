@@ -25,21 +25,41 @@ public class Knight {
 			}
 		}
 	 																/* TODO: tune this number */
-		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 4, Globals.enemy);
+		int detour_size = 6;
+		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
 		if(close_enemies.size() > 0) {
-			 // if enemy is close enough, detour and attack them
-			Unit nearestUnit = PathShits.getNearestUnit(myloc, close_enemies);
-			MapLocation nearloc = nearestUnit.location().mapLocation();
-			PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
-			Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
-			return;
+			// if enemy is close enough, detour and attack them
+			int m_val = -1000;
+			Unit to_follow = close_enemies.get(0);
+			for(int x=0; x<close_enemies.size(); x++) {
+				Unit t = close_enemies.get(x);
+				int val = 0;
+				if(t.unitType() == UnitType.Ranger)
+					val += 5;
+				else if(t.unitType() == UnitType.Knight || t.unitType() == UnitType.Mage)
+					val += 4;
+				else if(t.unitType() == UnitType.Healer)
+					val += 3;
+				if(val > m_val) {
+					m_val = val;
+					to_follow = t;
+				}
+			}
+			MapLocation loc = to_follow.location().mapLocation();
+			Queue<Direction> path =
+				Helpers.astar(unit, loc, true);
+			if(path.size() < detour_size+4) {
+				PathShits.fuzzyMove(unit, myloc.directionTo(loc));
+				Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
+				return;
+			}
 		}
 		
 
 		boolean toMove = false;
+		ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
 		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
 			VecUnit units = Globals.gc.units();
-			ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
 			for(int x=0; x<units.size(); x++) {
 				if(units.get(x).team() == Globals.ally) continue;
 				if(units.get(x).unitType() == UnitType.Factory || units.get(x).unitType() == UnitType.Rocket) {
@@ -51,10 +71,10 @@ public class Knight {
 			Collections.sort(factories);
 			for(int x=0; x<factories.size(); x++) {
 				Queue<Direction> path =
-					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), true);
+					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), true);//false);//true);
 				if(path.size() > 0) {
 					Globals.paths.put(unit.id(), path);
-					System.out.println("R: "+Globals.current_round+" "+path);
+					//System.out.println("R: "+Globals.current_round+" "+path);
 					toMove = true;
 					break;
 				}
@@ -71,6 +91,19 @@ public class Knight {
 				return;
 			}
 		}
+		if(!toMove) {
+			for(int x=0; x<factories.size(); x++) {
+				Queue<Direction> path =
+					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), false);
+				if(path.size() > 0) {
+					Globals.paths.put(unit.id(), path);
+					//System.out.println("R2: "+Globals.current_round+" "+path);
+					toMove = true;
+					break;
+				}
+			}
+		}
+
 		if(!toMove && Globals.enemy_locations.size() > 0) {
 			MapLocation m = new MapLocation(Globals.myPlanet, Globals.enemy_locations.get(0)[0], Globals.enemy_locations.get(0)[1]);
 			Queue<Direction> path =
@@ -80,6 +113,7 @@ public class Knight {
 				toMove = true;
 			}
 		}
+
 		if(toMove) {
 			Direction d = Globals.paths.get(unit.id()).poll();
 			if(Globals.gc.isMoveReady(unit.id()) && Globals.gc.canMove(unit.id(), d)) {
