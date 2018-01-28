@@ -67,16 +67,6 @@ public class Helpers {
 	}
 	public static Queue<Direction> astar(Unit me, MapLocation location, boolean include_units) {
 		PlanetMap planet = Globals.gc.startingMap(Globals.gc.planet());
-		HashSet<String> unitLocations = new HashSet<>();
-		if(include_units) {
-			VecUnit units = Globals.gc.units();
-			for(int x=0; x<units.size(); x++) {
-				if(units.get(x).team() != Globals.ally) continue; // only account for own units
-				try {
-				unitLocations.add(units.get(x).location().mapLocation().toString());
-				} catch (Exception e) {}	   // in space or in a structure's garrison
-			}
-		}
 
 		PriorityQueue<Tuple4<Long, Long, MapLocation, Direction>> pq
 			= new PriorityQueue<>(new Comparator<Tuple4<Long,Long,MapLocation,Direction>>() {
@@ -107,7 +97,9 @@ public class Helpers {
 				if(dir == Direction.Center) continue;
 				MapLocation adj = t.c.add(dir);
 				if(vis.containsKey(adj)) continue;
-				if(unitLocations.contains(adj.toString()) || !planet.onMap(adj) || planet.isPassableTerrainAt(adj) == 0)
+				if(!planet.onMap(adj) || planet.isPassableTerrainAt(adj) == 0)
+					continue;
+				if(include_units && Globals.gc.hasUnitAtLocation(adj))
 					continue;
 				Long h = new Long(Math.abs(location.getX() - adj.getX())
 						+ Math.abs(location.getY() - adj.getY()));
