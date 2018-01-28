@@ -7,23 +7,40 @@ public class Factory {
             Globals.gc.canProduceRobot(unit.id(), UnitType.Knight) && Globals.gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
 
-        int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
+		int distance_to_factory = Globals.factory_field[myloc.getX()][myloc.getY()];
 		
-		int num_nonworkers = 0;
-		VecUnit enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
-		for(int x=0; x<enemies.size(); x++) {
-			if(enemies.get(x).unitType() != UnitType.Worker)
+		int NUM_NONWORKERS_CUTOFF = 12;  // if num_nonworkers is greater, we don't produce knights
+		int NUM_RANGERS_CUTOFF = 2; // if number of nearby enemy rangers is greater, we don't produce knights
+
+		int num_nonworkers = 0; // number of enemy units that aren't workers
+		// final value won't be correct: don't use this variable
+
+		VecUnit units = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
+		for(int x=0; x<units.size(); x++) {
+			Unit t = units.get(x);
+			if(t.unitType() != UnitType.Worker)
 				num_nonworkers++;
+			if(num_nonworkers > NUM_NONWORKERS_CUTOFF) break;
 		}
 
-												// TODO: why this not work?			// to remove once former works
-        if(Globals.current_round<150 && distance_to_enemy<15 && num_nonworkers<=8 && Globals.enemy_locations.size() < 15)
+		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy);
+		int num_rangers_near = 0;
+		// final value won't be correct: don't use this variable
+
+
+		for(int x=0; x<nearenemies.size(); x++) {
+			if(nearenemies.get(x).unitType() == UnitType.Ranger)
+				num_rangers_near++;
+			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
+		}
+
+        if(distance_to_factory<=9 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
         else if(Globals.current_round>550 && Globals.num_workers<4 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
-        else if(Globals.num_rangers<7)
+        else if(Globals.num_rangers<3)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
         else if(Globals.num_rangers>30 && (Globals.num_rangers)/(1.0*Globals.num_healers)>3.0/2.0)
             Globals.gc.produceRobot(unit.id(), UnitType.Healer);

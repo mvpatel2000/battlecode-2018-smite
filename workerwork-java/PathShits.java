@@ -483,4 +483,33 @@ public class PathShits {
         }
         return Direction.Center;
     }
+
+	private static void connectedComponentsDFS(int x, int y, int counter) {
+		if(x < 0 || x >= Globals.width || y < 0 || y >= Globals.height) return;
+		if(Globals.connected_components[x][y] != 0) return;
+		MapLocation loc = new MapLocation(Globals.myPlanet, x, y);
+		if(Globals.map.isPassableTerrainAt(loc) == 0) { // not passable
+			Globals.connected_components[x][y] = -1;
+			return;
+		}
+		Globals.connected_components[x][y] = counter;
+		connectedComponentsDFS(x-1, y-1, counter);
+		connectedComponentsDFS(x-1, y, counter);
+		connectedComponentsDFS(x-1, y+1, counter);
+		connectedComponentsDFS(x, y-1, counter);
+		connectedComponentsDFS(x, y+1, counter);
+		connectedComponentsDFS(x+1, y-1, counter);
+		connectedComponentsDFS(x+1, y, counter);
+		connectedComponentsDFS(x+1, y+1, counter);
+	}
+	public static void createConnectedComponents() {
+		int counter = 1;
+		for(int x=0; x<Globals.width; x++) {
+			for(int y=0; y<Globals.height; y++) {
+				connectedComponentsDFS(x, y, counter);
+				counter++;
+			}
+		}
+	}
+
 }

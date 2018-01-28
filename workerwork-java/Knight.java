@@ -19,13 +19,22 @@ public class Knight {
 		if(enemies_in_range.size()>0) {
 			knightAttack(unit, enemies_in_range);
 			for(int x=0; x<enemies_in_range.size(); x++) {
+				Unit t = enemies_in_range.get(x);
+				if(t.unitType() == UnitType.Knight) {
+					// move away
+					PathShits.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
+					return;
+				}
+			}
+
+			/*for(int x=0; x<enemies_in_range.size(); x++) {
 				Unit u = enemies_in_range.get(x);
 				if(u.team() != Globals.ally && (u.unitType() == UnitType.Factory || u.unitType() == UnitType.Rocket))
 					return; // if we're near a factory or rocket, stay there
-			}
+			}*/
 		}
 	 																/* TODO: tune this number */
-		int detour_size = 6;
+		int detour_size = 5;
 		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
 		if(close_enemies.size() > 0) {
 			// if enemy is close enough, detour and attack them
@@ -59,14 +68,19 @@ public class Knight {
 		boolean toMove = false;
 		ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
 		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
-			VecUnit units = Globals.gc.units();
+			VecUnit units = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Factory);
+			VecUnit units2 = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Rocket);
 			for(int x=0; x<units.size(); x++) {
 				if(units.get(x).team() == Globals.ally) continue;
-				if(units.get(x).unitType() == UnitType.Factory || units.get(x).unitType() == UnitType.Rocket) {
-					factories.add(new FactoryDist(units.get(x),
-							units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+				factories.add(new FactoryDist(units.get(x),
+						units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
 					
-				}
+			}
+			for(int x=0; x<units2.size(); x++) {
+				if(units2.get(x).team() == Globals.ally) continue;
+				factories.add(new FactoryDist(units2.get(x),
+						units2.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+					
 			}
 			Collections.sort(factories);
 			for(int x=0; x<factories.size(); x++) {
@@ -167,10 +181,16 @@ public class Knight {
 				hval+=8500;
 			else if(enemyType==UnitType.Worker && hasFactory) // workers that are repairing a factory
 				hval+=7500;
-			if(UnitType.Knight==myenemy.unitType())
-				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*100; //is knight and weakest unit
-			else
-				hval += (10-((int)myenemy.health())/(unit.damage()))*100; //weakest unit
+			if(UnitType.Knight==myenemy.unitType()) {
+				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*1000; //is knight and weakest unit
+			}
+			else if(myenemy.unitType() == UnitType.Mage) {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*500;
+			} else if(myenemy.unitType() == UnitType.Ranger) {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*400; //weakest unit
+			} else {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*200; //weakest unit
+			}
 			UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
 			for(int utctr=0; utctr<priorities.length; utctr++) {
 				if(enemyType == priorities[utctr]) {

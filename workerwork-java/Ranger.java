@@ -20,8 +20,10 @@ public class Ranger {
                 hval+=7000;
             if(UnitType.Knight==enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()-(int)enemy.knightDefense()))*100; //is knight and weakest unit
-            else
+            else if(UnitType.Worker!=enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
+            else
+                hval += (10-((int)enemy.health())/(unit.damage()))*10;
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Ranger, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {

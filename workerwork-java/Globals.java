@@ -42,6 +42,7 @@ public class Globals {
     public static int minworkers = 0;
     public static int factories_active = 0;
     public static int nikhil_num_workers = 0;
+	public static int[][] connected_components = new int[width][height];
 
     public static int num_factories = 0;
     public static int num_rockets = 0;

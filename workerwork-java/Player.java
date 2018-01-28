@@ -32,6 +32,7 @@ public class Player {
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
         PathShits.buildFactoryField();
+		PathShits.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
@@ -68,7 +69,7 @@ public class Player {
         Globals.paths = new HashMap<>();
         Globals.minworkers = Worker.workerReplicateRatio();
         Globals.rand_permutation = randomPermutation(9);
-
+        System.out.println("minworkers: "+ Globals.minworkers);
         Globals.map_memo = new int[51][51];
         for(int x=0; x<Globals.width; x++) for(int y=0; y<Globals.height; y++) {
             if(Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0) Globals.map_memo[x][y] = -1;
