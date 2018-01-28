@@ -9,16 +9,17 @@ public class Factory {
 
 		int distance_to_factory = Globals.factory_field[myloc.getX()][myloc.getY()];
 
-		int NUM_NONWORKERS_CUTOFF = 10;  // if num_nonworkers is greater, we don't produce knights
+		int NUM_NONWORKERS_CUTOFF = 12;  // if num_nonworkers is greater, we don't produce knights
 		int NUM_RANGERS_CUTOFF = 2; // if number of nearby enemy rangers is greater, we don't produce knights
 
-		int num_nonworkers = 0; // number of enemy units that aren't workers
+		int num_nonworkers = 0; // number of enemy units that aren't workers (or buildings)
 		// final value won't be correct: don't use this variable
 
 		VecUnit units = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 		for(int x=0; x<units.size(); x++) {
 			Unit t = units.get(x);
-			if(t.unitType() != UnitType.Worker)
+			if(t.unitType() != UnitType.Worker && t.unitType() != UnitType.Factory
+					&& t.unitType() != UnitType.Rocket)
 				num_nonworkers++;
 			if(num_nonworkers > NUM_NONWORKERS_CUTOFF) break;
 		}
