@@ -148,7 +148,12 @@ public class Rocket {
                 }
             } catch(Exception e) {}
         }
-        if(num_in_garrison==maxcapacity && Globals.orbit_pattern.duration(Globals.current_round)<Globals.orbit_pattern.duration(Globals.current_round+1)+1) {
+        if(num_in_garrison==maxcapacity && Globals.current_round>700) {
+            removeRocketLocation(unit, myloc);
+        }
+        else if(num_in_garrison==maxcapacity && 
+                Globals.orbit_pattern.duration(Globals.current_round)<Globals.orbit_pattern.duration(Globals.current_round+1)+1 &&
+                Globals.orbit_pattern.duration(Globals.current_round)<Globals.orbit_pattern.duration(Globals.current_round+10)+10) {
             return true;
         }
         else if(num_in_garrison==maxcapacity) {

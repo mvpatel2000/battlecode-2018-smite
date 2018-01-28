@@ -34,6 +34,7 @@ public class Worker {
             PathShits.updateEnemies();
         }
         if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
+            //System.out.println("Because shouldReplicate is true!");
             Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
         } else {
             if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
@@ -41,7 +42,7 @@ public class Worker {
                 if(buildRocket(unit, toKarb, myKarbs, units, 8L)==true) {
                     return;
                 }
-                else if(buildFactory(unit, toKarb, myKarbs, units, 20L)==true){
+                else if(buildFactory(unit, toKarb, myKarbs, units, 40L)==true){
                     return;
                 }
                 else {
@@ -56,15 +57,17 @@ public class Worker {
                     }
                     else if( (Globals.doesPathExist && Globals.num_factories<4) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<7) || (!Globals.doesPathExist && Globals.num_factories<2)) { //factory cap
                         //blueprint factory or (replicate or moveharvest)
-                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 20L);
+                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 40L);
                         if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
                             Globals.nikhil_num_workers+=(val-2);
                         } else { //did not degenerate
+                            //System.out.println("Building a factory");
                             Globals.num_factories+=val;
                         }
                     }
                     else {
                         if(shouldReplicate) {
+                            //System.out.println("Because of the factory limit!");
                             Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
                         } else {
                             workerharvest(unit, toKarb, myKarbs);
@@ -72,8 +75,7 @@ public class Worker {
                         }
                     }
                 }
-            }
-            else if(Globals.myPlanet==Planet.Mars) {
+            } else if(Globals.myPlanet==Planet.Mars) {
                 if(shouldReplicate || (int)Globals.gc.karbonite()>300 || Globals.current_round>750) {
                     Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
                 }
@@ -81,9 +83,9 @@ public class Worker {
                     workerharvest(unit, toKarb, myKarbs);
                     workermove(unit, toKarb, myKarbs);
                 }
-            }
-            else {
+            } else {
                 //replicate or move harvest
+                //System.out.println("Because I'm a relic!");
                 Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
             }
         }
@@ -119,15 +121,19 @@ public class Worker {
                 totalkarb+=Globals.gc.karboniteAt(newLoc);
             }
             MapLocation againLoc = newLoc.add(dir);
-            if(Globals.gc.canSenseLocation(againLoc)) {
-                totalkarb+=Globals.gc.karboniteAt(againLoc);
+            if(Globals.map.onMap(againLoc)) {
+                if(Globals.connected_components[myLoc.getX()][myLoc.getY()]==Globals.connected_components[againLoc.getX()][againLoc.getY()]) {
+                    if(Globals.gc.canSenseLocation(againLoc)) {
+                        totalkarb+=Globals.gc.karboniteAt(againLoc);
+                    }
+                }
             }
         }
         //System.out.println(totalkarb);
         if(numworkers==0) {
             numworkers=1;
         }
-        if(totalkarb/((long)numworkers)>20L) {
+        if(totalkarb/((long)numworkers)>20L && Globals.gc.senseNearbyUnitsByTeam(myLoc, 20L, Globals.enemy).size()>0) {
             return true;
         }
         return false;
@@ -251,23 +257,31 @@ public class Worker {
         workerharvest(unit, toKarb, myKarbs);
         workermove(unit, toKarb, myKarbs);
         MapLocation myLoc = unit.location().mapLocation();
-        if(Globals.current_round<(Globals.width+Globals.height)/2) {
-            if(Globals.movement_field[myLoc.getX()][myLoc.getY()].size()>0) {
-                Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
-                if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
-                    Globals.gc.replicate(unit.id(), optimalDir);
-                    return 1;
+        if(Globals.nikhil_num_workers<150) {
+            if(Globals.current_round<(Globals.width+Globals.height)/2) {
+                if(Globals.movement_field[myLoc.getX()][myLoc.getY()].size()>0) {
+                    Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
+                    if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
+                        //System.out.println("Replicating my ass off");
+                        //System.out.println(myLoc);
+                        Globals.gc.replicate(unit.id(), optimalDir);
+                        return 1;
+                    }
                 }
             }
-        }
-        if(Globals.gc.canReplicate(unit.id(), toKarb)) {
-            Globals.gc.replicate(unit.id(), toKarb);
-            return 1;
-        } else {
-            for (KarbDir k : myKarbs) {
-                if(Globals.gc.canReplicate(unit.id(), k.dir)) {
-                    Globals.gc.replicate(unit.id(), k.dir);
-                    return 1;
+            if(Globals.gc.canReplicate(unit.id(), toKarb)) {
+                //System.out.println("Replicating my ass off");
+                //System.out.println(myLoc);
+                Globals.gc.replicate(unit.id(), toKarb);
+                return 1;
+            } else {
+                for (KarbDir k : myKarbs) {
+                    if(Globals.gc.canReplicate(unit.id(), k.dir)) {
+                        //System.out.println("Replicating my ass off");
+                        //System.out.println(myLoc);
+                        Globals.gc.replicate(unit.id(), k.dir);
+                        return 1;
+                    }
                 }
             }
         }

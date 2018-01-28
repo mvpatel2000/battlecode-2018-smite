@@ -78,6 +78,9 @@ public class Player {
 
         while (true) {
             //try {
+                while(Globals.gc.getTimeLeftMs()<2000) {
+                    Globals.gc.nextTurn();
+                }
                 Globals.current_round = (int)Globals.gc.round();
                 Globals.factories_active = 0; //tracks amount of factories producing units
                 if(Globals.current_round%15==0) { //print round number and update random field
@@ -95,7 +98,8 @@ public class Player {
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
-                ArrayList<Unit> units = sortUnits(unsorted_units);
+                ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
+                ArrayList<Unit> units = timeCheckWorkers(sorted_units);
                 if(Globals.current_round == 1 || Globals.current_round % 1 == 0) {
                     if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
                             (Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
@@ -261,6 +265,23 @@ public class Player {
             //}
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
+    }
+
+    public static ArrayList<Unit> timeCheckWorkers(ArrayList<Unit> units) {
+        if(Globals.current_round<500 && Globals.gc.getTimeLeftMs()>5000) //time left
+            return units;
+        if(Globals.current_round>500) //final rounds
+            return units;
+        double threshold = 0.0;
+        ArrayList<Unit> ret = new ArrayList<Unit>();
+        for(int i=0; i<units.size(); i++) {
+            Unit u = units.get(i);
+            if(u.unitType()!=UnitType.Worker)
+                ret.add(u);
+            else if(Math.random()<threshold)
+                ret.add(u);
+        }
+        return ret;
     }
 
     public static ArrayList<Unit> sortUnits(VecUnit units) {
