@@ -34,7 +34,7 @@ public class Knight {
 			}*/
 		}
 	 																/* TODO: tune this number */
-		int detour_size = 6;
+		int detour_size = 5;
 		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
 		if(close_enemies.size() > 0) {
 			// if enemy is close enough, detour and attack them
@@ -178,10 +178,14 @@ public class Knight {
 				hval+=7500;
 			if(UnitType.Knight==myenemy.unitType()) {
 				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*1000; //is knight and weakest unit
-				System.out.println(hval);
 			}
-			else
-				hval += (10-((int)myenemy.health())/(unit.damage()))*500; //weakest unit
+			else if(myenemy.unitType() == UnitType.Mage) {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*500;
+			} else if(myenemy.unitType() == UnitType.Ranger) {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*400; //weakest unit
+			} else {
+				hval += (10-((int)myenemy.health())/(unit.damage()))*200; //weakest unit
+			}
 			UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
 			for(int utctr=0; utctr<priorities.length; utctr++) {
 				if(enemyType == priorities[utctr]) {

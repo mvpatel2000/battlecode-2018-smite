@@ -7,17 +7,24 @@ public class Factory {
             Globals.gc.canProduceRobot(unit.id(), UnitType.Knight) && Globals.gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
 
-        int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
+		int distance_to_factory = Globals.factory_field[myloc.getX()][myloc.getY()];
 		
 		int num_nonworkers = 0;
-		VecUnit enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
-		for(int x=0; x<enemies.size(); x++) {
-			if(enemies.get(x).unitType() != UnitType.Worker)
+		VecUnit units = Globals.gc.units();
+		for(int x=0; x<units.size(); x++) {
+			Unit t = units.get(x);
+			if(t.team() == Globals.ally) continue;
+			if(t.unitType() != UnitType.Worker)
 				num_nonworkers++;
 		}
+		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy);
+		int num_rangers_near = 0;
+		for(int x=0; x<nearenemies.size(); x++) {
+			if(nearenemies.get(x).unitType() == UnitType.Ranger)
+				num_rangers_near++;
+		}
 
-												// TODO: why this not work?			// to remove once former works
-        if(Globals.current_round<150 && distance_to_enemy<15 && num_nonworkers<=8 && Globals.enemy_locations.size() < 15)
+        if(distance_to_factory<=9 && num_rangers_near<3 && num_nonworkers<=12)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
