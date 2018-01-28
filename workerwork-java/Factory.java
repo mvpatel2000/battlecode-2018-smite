@@ -8,8 +8,16 @@ public class Factory {
             return;
 
         int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
+		
+		int num_nonworkers = 0;
+		VecUnit enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
+		for(int x=0; x<enemies.size(); x++) {
+			if(enemies.get(x).unitType() != UnitType.Worker)
+				num_nonworkers++;
+		}
 
-        if(Globals.current_round<80 && distance_to_enemy<15)//&& Globals.total_knights<2)
+												// TODO: why this not work?			// to remove once former works
+        if(Globals.current_round<150 && distance_to_enemy<15 && num_nonworkers<=8 && Globals.enemy_locations.size() < 15)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);

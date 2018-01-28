@@ -250,6 +250,14 @@ public class Worker {
      public static int replicateOrMoveHarvest(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
         workerharvest(unit, toKarb, myKarbs);
         workermove(unit, toKarb, myKarbs);
+        MapLocation myLoc = unit.location().mapLocation();
+        if(Globals.current_round<(Globals.width+Globals.height)/2) {
+            Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
+            if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
+                Globals.gc.replicate(unit.id(), optimalDir);
+                return 1;
+            }
+        }
         if(Globals.gc.canReplicate(unit.id(), toKarb)) {
             Globals.gc.replicate(unit.id(), toKarb);
             return 1;
