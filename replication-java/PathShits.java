@@ -11,10 +11,10 @@ public class PathShits {
         for(int i = 0; i<total_enemies.size(); i++) {
             Unit enemy_unit = total_enemies.get(i);
             if(enemy_unit.unitType()==UnitType.Factory) { //if factory
-                MapLocation enem_loc = enemy_unit.location().mapLocation();         
+                MapLocation enem_loc = enemy_unit.location().mapLocation();
                 int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
                 Globals.enemy_factories.add(building_info);
-            }                
+            }
         }
         buildFactoryField();
     }
@@ -35,13 +35,34 @@ public class PathShits {
                     }
                 }
                 if(isDuplicate)
-                    continue;                
+                    continue;
                 int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
                 Globals.enemy_locations.add(building_info);
-            }                
+            }
         }
         if(initsize==Globals.enemy_locations.size())
             buildFieldBFS(); //check if size changed
+    }
+
+    public static int getNearestNonWorkerEnemy(MapLocation myloc, VecUnit other_units) {
+        Unit nearestUnit = null;
+        MapLocation nearloc = null;
+        int mindist = 50*50+1;
+        for(int i=0; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            if(testUnit.unitType()!=UnitType.Worker && testUnit.unitType()!=UnitType.Factory && testUnit.unitType()!=UnitType.Rocket) {
+                MapLocation testloc = testUnit.location().mapLocation();
+                int testdist = (int)testloc.distanceSquaredTo(myloc);
+                if(testdist<mindist) {
+                    nearestUnit = testUnit;
+                    nearloc = testloc;
+                    mindist = testdist;
+                }
+            }
+        }
+        if(nearestUnit!=null)
+            return mindist;
+        return 10000000;
     }
 
     public static Direction getNearestNonWorkerOppositeDirection(MapLocation myloc, VecUnit other_units) {
@@ -93,7 +114,7 @@ public class PathShits {
             }
         }
         return nearestUnit;
-    }    
+    }
 
     public static void checkVectorField(Unit unit, MapLocation mapLocation) {
         UnitType myUnitType = unit.unitType();
