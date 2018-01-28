@@ -9,11 +9,11 @@ public class Mage {
             MapLocation nearloc = nearestUnit.location().mapLocation();
             if(nearestUnit.unitType()!=UnitType.Knight) {
                 Direction blinkdir = myloc.directionTo(nearloc);
-                System.out.println("1. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
+                //System.out.println("1. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
                 mageBlink(unit, myloc, blinkdir);
                 unit = Globals.gc.unit(unit.id());
                 myloc = unit.location().mapLocation();
-                System.out.println("2. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
+                //System.out.println("2. "+myloc+" "+myloc.distanceSquaredTo(nearloc));
             }
         }        
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
@@ -100,7 +100,8 @@ public class Mage {
                 }
             }
         }
-        System.out.println("BLINKED! "+Globals.current_round+" "+myloc+" "+bestmove);
+        System.out.println("BLINKED! "+Globals.current_round+" "+myloc+" "+bestmove+" [Distance]: "+(50*50+1-bestscore)+" "+
+            Globals.distance_field[myloc.getX()][myloc.getY()]);
         if(bestmove!=null && Globals.gc.canBlink(unit.id(), bestmove)) {
             Globals.gc.blink(unit.id(), bestmove);
         }
