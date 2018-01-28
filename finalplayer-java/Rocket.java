@@ -23,7 +23,9 @@ public class Rocket {
             int allyctr = 0;
             while(maxcapacity>num_in_garrison && allyctr<allies_to_load.size()) { //load all units while space
                 Unit ally_to_load = allies_to_load.get(allyctr);
-                if(Globals.gc.canLoad(unit.id(), ally_to_load.id()) && (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<2) && (ally_to_load.unitType()!=UnitType.Healer || healers_in_garrison<3 || Globals.current_round>740)) {
+                if(Globals.gc.canLoad(unit.id(), ally_to_load.id()) && 
+                    (ally_to_load.unitType()!=UnitType.Worker || workers_in_garrison<2 || current_round>700) && 
+                    (ally_to_load.unitType()!=UnitType.Healer || healers_in_garrison<3 || Globals.current_round>700)) {
                     Globals.gc.load(unit.id(), ally_to_load.id());
                     num_in_garrison++;
                     if(ally_to_load.unitType()==UnitType.Worker)
