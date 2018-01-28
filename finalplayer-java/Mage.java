@@ -10,7 +10,7 @@ public class Mage {
             int distance = (int)myloc.distanceSquaredTo(nearloc);
             if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
                 PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));
-            else 
+            else
                 PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
 
             VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
@@ -54,7 +54,7 @@ public class Mage {
     }
 
     //mage unti heuristic
-    public static int[][] mageAttackHeuristic(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {        
+    public static int[][] mageAttackHeuristic(Unit unit, MapLocation myloc, VecUnit enemies_in_range) {
         int curwidth = 0;
         int curheight = 0;
         if(Globals.myPlanet==Planet.Earth) {

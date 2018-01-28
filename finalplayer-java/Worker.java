@@ -409,7 +409,7 @@ public class Worker {
         if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
             PathShits.updateEnemies();
         }
-        if(shouldReplicate && distance_to_enemy<10 && Globals.myPlanet==Planet.Earth) {
+        if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
             Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
         } else {
             if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
