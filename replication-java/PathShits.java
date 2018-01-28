@@ -512,4 +512,58 @@ public class PathShits {
 		}
 	}
 
+	public static void buildHomeField() {
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<Globals.map.getInitial_units().size(); i++) {
+            Unit unit = Globals.map.getInitial_units().get(i);
+            if(Globals.ally == unit.team()) {
+				MapLocation loc = unit.location().mapLocation();
+				int[] t = {loc.getX(), loc.getY(), 0, 0};
+				queue.add(t);
+			}
+		}
+
+        for(int w=0; w<Globals.width; w++) {
+            for(int h=0; h<Globals.height; h++) {
+                Globals.home_field[w][h] = (50*50+1);
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.width || y>=Globals.height ||  //border checks
+                    Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.home_field[x][y]<=depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.home_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.home_field[x][y] = depth;
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+ 
+	}
+
 }

@@ -27,9 +27,48 @@ public class Worker {
 
     public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
         ArrayList<KarbDir> myKarbs = onlyKarbs(unit, unit.location());
-        Direction toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
-        boolean shouldReplicate = replicatingrequirements(unit, loc);
+		Direction toKarb = Direction.Center;
+		int dist_from_karb = 100000;
+		for(KarbonitePath k : Globals.karbonite_path) {
+			dist_from_karb = Math.min(dist_from_karb, k.distance_field[loc.getX()][loc.getY()]);
+		}
+
         int distance_to_enemy = Globals.distance_field[loc.getX()][loc.getY()];
+		boolean goTowardsKarb = true;
+		if(dist_from_karb >= 15 && Globals.current_round > 20) { //TODO: tune this
+			Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+			int x = loc.getX(), y = loc.getY();
+			int[][] lc = {
+				{x+1,y,  5},
+				{x+1,y+1,6},
+				{x,y+1,  7},
+				{x-1,y+1,8},
+				{x-1,y,  1},
+				{x-1,y-1,2},
+				{x,y-1,  3},
+				{x+1,y-1,4},
+			};
+
+			Direction bestDir = Direction.Center;
+			int value = 100000;
+			for(int[] ar : lc) {
+				if(ar[0] < 0 || ar[0] >= Globals.width ||
+						ar[1] < 0 || ar[1] >= Globals.height) continue;
+				int my_value = Globals.home_field[ar[0]][ar[1]];
+				if(my_value < value) {
+					value = my_value;
+					bestDir = Helpers.opposite(dirs[ar[2]]);
+				}
+			}
+			if(value > Math.max(distance_to_enemy/3, 5)) {
+				toKarb = bestDir;
+				goTowardsKarb = false;
+			}
+		}
+		if(goTowardsKarb)
+			toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
+
+        boolean shouldReplicate = replicatingrequirements(unit, loc);
         if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
             PathShits.updateEnemies();
         }
