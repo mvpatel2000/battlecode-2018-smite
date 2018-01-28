@@ -180,7 +180,7 @@ public class Worker {
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)Globals.map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)Globals.map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(Globals.myPlanet, i, j);
-                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                if( ((x-i)*(x-i) + (y-j)*(y-j)) < unit.visionRange()) {
                     if(Globals.gc.canSenseLocation(m)) {
                         if(Globals.gc.karboniteAt(m)>0L) {
                             return myLoc.directionTo(m);
