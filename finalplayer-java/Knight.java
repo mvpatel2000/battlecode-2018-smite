@@ -68,14 +68,19 @@ public class Knight {
 		boolean toMove = false;
 		ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
 		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
-			VecUnit units = Globals.gc.units();
+			VecUnit units = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Factory);
+			VecUnit units2 = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Rocket);
 			for(int x=0; x<units.size(); x++) {
 				if(units.get(x).team() == Globals.ally) continue;
-				if(units.get(x).unitType() == UnitType.Factory || units.get(x).unitType() == UnitType.Rocket) {
-					factories.add(new FactoryDist(units.get(x),
-							units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+				factories.add(new FactoryDist(units.get(x),
+						units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
 					
-				}
+			}
+			for(int x=0; x<units2.size(); x++) {
+				if(units2.get(x).team() == Globals.ally) continue;
+				factories.add(new FactoryDist(units2.get(x),
+						units2.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+					
 			}
 			Collections.sort(factories);
 			for(int x=0; x<factories.size(); x++) {
