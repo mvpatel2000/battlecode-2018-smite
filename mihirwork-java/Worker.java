@@ -25,6 +25,71 @@ public class Worker {
         return total_karb_level;
     }
 
+    public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
+        ArrayList<KarbDir> myKarbs = onlyKarbs(unit, unit.location());
+        Direction toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
+        boolean shouldReplicate = replicatingrequirements(unit, loc);
+        int distance_to_enemy = Globals.distance_field[loc.getX()][loc.getY()];
+        if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
+            PathShits.updateEnemies();
+        }
+        if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
+            Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+        } else {
+            if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
+                //execute build order
+                if(buildRocket(unit, toKarb, myKarbs, units, 8L)==true) {
+                    return;
+                }
+                else if(buildFactory(unit, toKarb, myKarbs, units, 20L)==true){
+                    return;
+                }
+                else {
+                    if(Globals.current_round>175 || Globals.doesPathExist==false && Globals.current_round>125) { //rocket cap
+                        //blueprint rocket or (replicate or moveharvest)
+                        int val = blueprintRocket(unit, toKarb, myKarbs, units, 8L);
+                        if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
+                            Globals.nikhil_num_workers+=(val-2);
+                        } else { //did not degenerate
+                            Globals.num_rockets+=val;
+                        }
+                    }
+                    else if( (Globals.doesPathExist && Globals.num_factories<4) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<7) || (!Globals.doesPathExist && Globals.num_factories<2)) { //factory cap
+                        //blueprint factory or (replicate or moveharvest)
+                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 20L);
+                        if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
+                            Globals.nikhil_num_workers+=(val-2);
+                        } else { //did not degenerate
+                            Globals.num_factories+=val;
+                        }
+                    }
+                    else {
+                        if(shouldReplicate) {
+                            Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+                        } else {
+                            workerharvest(unit, toKarb, myKarbs);
+                            workermove(unit, toKarb, myKarbs);
+                        }
+                    }
+                }
+            }
+            else if(Globals.myPlanet==Planet.Mars) {
+                if(shouldReplicate || (int)Globals.gc.karbonite()>300 || Globals.current_round>750) {
+                    Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+                }
+                else {
+                    workerharvest(unit, toKarb, myKarbs);
+                    workermove(unit, toKarb, myKarbs);
+                }
+            }
+            else {
+                //replicate or move harvest
+                Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
+            }
+        }
+        return;
+    }
+
     public static ArrayList<KarbDir> karboniteSort(Unit unit, Location theloc) {
         MapLocation myLoc = theloc.mapLocation();
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.Center,
@@ -183,6 +248,16 @@ public class Worker {
     }
 
      public static int replicateOrMoveHarvest(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
+        workerharvest(unit, toKarb, myKarbs);
+        workermove(unit, toKarb, myKarbs);
+        MapLocation myLoc = unit.location().mapLocation();
+        if(Globals.current_round<(Globals.width+Globals.height)/2) {
+            Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
+            if(Globals.gc.canReplicate(unit.id(), optimalDir)) {
+                Globals.gc.replicate(unit.id(), optimalDir);
+                return 1;
+            }
+        }
         if(Globals.gc.canReplicate(unit.id(), toKarb)) {
             Globals.gc.replicate(unit.id(), toKarb);
             return 1;
@@ -194,8 +269,6 @@ public class Worker {
                 }
             }
         }
-        workerharvest(unit, toKarb, myKarbs);
-        workermove(unit, toKarb, myKarbs);
         return 0;
     }
 
@@ -396,71 +469,6 @@ public class Worker {
                 PathShits.fuzzyMove(unit, toKarb);
             } else {
                 PathShits.moveOnRandomField(unit, myLoc);
-            }
-        }
-        return;
-    }
-
-    public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
-        ArrayList<KarbDir> myKarbs = onlyKarbs(unit, unit.location());
-        Direction toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
-        boolean shouldReplicate = replicatingrequirements(unit, loc);
-        int distance_to_enemy = Globals.distance_field[loc.getX()][loc.getY()];
-        if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
-            PathShits.updateEnemies();
-        }
-        if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
-            Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
-        } else {
-            if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
-                //execute build order
-                if(buildRocket(unit, toKarb, myKarbs, units, 8L)==true) {
-                    return;
-                }
-                else if(buildFactory(unit, toKarb, myKarbs, units, 20L)==true){
-                    return;
-                }
-                else {
-                    if(Globals.current_round>175 || Globals.doesPathExist==false && Globals.current_round>125) { //rocket cap
-                        //blueprint rocket or (replicate or moveharvest)
-                        int val = blueprintRocket(unit, toKarb, myKarbs, units, 8L);
-                        if(val>=2) { //if blueprintRocket degenerates to replicateOrMoveHarvest()
-                            Globals.nikhil_num_workers+=(val-2);
-                        } else { //did not degenerate
-                            Globals.num_rockets+=val;
-                        }
-                    }
-                    else if( (Globals.doesPathExist && Globals.num_factories<4) || (Globals.doesPathExist && Globals.width>35 && ((int)Globals.gc.karbonite()>200+(50-Globals.width)) && Globals.num_factories<7) || (!Globals.doesPathExist && Globals.num_factories<2)) { //factory cap
-                        //blueprint factory or (replicate or moveharvest)
-                        int val = blueprintFactory(unit, toKarb, myKarbs, units, 20l);
-                        if(val>=2) { //if blueprintFactory degenerates to replicateOrMoveHarvest()
-                            Globals.nikhil_num_workers+=(val-2);
-                        } else { //did not degenerate
-                            Globals.num_factories+=val;
-                        }
-                    }
-                    else {
-                        if(shouldReplicate) {
-                            Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
-                        } else {
-                            workerharvest(unit, toKarb, myKarbs);
-                            workermove(unit, toKarb, myKarbs);
-                        }
-                    }
-                }
-            }
-            else if(Globals.myPlanet==Planet.Mars) {
-                if(shouldReplicate || (int)Globals.gc.karbonite()>300 || Globals.current_round>750) {
-                    Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
-                }
-                else {
-                    workerharvest(unit, toKarb, myKarbs);
-                    workermove(unit, toKarb, myKarbs);
-                }
-            }
-            else {
-                //replicate or move harvest
-                Globals.nikhil_num_workers += replicateOrMoveHarvest(unit, toKarb, myKarbs);
             }
         }
         return;
