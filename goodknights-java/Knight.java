@@ -26,6 +26,12 @@ public class Knight {
 					return;
 				}
 			}
+
+			/*for(int x=0; x<enemies_in_range.size(); x++) {
+				Unit u = enemies_in_range.get(x);
+				if(u.team() != Globals.ally && (u.unitType() == UnitType.Factory || u.unitType() == UnitType.Rocket))
+					return; // if we're near a factory or rocket, stay there
+			}*/
 		}
 	 																/* TODO: tune this number */
 		int detour_size = 5;
@@ -49,11 +55,9 @@ public class Knight {
 				}
 			}
 			MapLocation loc = to_follow.location().mapLocation();
-			/*Queue<Direction> path =
-				Helpers.astar(unit, loc, true);*/
-
-			//if(path.size() < detour_size+4) {
-			if(Globals.map.isPassableTerrainAt(myloc.add(myloc.directionTo(loc))) != 0) {
+			Queue<Direction> path =
+				Helpers.astar(unit, loc, true);
+			if(path.size() < detour_size+4) {
 				PathShits.fuzzyMove(unit, myloc.directionTo(loc));
 				Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
 				return;
@@ -62,53 +66,46 @@ public class Knight {
 		
 
 		boolean toMove = false;
-
-		if(Globals.factory_field[myloc.getX()][myloc.getY()] < 50*50+1) {
-			Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
-			int x = myloc.getX(), y = myloc.getY();
-			int[][] lc = {
-				{x+1,y,  5},
-				{x+1,y+1,6},
-				{x,y+1,  7},
-				{x-1,y+1,8},
-				{x-1,y,  1},
-				{x-1,y-1,2},
-				{x,y-1,  3},
-				{x+1,y-1,4},
-			};
-
-			Direction bestDir = Direction.Center;
-			int value = 100000;
-			for(int[] ar : lc) {
-				if(ar[0] < 0 || ar[0] >= Globals.width ||
-						ar[1] < 0 || ar[1] >= Globals.height) continue;
-				int my_value = Globals.factory_field[ar[0]][ar[1]];
-				if(my_value < value) {
-					value = my_value;
-					bestDir = Helpers.opposite(dirs[ar[2]]);
+		ArrayList<FactoryDist> factories = new ArrayList<>(); // or Rockets
+		if(!Globals.paths.containsKey(unit.id()) || Globals.paths.get(unit.id()).size() == 0) {
+			VecUnit units = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Factory);
+			VecUnit units2 = Globals.gc.senseNearbyUnitsByType(myloc, 1000, UnitType.Rocket);
+			for(int x=0; x<units.size(); x++) {
+				if(units.get(x).team() == Globals.ally) continue;
+				factories.add(new FactoryDist(units.get(x),
+						units.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+					
+			}
+			for(int x=0; x<units2.size(); x++) {
+				if(units2.get(x).team() == Globals.ally) continue;
+				factories.add(new FactoryDist(units2.get(x),
+						units2.get(x).location().mapLocation().distanceSquaredTo(unit.location().mapLocation())));
+					
+			}
+			Collections.sort(factories);
+			for(int x=0; x<factories.size(); x++) {
+				Queue<Direction> path =
+					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), true);//false);//true);
+				if(path.size() > 0) {
+					Globals.paths.put(unit.id(), path);
+					//System.out.println("R: "+Globals.current_round+" "+path);
+					toMove = true;
+					break;
 				}
 			}
-			PathShits.fuzzyMove(unit, bestDir);
-			return;
-		}
-
-										// TODO: use Globals.enemy_locations
-		VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
-		if(enemies_in_sight.size()>0) {      //combat state
-			Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
-			MapLocation nearloc = nearestUnit.location().mapLocation();
-			PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
-			return;
-		}
-		if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-				PathShits.moveOnRandomField(unit, myloc);
-			}
-			else
-				PathShits.moveOnVectorField(unit, myloc);
+		} else toMove = true;
 		
-	
-
-/*		if(!toMove) {
+		if(!toMove) {
+											// TODO: use Globals.enemy_locations
+			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
+			if(enemies_in_sight.size()>0) {      //combat state
+				Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+				MapLocation nearloc = nearestUnit.location().mapLocation();
+				PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+				return;
+			}
+		}
+		if(!toMove) {
 			for(int x=0; x<factories.size(); x++) {
 				Queue<Direction> path =
 					Helpers.astar(unit, factories.get(x).factory.location().mapLocation(), false);
@@ -129,9 +126,9 @@ public class Knight {
 				Globals.paths.put(unit.id(), path);
 				toMove = true;
 			}
-		}*/
+		}
 
-		/*if(toMove) {
+		if(toMove) {
 			Direction d = Globals.paths.get(unit.id()).poll();
 			if(Globals.gc.isMoveReady(unit.id()) && Globals.gc.canMove(unit.id(), d)) {
 				Globals.gc.moveRobot(unit.id(), d);
@@ -148,7 +145,7 @@ public class Knight {
 			}
 			else
 				PathShits.moveOnVectorField(unit, myloc);
-		}*/
+		}
 	}
 
 	//knight attack prioritization
@@ -159,6 +156,7 @@ public class Knight {
 	public static void knightAttack(Unit unit, VecUnit enemies_in_range) {
 		if(!Globals.gc.isAttackReady(unit.id()))
 			return;
+		int[][] heuristics = new int[(int)enemies_in_range.size()][2];
 		boolean hasFactory = false;
 		boolean hasRocket = false;
 		for(int x=0; x<enemies_in_range.size(); x++) {
@@ -167,14 +165,9 @@ public class Knight {
 			if(enemies_in_range.get(x).unitType() == UnitType.Factory)
 				hasFactory = true;
 		}
-		UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
-		Unit best_eligible = null;
-		int best_val = -10000;
 		for(int i=0; i<enemies_in_range.size(); i++) {
 			int hval = 0;
 			Unit myenemy = enemies_in_range.get(i);
-			if(!Globals.gc.canAttack(unit.id(), myenemy.id()))
-				continue;
 			UnitType enemyType = myenemy.unitType();
 			if(UnitType.Knight==myenemy.unitType() && unit.damage()>(int)myenemy.health()-(int)myenemy.knightDefense()) //is knight and can kill
 				hval+=10000;
@@ -198,18 +191,26 @@ public class Knight {
 			} else {
 				hval += (10-((int)myenemy.health())/(unit.damage()))*200; //weakest unit
 			}
+			UnitType[] priorities = {UnitType.Ranger, UnitType.Worker, UnitType.Knight, UnitType.Mage, UnitType.Healer}; //unit priorities
 			for(int utctr=0; utctr<priorities.length; utctr++) {
 				if(enemyType == priorities[utctr]) {
 					hval+=10*utctr; //later units have higher priorities because weight based on index
 					break;
 				}
 			}
-			if(hval > best_val) {
-				best_val = hval;
-				best_eligible = myenemy;
+			heuristics[i][0] = hval;
+			heuristics[i][1] = i;
+		}
+		java.util.Arrays.sort(heuristics, new java.util.Comparator<int[]>() { //sort by heuristic
+			public int compare(int[] a, int[] b) {
+				return b[0] - a[0];
+			}
+		});
+		for(int i=0; i<heuristics.length; i++) {
+			if(Globals.gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+				Globals.gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
+				return;
 			}
 		}
-		if(best_eligible == null) return;
-		Globals.gc.attack(unit.id(), best_eligible.id());
 	}
 }
