@@ -7,7 +7,7 @@ public class Factory {
             Globals.gc.canProduceRobot(unit.id(), UnitType.Knight) && Globals.gc.canProduceRobot(unit.id(), UnitType.Mage)))
             return;
 
-        int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
+		int distance_to_enemy = Globals.distance_field[myloc.getX()][myloc.getY()];
 		
 		int num_nonworkers = 0;
 		VecUnit units = Globals.gc.units();
@@ -24,9 +24,7 @@ public class Factory {
 				num_rangers_near++;
 		}
 
-		System.out.println("r: "+Globals.current_round+" "+num_rangers_near);
-												// TODO: why this not work?			// to remove once former works
-        if(Globals.current_round<150 && distance_to_enemy<20 && num_rangers_near < 3 && num_nonworkers<=8 && Globals.enemy_locations.size() < 15)
+        if(distance_to_enemy<=6 && num_rangers_near<3 && num_nonworkers<=12)
             Globals.gc.produceRobot(unit.id(),UnitType.Knight);
         else if(Globals.num_workers<2 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(),UnitType.Worker);
