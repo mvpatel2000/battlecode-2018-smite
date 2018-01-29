@@ -22,7 +22,7 @@ public class Factory {
 			if(t.unitType() != UnitType.Worker && t.unitType() != UnitType.Factory
 					&& t.unitType() != UnitType.Rocket)
 				num_nonworkers++;
-			if(t.unitType() == UnitType.Ranger && t.location().mapLocation().distanceSquaredTo(myloc) <= 400)
+			if(t.unitType() == UnitType.Ranger)
 				// only close rangers
 				num_enemy_rangers++;
 		}
