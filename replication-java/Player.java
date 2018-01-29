@@ -80,6 +80,7 @@ public class Player {
         while (true) {
             //try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
+                    System.out.println("************Im WAITING **************");
                     Globals.gc.nextTurn();
                 }
                 Globals.current_round = (int)Globals.gc.round();
