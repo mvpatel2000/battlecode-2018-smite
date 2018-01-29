@@ -60,7 +60,7 @@ public class Factory {
             Globals.gc.produceRobot(unit.id(), UnitType.Worker);
         else if(Globals.current_round>550 && Globals.num_workers<4 && Globals.gc.canProduceRobot(unit.id(), UnitType.Worker))
             Globals.gc.produceRobot(unit.id(), UnitType.Worker);
-        else if(Globals.num_mages<10 && Globals.num_rangers>Globals.num_mages*1.5 && num_enemy_rangers < 5 && Globals.num_healers>Globals.num_mages*1.25)
+        else if(Globals.num_mages<8 && Globals.num_rangers>Globals.num_mages*1.5 && num_enemy_rangers < 4 && Globals.num_healers>Globals.num_mages*1.25)
             Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         else if(Globals.num_rangers<2)
             Globals.gc.produceRobot(unit.id(), UnitType.Ranger);
