@@ -178,12 +178,12 @@ public class Worker {
         return false;
     }
 
-      public static ArrayList<Unit> nearbyWorkersRocket(Unit myUnit, MapLocation myLoc, long rad) {
-        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+    public static ArrayList<Unit> nearbyWorkersRocket(Unit myUnit, MapLocation myLoc, long rad) {
+        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByTeam(myLoc, rad, Globals.ally);
         ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
         for(int i=0; i<myWorkers.size(); i++) {
             Unit k = myWorkers.get(i);
-            if(k.team()==Globals.ally) {
+            if(k.unitType()==UnitType.Worker) {
                 siceWorkers.add(k);
             }
         }
@@ -369,11 +369,11 @@ public class Worker {
     }
 
     public static ArrayList<Unit> nearbyWorkersFactory(Unit myUnit, MapLocation myLoc, long rad) {
-        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByTeam(myLoc, rad, Globals.ally);
         ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
         for(int i=0; i<myWorkers.size(); i++) {
             Unit k = myWorkers.get(i);
-            if(k.team()==Globals.ally) {
+            if(k.unitType()==UnitType.Worker) {
                 siceWorkers.add(k);
             }
         }
