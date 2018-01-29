@@ -105,7 +105,7 @@ public class Player {
 						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
 					}
 				}
-
+				
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
                 ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
@@ -148,6 +148,8 @@ public class Player {
                 Globals.total_mages+=Globals.num_mages;
 
                 //primary loop
+				long timeWorkers = 0, timeKnights = 0, timeRangers = 0;
+				long timeMages = 0, timeHealers = 0, timeFactories = 0;
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                     //try {
                         Unit unit = units.get(unit_counter);
@@ -160,7 +162,9 @@ public class Player {
                         //TODO: replication needs to be more aggressive
                         if(unit.unitType()==UnitType.Worker) {
                             //try {
+							long t = System.nanoTime();
                                 Worker.runWorker(unit, myloc, units);
+								timeWorkers += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Worker Error: "+e);
                             //}
@@ -170,7 +174,9 @@ public class Player {
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                             //try {
+							long t = System.nanoTime();
                                 Ranger.runRanger(unit, myloc);
+								timeRangers += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Ranger Error: "+e);
                             //}
@@ -182,7 +188,9 @@ public class Player {
                         //TODO: Figure javelin
                         else if(unit.unitType()==UnitType.Knight) {
                             //try {
+							long t = System.nanoTime();
                                 Knight.runKnight(unit, myloc);
+								timeKnights += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Knight Error: "+e);
                             //}
@@ -195,7 +203,9 @@ public class Player {
                         //TODO: Figure out blink
                         else if(unit.unitType()==UnitType.Mage) {
                             //try {
+							long t = System.nanoTime();
                                 Mage.runMage(unit, myloc);
+								timeMages += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Mage Error: "+e);
                             //}
@@ -204,7 +214,9 @@ public class Player {
                         // HEALER CODE //
                         else if(unit.unitType()==UnitType.Healer) {
                             //try {
+							long t = System.nanoTime();
                                 Healer.runHealer(unit, myloc);
+								timeHealers += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Healer Error: "+e);
                             //}
@@ -214,7 +226,9 @@ public class Player {
                         //TODO: Anti-samosa unloading
                         else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
                             //try {
+							long t = System.nanoTime();
                                 Factory.runFactory(unit, myloc);
+								timeFactories += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Factory Error: "+e);
                             //}
@@ -236,6 +250,7 @@ public class Player {
                     //}
                 }
 
+				long timeAfter = System.nanoTime();
                 //RunWorker on replicated units
                 VecUnit unsorted_afterunits = Globals.gc.myUnits();
                 ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
@@ -264,6 +279,17 @@ public class Player {
                     //    System.out.println("Replicated Worker Error: "+e);
                     //}
                 }
+				if(Globals.current_round % 15 == 0) {
+					System.out.println("ROUND: "+Globals.current_round);
+				timeAfter = System.nanoTime()-timeAfter;
+				System.out.println("Time knight: "+timeKnights);
+				System.out.println("Time worker: "+timeWorkers);
+				System.out.println("Time mage: "+timeMages);
+				System.out.println("Time healer: "+timeHealers);
+				System.out.println("Time ranger: "+timeRangers);
+				System.out.println("Time factory: "+timeFactories);
+				System.out.println("Time after: "+timeAfter);
+				}
             //} catch(Exception e) {
             //    System.out.println("Turn Error: "+e);
             //}
