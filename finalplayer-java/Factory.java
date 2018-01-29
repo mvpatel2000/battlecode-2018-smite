@@ -15,7 +15,7 @@ public class Factory {
 		int num_nonworkers = 0; // number of enemy units that aren't workers (or buildings)
 		// final value won't be correct: don't use this variable
 
-		VecUnit units = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
+		VecUnit units = Globals.gc.senseNearbyUnitsByTeam(myloc, 100000, Globals.enemy);
 		int num_enemy_rangers = 0;
 		for(int x=0; x<units.size(); x++) {
 			Unit t = units.get(x);
