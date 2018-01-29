@@ -173,7 +173,9 @@ public class Worker {
             numworkers=1;
         }
         if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>20L) {
-            return true;
+            //if(Globals.distance_field[myLoc.getX()][myLoc.getY()]<20) {
+                return true;
+            //}
         }
         return false;
     }
@@ -509,6 +511,12 @@ public class Worker {
 
     public static void workermove(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
+        if(Globals.current_round<(Globals.width+Globals.height)/2) {
+            if(unit.abilityHeat()<250L) {
+                PathShits.moveOnVectorField(unit, myLoc);
+                return;
+            }
+        }
         for (KarbDir k : myKarbs) {
             MapLocation newLoc = myLoc.add(k.dir);
             if(Globals.gc.karboniteAt(newLoc)>0L) {

@@ -32,7 +32,7 @@ public class Player {
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
         PathShits.buildFactoryField();
-		PathShits.buildHomeField();
+        PathShits.buildHomeField();
 		PathShits.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
@@ -80,7 +80,7 @@ public class Player {
         while (true) {
             //try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
-                    System.out.println("************Im WAITING **************");
+					System.out.println(":(");
                     Globals.gc.nextTurn();
                 }
                 Globals.current_round = (int)Globals.gc.round();
@@ -95,19 +95,21 @@ public class Player {
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
 
-                PathShits.updateFieldWithBuildings();
-                PathShits.updateFactoryField();
+				if(Globals.current_round % 2 == 1) {
+					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
+						PathShits.updateFieldWithBuildings();
+						PathShits.updateFactoryField();
+					}
+					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
+							(Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
+						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
+					}
+				}
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
                 ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
                 ArrayList<Unit> units = timeCheckWorkers(sorted_units);
-                if(Globals.current_round == 1 || Globals.current_round % 1 == 0) {
-                    if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
-                            (Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
-                        Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
-                    }
-                }
 
                 // TODO: check for next asteroids within ~50 rounds
                 if(Globals.myPlanet == Planet.Mars) {

@@ -11,7 +11,6 @@ public class Factory {
 
 		int NUM_NONWORKERS_CUTOFF = 10;  // if num_nonworkers is greater, we don't produce knights
 		int NUM_RANGERS_CUTOFF = 2; // if number of nearby enemy rangers is greater, we don't produce knights
-
 		int num_nonworkers = 0; // number of enemy units that aren't workers
 		// final value won't be correct: don't use this variable
 
@@ -25,19 +24,29 @@ public class Factory {
 
 		VecUnit nearenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy);
 		int num_rangers_near = 0;
+		int num_knights_near = 0;
+		int num_rangers_far = 0;
 		// final value won't be correct: don't use this variable
 
-
+		VecUnit farenemies = Globals.gc.senseNearbyUnitsByTeam(myloc, 50, Globals.enemy);
+		for(int x=0; x<farenemies.size(); x++) {
+			if(farenemies.get(x).unitType() == UnitType.Ranger)
+				num_rangers_far++;
+			if(num_rangers_far > NUM_RANGERS_CUTOFF) break;
+		}
 		for(int x=0; x<nearenemies.size(); x++) {
 			if(nearenemies.get(x).unitType() == UnitType.Ranger)
 				num_rangers_near++;
 			if(num_rangers_near > NUM_RANGERS_CUTOFF) break;
 		}
+		for(int x=0; x<nearenemies.size(); x++) {
+			if(nearenemies.get(x).unitType() == UnitType.Knight)
+				num_knights_near++;
+		}
 
-         if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF &&
-                                     (Globals.num_knights-2.0)/(1.0*Globals.num_mages) < 5.0/2.0 )
+         if((distance_to_factory<=3 || num_knights_near>0) && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
              Globals.gc.produceRobot(unit.id(), UnitType.Knight);
-         else if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
+        else if(distance_to_factory<=13  && num_rangers_far<NUM_RANGERS_CUTOFF && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
              Globals.gc.produceRobot(unit.id(), UnitType.Mage);
         //if(distance_to_factory<=13 && num_rangers_near<=NUM_RANGERS_CUTOFF && num_nonworkers<=NUM_NONWORKERS_CUTOFF)
         //    Globals.gc.produceRobot(unit.id(), UnitType.Knight);

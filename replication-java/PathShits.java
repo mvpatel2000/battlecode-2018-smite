@@ -6,12 +6,12 @@ import bc.*;
 public class PathShits {
 
     public static void updateFactoryField() {
-        VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+		VecUnit factories = Globals.gc.senseNearbyUnitsByType(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, UnitType.Factory);
         Globals.enemy_factories = new ArrayList<int[]>();
-        for(int i = 0; i<total_enemies.size(); i++) {
-            Unit enemy_unit = total_enemies.get(i);
-            if(enemy_unit.unitType()==UnitType.Factory) { //if factory
-                MapLocation enem_loc = enemy_unit.location().mapLocation();
+        for(int i = 0; i<factories.size(); i++) {
+            Unit factory = factories.get(i);
+            if(factory.team() == Globals.enemy) {
+                MapLocation enem_loc = factory.location().mapLocation();
                 int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
                 Globals.enemy_factories.add(building_info);
             }
@@ -584,7 +584,7 @@ public class PathShits {
                 queue.add(lc9);
             }
         }
- 
+
 	}
 
 }
