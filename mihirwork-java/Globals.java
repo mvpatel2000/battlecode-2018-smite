@@ -24,7 +24,14 @@ public class Globals {
 
 
     //Stuff we create
+	
+	public static HashMap<UnitType, Integer> enemy_unit_counts = new HashMap<>();
+	public static HashSet<Integer> enemy_units = new HashSet<>();
+	public static Queue<SnipeTarget> snipe_queue = new LinkedList<>();
+	public static Queue<RocketLaunch> rocket_queue = new LinkedList<>();
+
     public static ArrayList<int[]> enemy_locations = new ArrayList<int[]>(); //starting enemy location queue for generating vector field
+	public static int[][] home_field = new int[width][height];
     public static ArrayList<int[]> ally_locations = new ArrayList<int[]>();
     public static int[][] distance_field = new int[width][height];
     public static ArrayList<Direction>[][] movement_field = new ArrayList[width][height];

@@ -65,18 +65,37 @@ public class Helpers {
 				return Direction.Center;
 		}
 	}
-	public static Queue<Direction> astar(Unit me, MapLocation location, boolean include_units) {
-		PlanetMap planet = Globals.gc.startingMap(Globals.gc.planet());
-		HashSet<String> unitLocations = new HashSet<>();
-		if(include_units) {
-			VecUnit units = Globals.gc.units();
-			for(int x=0; x<units.size(); x++) {
-				if(units.get(x).team() != Globals.ally) continue; // only account for own units
-				try {
-				unitLocations.add(units.get(x).location().mapLocation().toString());
-				} catch (Exception e) {}	   // in space or in a structure's garrison
+	public static void increaseUnitCounts(VecUnit enemies_in_range) {
+		for(int x=0; x<enemies_in_range.size(); x++) {
+			Unit t = enemies_in_range.get(x);
+			if(t.team() != Globals.enemy) continue; //just checking
+			if(Globals.enemy_units.contains(t.id())) continue;
+			Globals.enemy_units.add(t.id());
+			Globals.enemy_unit_counts.put(
+					t.unitType(), Globals.enemy_unit_counts.get(t.unitType())+1
+			);
+		}
+	}
+
+
+	public static void decreaseUnitCounts(Unit me, Unit other) {
+		decreaseUnitCounts(other, me.damage());
+	}
+	public static void decreaseUnitCounts(Unit other, int damage) {
+		if(other.health() - damage <= 0) {
+			if(Globals.enemy_units.contains(other.id())) {
+				Globals.enemy_units.remove(other.id());
+				Globals.enemy_unit_counts.put(
+						other.unitType(), Globals.enemy_unit_counts.get(other.unitType())-1
+				);
 			}
 		}
+		assert Globals.enemy_unit_counts.get(other.unitType()) >= 0;
+	}
+
+
+	public static Queue<Direction> astar(Unit me, MapLocation location, boolean include_units) {
+		PlanetMap planet = Globals.gc.startingMap(Globals.gc.planet());
 
 		PriorityQueue<Tuple4<Long, Long, MapLocation, Direction>> pq
 			= new PriorityQueue<>(new Comparator<Tuple4<Long,Long,MapLocation,Direction>>() {
@@ -107,7 +126,9 @@ public class Helpers {
 				if(dir == Direction.Center) continue;
 				MapLocation adj = t.c.add(dir);
 				if(vis.containsKey(adj)) continue;
-				if(unitLocations.contains(adj.toString()) || !planet.onMap(adj) || planet.isPassableTerrainAt(adj) == 0)
+				if(!planet.onMap(adj) || planet.isPassableTerrainAt(adj) == 0)
+					continue;
+				if(include_units && Globals.gc.hasUnitAtLocation(adj))
 					continue;
 				Long h = new Long(Math.abs(location.getX() - adj.getX())
 						+ Math.abs(location.getY() - adj.getY()));
