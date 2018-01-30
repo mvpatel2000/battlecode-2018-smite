@@ -61,6 +61,8 @@ public class Player {
 			Globals.enemy_unit_counts.put(t, 0);
 		}
 
+        researchPath();
+
         while (true) {
             //try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
@@ -86,16 +88,6 @@ public class Player {
 						Helpers.decreaseUnitCounts(at, t.me.damage());
 					} else break;
 				}
-				while(!Globals.rocket_queue.isEmpty()) {
-					if(Globals.rocket_queue.peek().land_round <= Globals.current_round) {
-						on_mars = true;
-						RocketLaunch t = Globals.rocket_queue.poll();
-						Helpers.decreaseUnitCounts(Globals.gc.senseUnitAtLocation(t.loc), 10000000);
-						VecUnit damaged = Globals.gc.senseNearbyUnitsByTeam(t.loc, 2, Globals.enemy);
-						for(int x=0; x<damaged.size(); x++)
-							Helpers.decreaseUnitCounts(damaged.get(x), 100);
-					} else break;
-				}
 
 				if(Globals.current_round % 2 == 1) {
 					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
@@ -103,7 +95,7 @@ public class Player {
 						PathShits.updateFactoryField();
 					}
 					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
-							(Globals.myPlanet == Planet.Mars && on_mars)) { // TODO: check if rocket has left
+							(Globals.myPlanet == Planet.Mars && Globals.gc.myUnits().size() > 0)) {
 						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
 					}
 				}

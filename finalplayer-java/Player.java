@@ -61,6 +61,8 @@ public class Player {
 			Globals.enemy_unit_counts.put(t, 0);
 		}
 
+        researchPath();
+
         while (true) {
             //try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
