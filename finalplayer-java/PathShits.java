@@ -569,6 +569,7 @@ public class PathShits {
 					Globals.connected_components[x][y] = -1;
 					continue;
 				}
+				Globals.karb_vals.put(counter, new ArrayList<Integer>());
 				connectedComponentsDFS(x, y, counter);
 				counter++;
 			}
