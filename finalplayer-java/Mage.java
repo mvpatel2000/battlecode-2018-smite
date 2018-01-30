@@ -150,7 +150,7 @@ public class Mage {
                 hval+=9000;
             else if(unit.damage()>(int)enemy.health()) //can kill
                 hval+=6500;
-            if(enemyType==UnitType.Rocket)
+            if(enemyType==UnitType.Rocket && Globals.myPlanet==Planet.Earth)
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;

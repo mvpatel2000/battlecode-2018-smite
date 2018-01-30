@@ -14,7 +14,7 @@ public class Ranger {
                 hval+=10000;
             else if(unit.damage()>(int)enemy.health()) //can kill
                 hval+=10000;
-            if(enemyType==UnitType.Rocket)
+            if(enemyType==UnitType.Rocket && Globals.myPlanet==Planet.Earth)
                 hval+=8000;
             if(enemyType==UnitType.Factory)
                 hval+=7000;
@@ -23,11 +23,11 @@ public class Ranger {
             else if(UnitType.Worker!=enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
             else
-                hval += (10-((int)enemy.health())/(unit.damage()))*10;
+                hval += (10-((int)enemy.health())/(unit.damage()))*1;
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Ranger, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
-                    hval+=10*utctr; //later units have higher priorities because weight based on index
+                    hval+=1*utctr; //later units have higher priorities because weight based on index
                     break;
                 }
             }

@@ -65,6 +65,35 @@ public class Helpers {
 				return Direction.Center;
 		}
 	}
+	public static void increaseUnitCounts(VecUnit enemies_in_range) {
+		for(int x=0; x<enemies_in_range.size(); x++) {
+			Unit t = enemies_in_range.get(x);
+			if(t.team() != Globals.enemy) continue; //just checking
+			if(Globals.enemy_units.contains(t.id())) continue;
+			Globals.enemy_units.add(t.id());
+			Globals.enemy_unit_counts.put(
+					t.unitType(), Globals.enemy_unit_counts.get(t.unitType())+1
+			);
+		}
+	}
+
+
+	public static void decreaseUnitCounts(Unit me, Unit other) {
+		decreaseUnitCounts(other, me.damage());
+	}
+	public static void decreaseUnitCounts(Unit other, int damage) {
+		if(other.health() - damage <= 0) {
+			if(Globals.enemy_units.contains(other.id())) {
+				Globals.enemy_units.remove(other.id());
+				Globals.enemy_unit_counts.put(
+						other.unitType(), Globals.enemy_unit_counts.get(other.unitType())-1
+				);
+			}
+		}
+		assert Globals.enemy_unit_counts.get(other.unitType()) >= 0;
+	}
+
+
 	public static Queue<Direction> astar(Unit me, MapLocation location, boolean include_units) {
 		PlanetMap planet = Globals.gc.startingMap(Globals.gc.planet());
 
