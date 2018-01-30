@@ -40,7 +40,9 @@ public class Knight {
 				int val = 0;
 				if(t.unitType() == UnitType.Ranger)
 					val += 6;
-				else if(t.unitType() == UnitType.Knight || t.unitType() == UnitType.Mage)
+				else if(t.unitType() == UnitType.Mage)
+					val += 5;
+				else if(t.unitType() == UnitType.Knight && unit.attackHeat() < 20)
 					val += 5;
 				else if(t.unitType() == UnitType.Factory || t.unitType() == UnitType.Rocket)
 					val += 4;
