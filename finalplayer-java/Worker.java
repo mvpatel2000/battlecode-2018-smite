@@ -172,7 +172,7 @@ public class Worker {
         if(numworkers==0) {
             numworkers=1;
         }
-        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>20L) {
+        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>30L) {
             //if(Globals.distance_field[myLoc.getX()][myLoc.getY()]<20) {
                 return true;
             //}
