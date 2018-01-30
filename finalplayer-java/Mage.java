@@ -118,6 +118,11 @@ public class Mage {
             }
         }
         if(target_enemy!=null && Globals.gc.canAttack(unit.id(), target_enemy.id())) {
+			VecUnit attacked = Globals.gc.senseNearbyUnitsByTeam(
+					target_enemy.location().mapLocation(), 2, Globals.enemy);
+			for(int x=0; x<attacked.size(); x++)
+				Helpers.decreaseUnitCounts(unit, attacked.get(x));
+
             Globals.gc.attack(unit.id(), target_enemy.id());
         }
     }

@@ -76,6 +76,10 @@ public class Player {
             if(Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0) Globals.map_memo[x][y] = -1;
             else Globals.map_memo[x][y] = (int)Globals.map.initialKarboniteAt(new MapLocation(Globals.myPlanet, x, y));
         }
+		boolean on_mars = false;
+		for(UnitType t : UnitType.values()) {
+			Globals.enemy_unit_counts.put(t, 0);
+		}
 
         while (true) {
             try {
@@ -94,6 +98,24 @@ public class Player {
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
+				while(!Globals.snipe_queue.isEmpty()) {
+					if(Globals.snipe_queue.peek().round_hits <= Globals.current_round) {
+						SnipeTarget t = Globals.snipe_queue.poll();
+						if(!Globals.gc.hasUnitAtLocation(t.loc)) continue;
+						Unit at = Globals.gc.senseUnitAtLocation(t.loc);
+						Helpers.decreaseUnitCounts(at, t.me.damage());
+					} else break;
+				}
+				while(!Globals.rocket_queue.isEmpty()) {
+					if(Globals.rocket_queue.peek().land_round <= Globals.current_round) {
+						on_mars = true;
+						RocketLaunch t = Globals.rocket_queue.poll();
+						Helpers.decreaseUnitCounts(Globals.gc.senseUnitAtLocation(t.loc), 10000000);
+						VecUnit damaged = Globals.gc.senseNearbyUnitsByTeam(t.loc, 2, Globals.enemy);
+						for(int x=0; x<damaged.size(); x++)
+							Helpers.decreaseUnitCounts(damaged.get(x), 100);
+					} else break;
+				}
 
 				if(Globals.current_round % 2 == 1) {
 					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
@@ -101,7 +123,7 @@ public class Player {
 						PathShits.updateFactoryField();
 					}
 					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
-							(Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
+							(Globals.myPlanet == Planet.Mars && on_mars)) { // TODO: check if rocket has left
 						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
 					}
 				}
@@ -265,6 +287,7 @@ public class Player {
                     }
                 }
             } catch(Exception e) {
+				e.printStackTrace();
                 System.out.println("Turn Error: "+e);
             }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.

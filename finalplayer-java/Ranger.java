@@ -41,6 +41,7 @@ public class Ranger {
         });
         for(int i=0; i<heuristics.length; i++) {
             if(Globals.gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+				Helpers.decreaseUnitCounts(unit, enemies_in_range.get(heuristics[i][1]));
                 Globals.gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
                 return;
             }
@@ -89,6 +90,7 @@ public class Ranger {
                 MapLocation snipetarget = new MapLocation(Globals.myPlanet, target[1], target[2]);
                 if(Globals.gc.canBeginSnipe(unit.id(), snipetarget)) {
                     Globals.gc.beginSnipe(unit.id(), snipetarget);
+					Globals.snipe_queue.add(new SnipeTarget(unit, snipetarget, Globals.current_round+5));
                 }
                 target[0]--;
                 if(target[0]==0)
@@ -103,6 +105,7 @@ public class Ranger {
         if(Globals.current_round%10==0)
             Globals.enemy_buildings.clear();
         VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+		Helpers.increaseUnitCounts(total_enemies);
         for(int i = 0; i<total_enemies.size(); i++) {
             Unit enemy_unit = total_enemies.get(i);
             boolean isDuplicate = false;

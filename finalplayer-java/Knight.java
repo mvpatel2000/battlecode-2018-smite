@@ -15,6 +15,7 @@ public class Knight {
 	}
 
 	public static void runKnight(Unit unit, MapLocation myloc)  {
+		knightJavelin(unit, Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy));
 		VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
 		if(enemies_in_range.size()>0) {
 			knightAttack(unit, enemies_in_range);
@@ -161,6 +162,20 @@ public class Knight {
 		}*/
 	}
 
+	public static void knightJavelin(Unit unit, VecUnit enemies_in_range) {
+		if(!Globals.gc.isJavelinReady(unit.id())) return;
+		Unit best_eligible = knightHeuristic(unit, enemies_in_range);
+		if(best_eligible == null) return;
+		if(!Globals.gc.canJavelin(unit.id(), best_eligible.id())) {
+			System.out.println("Knight error: trying to javelin ineligible unit");
+			return;
+		}
+		Helpers.decreaseUnitCounts(unit, best_eligible);
+		Globals.gc.javelin(unit.id(), best_eligible.id());
+	}
+
+
+
 	//knight attack prioritization
 	//1. anything that u can kill
 	//2. attack factories then rockets
@@ -169,6 +184,13 @@ public class Knight {
 	public static void knightAttack(Unit unit, VecUnit enemies_in_range) {
 		if(!Globals.gc.isAttackReady(unit.id()))
 			return;
+		Unit best_eligible = knightHeuristic(unit, enemies_in_range);
+		if(best_eligible == null) return;
+		Helpers.decreaseUnitCounts(unit, best_eligible);
+		Globals.gc.attack(unit.id(), best_eligible.id());
+	}
+
+	public static Unit knightHeuristic(Unit unit, VecUnit enemies_in_range) {
 		boolean hasFactory = false;
 		boolean hasRocket = false;
 		for(int x=0; x<enemies_in_range.size(); x++) {
@@ -219,7 +241,7 @@ public class Knight {
 				best_eligible = myenemy;
 			}
 		}
-		if(best_eligible == null) return;
-		Globals.gc.attack(unit.id(), best_eligible.id());
+		return best_eligible;
 	}
+
 }
