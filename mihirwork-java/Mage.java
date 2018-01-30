@@ -23,7 +23,7 @@ public class Mage {
             int distance = (int)myloc.distanceSquaredTo(nearloc);
 
             Direction movedir = null;
-            if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
+            if(nearestUnit.unitType()==UnitType.Knight || distance<=3L) //repel knight
                 movedir = nearloc.directionTo(myloc);
             else 
                 movedir = myloc.directionTo(nearloc);
@@ -118,6 +118,11 @@ public class Mage {
             }
         }
         if(target_enemy!=null && Globals.gc.canAttack(unit.id(), target_enemy.id())) {
+			VecUnit attacked = Globals.gc.senseNearbyUnitsByTeam(
+					target_enemy.location().mapLocation(), 2, Globals.enemy);
+			for(int x=0; x<attacked.size(); x++)
+				Helpers.decreaseUnitCounts(unit, attacked.get(x));
+
             Globals.gc.attack(unit.id(), target_enemy.id());
         }
     }
@@ -141,8 +146,10 @@ public class Mage {
             UnitType enemyType = enemy.unitType();
             if(UnitType.Knight==enemy.unitType() && unit.damage()>(int)enemy.health()-(int)enemy.knightDefense()) //is knight and can kill
                 hval+=10000;
+            else if(unit.unitType() != UnitType.Worker && unit.damage()>(int)enemy.health()) //can kill
+                hval+=9000;
             else if(unit.damage()>(int)enemy.health()) //can kill
-                hval+=10000;
+                hval+=6500;
             if(enemyType==UnitType.Rocket)
                 hval+=8000;
             if(enemyType==UnitType.Factory)

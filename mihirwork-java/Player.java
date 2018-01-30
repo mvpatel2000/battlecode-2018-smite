@@ -32,6 +32,7 @@ public class Player {
         PathShits.buildFieldBFS();       //pathing
         PathShits.buildRandomField();
         PathShits.buildFactoryField();
+        PathShits.buildHomeField();
 		PathShits.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
@@ -75,10 +76,15 @@ public class Player {
             if(Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0) Globals.map_memo[x][y] = -1;
             else Globals.map_memo[x][y] = (int)Globals.map.initialKarboniteAt(new MapLocation(Globals.myPlanet, x, y));
         }
+		boolean on_mars = false;
+		for(UnitType t : UnitType.values()) {
+			Globals.enemy_unit_counts.put(t, 0);
+		}
 
         while (true) {
-            //try {
+            try {
                 while(Globals.gc.getTimeLeftMs()<2000) {
+					System.out.println(":(");
                     Globals.gc.nextTurn();
                 }
                 Globals.current_round = (int)Globals.gc.round();
@@ -92,20 +98,40 @@ public class Player {
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
+				while(!Globals.snipe_queue.isEmpty()) {
+					if(Globals.snipe_queue.peek().round_hits <= Globals.current_round) {
+						SnipeTarget t = Globals.snipe_queue.poll();
+						if(!Globals.gc.hasUnitAtLocation(t.loc)) continue;
+						Unit at = Globals.gc.senseUnitAtLocation(t.loc);
+						Helpers.decreaseUnitCounts(at, t.me.damage());
+					} else break;
+				}
+				while(!Globals.rocket_queue.isEmpty()) {
+					if(Globals.rocket_queue.peek().land_round <= Globals.current_round) {
+						on_mars = true;
+						RocketLaunch t = Globals.rocket_queue.poll();
+						Helpers.decreaseUnitCounts(Globals.gc.senseUnitAtLocation(t.loc), 10000000);
+						VecUnit damaged = Globals.gc.senseNearbyUnitsByTeam(t.loc, 2, Globals.enemy);
+						for(int x=0; x<damaged.size(); x++)
+							Helpers.decreaseUnitCounts(damaged.get(x), 100);
+					} else break;
+				}
 
-                PathShits.updateFieldWithBuildings();
-                PathShits.updateFactoryField();
+				if(Globals.current_round % 2 == 1) {
+					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
+						PathShits.updateFieldWithBuildings();
+						PathShits.updateFactoryField();
+					}
+					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
+							(Globals.myPlanet == Planet.Mars && on_mars)) { // TODO: check if rocket has left
+						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
+					}
+				}
 
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
                 ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
                 ArrayList<Unit> units = timeCheckWorkers(sorted_units);
-                if(Globals.current_round == 1 || Globals.current_round % 1 == 0) {
-                    if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
-                            (Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
-                        Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
-                    }
-                }
 
                 // TODO: check for next asteroids within ~50 rounds
                 if(Globals.myPlanet == Planet.Mars) {
@@ -145,7 +171,7 @@ public class Player {
 
                 //primary loop
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
-                    //try {
+                    try {
                         Unit unit = units.get(unit_counter);
                         if(unit.location().isInGarrison() || unit.location().isInSpace())
                             continue;
@@ -155,21 +181,21 @@ public class Player {
                         //TODO: u can do actions before replication but not after
                         //TODO: replication needs to be more aggressive
                         if(unit.unitType()==UnitType.Worker) {
-                            //try {
+                            try {
                                 Worker.runWorker(unit, myloc, units);
-                            //} catch(Exception e) {
-                            //    System.out.println("Worker Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Worker Error: "+e);
+                            }
                         }
 
                         // RANGER CODE //
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
-                            //try {
+                            try {
                                 Ranger.runRanger(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Ranger Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Ranger Error: "+e);
+                            }
                         }
 
                         // KNIGHT CODE //
@@ -177,11 +203,11 @@ public class Player {
                         //TODO: Move towards better Globals.enemy
                         //TODO: Figure javelin
                         else if(unit.unitType()==UnitType.Knight) {
-                            //try {
+                            try {
                                 Knight.runKnight(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Knight Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Knight Error: "+e);
+                            }
                         }
 
                         // MAGE CODE //
@@ -190,30 +216,30 @@ public class Player {
                         //TODO: move in a better way
                         //TODO: Figure out blink
                         else if(unit.unitType()==UnitType.Mage) {
-                            //try {
+                            try {
                                 Mage.runMage(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Mage Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Mage Error: "+e);
+                            }
                         }
 
                         // HEALER CODE //
                         else if(unit.unitType()==UnitType.Healer) {
-                            //try {
+                            try {
                                 Healer.runHealer(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Healer Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Healer Error: "+e);
+                            }
                         }
 
                         // FACTORY CODE //
                         //TODO: Anti-samosa unloading
                         else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
-                            //try {
+                            try {
                                 Factory.runFactory(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Factory Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Factory Error: "+e);
+                            }
                         }
 
                         // ROCKET CODE //
@@ -221,15 +247,15 @@ public class Player {
                         //TODO: optmize launch timing to improve speed
                         //TODO: launch at same time
                         else if(unit.unitType()==UnitType.Rocket && unit.structureIsBuilt()!=0) {
-                            //try {
+                            try {
                                 Rocket.runRocket(unit, myloc);
-                            //} catch(Exception e) {
-                            //    System.out.println("Rocket Error: "+e);
-                            //}
+                            } catch(Exception e) {
+                                System.out.println("Rocket Error: "+e);
+                            }
                         }
-                    //} catch(Exception e) {
-                    //    System.out.println("Unit Loop Error: "+e);
-                    //}
+                    } catch(Exception e) {
+                        System.out.println("Unit Loop Error: "+e);
+                    }
                 }
 
                 //RunWorker on replicated units
@@ -251,18 +277,19 @@ public class Player {
                 }
                 Globals.total_workers+=additional_workers;
                 for(int i=0; i<myaddworkers.size(); i++) {
-                    //try {
+                    try {
                         Unit myUnit = myaddworkers.get(i);
                         if(!myUnit.location().isInGarrison() && !myUnit.location().isInSpace()) {
                             Worker.runWorker(myUnit, myUnit.location().mapLocation(), afterunits);
                         }
-                    //} catch(Exception e) {
-                    //    System.out.println("Replicated Worker Error: "+e);
-                    //}
+                    } catch(Exception e) {
+                        System.out.println("Replicated Worker Error: "+e);
+                    }
                 }
-            //} catch(Exception e) {
-            //    System.out.println("Turn Error: "+e);
-            //}
+            } catch(Exception e) {
+				e.printStackTrace();
+                System.out.println("Turn Error: "+e);
+            }
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
         }
     }

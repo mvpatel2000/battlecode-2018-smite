@@ -27,9 +27,48 @@ public class Worker {
 
     public static void runWorker(Unit unit, MapLocation loc, ArrayList<Unit> units) {
         ArrayList<KarbDir> myKarbs = onlyKarbs(unit, unit.location());
-        Direction toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
-        boolean shouldReplicate = replicatingrequirements(unit, loc);
+		Direction toKarb = Direction.Center;
+		int dist_from_karb = 100000;
+		for(KarbonitePath k : Globals.karbonite_path) {
+			dist_from_karb = Math.min(dist_from_karb, k.distance_field[loc.getX()][loc.getY()]);
+		}
+
         int distance_to_enemy = Globals.distance_field[loc.getX()][loc.getY()];
+		boolean goTowardsKarb = true;
+		if(dist_from_karb >= 15 && Globals.current_round > 20) { //TODO: tune this
+			Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+			int x = loc.getX(), y = loc.getY();
+			int[][] lc = {
+				{x+1,y,  5},
+				{x+1,y+1,6},
+				{x,y+1,  7},
+				{x-1,y+1,8},
+				{x-1,y,  1},
+				{x-1,y-1,2},
+				{x,y-1,  3},
+				{x+1,y-1,4},
+			};
+
+			Direction bestDir = Direction.Center;
+			int value = 100000;
+			for(int[] ar : lc) {
+				if(ar[0] < 0 || ar[0] >= Globals.width ||
+						ar[1] < 0 || ar[1] >= Globals.height) continue;
+				int my_value = Globals.home_field[ar[0]][ar[1]];
+				if(my_value < value) {
+					value = my_value;
+					bestDir = Helpers.opposite(dirs[ar[2]]);
+				}
+			}
+			if(value > Math.max(distance_to_enemy/3, 5)) {
+				toKarb = bestDir;
+				goTowardsKarb = false;
+			}
+		}
+		if(goTowardsKarb)
+			toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
+
+        boolean shouldReplicate = replicatingrequirements(unit, loc);
         if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
             PathShits.updateEnemies();
         }
@@ -133,18 +172,20 @@ public class Worker {
         if(numworkers==0) {
             numworkers=1;
         }
-        if(totalkarb/((long)numworkers)>20L && Globals.gc.senseNearbyUnitsByTeam(myLoc, 20L, Globals.enemy).size()>0) {
-            return true;
+        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>20L) {
+            //if(Globals.distance_field[myLoc.getX()][myLoc.getY()]<20) {
+                return true;
+            //}
         }
         return false;
     }
 
-      public static ArrayList<Unit> nearbyWorkersRocket(Unit myUnit, MapLocation myLoc, long rad) {
-        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+    public static ArrayList<Unit> nearbyWorkersRocket(Unit myUnit, MapLocation myLoc, long rad) {
+        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByTeam(myLoc, rad, Globals.ally);
         ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
         for(int i=0; i<myWorkers.size(); i++) {
             Unit k = myWorkers.get(i);
-            if(k.team()==Globals.ally) {
+            if(k.unitType()==UnitType.Worker) {
                 siceWorkers.add(k);
             }
         }
@@ -180,7 +221,7 @@ public class Worker {
         for (int i=Math.max(x-visrad, 0); i<Math.min(x+visrad+1,(int)Globals.map.getWidth()+1); i++) {
             for (int j=Math.max(0,y-visrad); j<Math.min(y+visrad+1,(int)Globals.map.getHeight()+1); j++) {
                 MapLocation m = new MapLocation(Globals.myPlanet, i, j);
-                if((x-i)*(x-i) + (y-j*(y-j))<unit.visionRange()) {
+                if(((x-i)*(x-i) + (y-j)*(y-j))<unit.visionRange()) {
                     if(Globals.gc.canSenseLocation(m)) {
                         if(Globals.gc.karboniteAt(m)>0L) {
                             return myLoc.directionTo(m);
@@ -330,11 +371,11 @@ public class Worker {
     }
 
     public static ArrayList<Unit> nearbyWorkersFactory(Unit myUnit, MapLocation myLoc, long rad) {
-        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByType(myLoc, rad, UnitType.Worker);
+        VecUnit myWorkers = Globals.gc.senseNearbyUnitsByTeam(myLoc, rad, Globals.ally);
         ArrayList<Unit> siceWorkers = new ArrayList<Unit>();
         for(int i=0; i<myWorkers.size(); i++) {
             Unit k = myWorkers.get(i);
-            if(k.team()==Globals.ally) {
+            if(k.unitType()==UnitType.Worker) {
                 siceWorkers.add(k);
             }
         }
@@ -347,8 +388,15 @@ public class Worker {
         if(closeWorkers.size()>2) { //includes the original worker, we want three Globals.workers per factory
             Direction blueprintDirection = optimalDirectionFactory(unit, myLoc, closeWorkers);
             if(blueprintDirection!=null) {
-                Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
-                return 1;
+                if(PathShits.getNearestNonWorkerEnemy(myLoc, Globals.gc.senseNearbyUnitsByTeam(myLoc, unit.visionRange(), Globals.enemy))>50) {
+                    Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
+                    return 1;
+                } else {
+                    //should not build blueprint, it will die
+                    workerharvest(unit, toKarb, myKarbs);
+                    workermove(unit, toKarb, myKarbs);
+                    return 0;
+                }
             } else {
                 //cannot build blueprint
                 workerharvest(unit, toKarb, myKarbs);
@@ -463,6 +511,15 @@ public class Worker {
 
     public static void workermove(Unit unit, Direction toKarb, ArrayList<KarbDir> myKarbs) {
         MapLocation myLoc = unit.location().mapLocation();
+        if(Globals.current_round<(Globals.width+Globals.height)/2) {
+            if(unit.abilityHeat()<50L) {
+                if(Globals.distance_field[myLoc.getX()][myLoc.getY()]>Globals.home_field[myLoc.getX()][myLoc.getY()]) { //distance to enemy > distance to home, move to enemy
+                    System.out.println("Its true");
+                    PathShits.moveOnVectorField(unit, myLoc);
+                    return;
+                }
+            }
+        }
         for (KarbDir k : myKarbs) {
             MapLocation newLoc = myLoc.add(k.dir);
             if(Globals.gc.karboniteAt(newLoc)>0L) {

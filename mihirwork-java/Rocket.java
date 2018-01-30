@@ -215,8 +215,16 @@ public class Rocket {
                 }
             }
         }
-        if(Globals.gc.canLaunchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh))) {
-            Globals.gc.launchRocket(unit.id(), new MapLocation(Planet.Mars, idealw, idealh)); //launch rocket
+		MapLocation dest = new MapLocation(Planet.Mars, idealw, idealh);
+        if(Globals.gc.canLaunchRocket(unit.id(), dest)) {
+            Globals.gc.launchRocket(unit.id(), dest); //launch rocket
+
+			VecUnit damaged = Globals.gc.senseNearbyUnitsByTeam(unit.location().mapLocation(), 2, Globals.enemy);
+			for(int x=0; x<damaged.size(); x++)
+				Helpers.decreaseUnitCounts(damaged.get(x), 100);
+			Globals.rocket_queue.add(
+					new RocketLaunch((int)Globals.orbit_pattern.duration(Globals.current_round), dest));
+			
             int[] shifts = {-3, -2, -1, 0, 1, 2, 3}; //update available squares
             for(int xsi=0; xsi<shifts.length; xsi++) {
                 for(int ysi=0; ysi<shifts.length; ysi++) {

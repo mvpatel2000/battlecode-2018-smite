@@ -23,7 +23,7 @@ public class Mage {
             int distance = (int)myloc.distanceSquaredTo(nearloc);
 
             Direction movedir = null;
-            if(nearestUnit.unitType()==UnitType.Knight || distance<3L) //repel knight
+            if(nearestUnit.unitType()==UnitType.Knight || distance<=3L) //repel knight
                 movedir = nearloc.directionTo(myloc);
             else 
                 movedir = myloc.directionTo(nearloc);
