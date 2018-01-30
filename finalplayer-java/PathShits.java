@@ -488,6 +488,39 @@ public class PathShits {
         }
     }
 
+    public static void fuzzyMoveRanger(Unit unit, MapLocation myloc, Direction dir) {
+        if(!Globals.gc.isMoveReady(unit.id()) || dir==Direction.Center)
+            return;
+        Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
+                                Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+        int[] shifts = {0, -1, 1, -2, 2};
+        int dirindex = 0;
+        for(int i=0; i<8; i++) {
+            if(dir==dirs[i]) {
+                dirindex = i;
+                break;
+            }
+        }
+        for(int i=0; i<5; i++) {
+            if(Globals.gc.canMove(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ])) {
+                VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc.add(dirs[ (dirindex+shifts[i]+8)%8 ]), unit.attackRange(), Globals.enemy);
+                if(enemies_in_range.size()>0) {
+                    boolean invalid = false;
+                    for(int ctr=0; ctr<enemies_in_range.size(); ctr++) {
+                        if(enemies_in_range.get(ctr).unitType()==UnitType.Ranger) {
+                            invalid = true;
+                            break;
+                        }
+                    }
+                    if(invalid)
+                        continue;
+                }
+                Globals.gc.moveRobot(unit.id(), dirs[ (dirindex+shifts[i]+8)%8 ]);
+                return;
+            }
+        }
+    }
+
     public static Direction fuzzyMoveDir(Unit unit, Direction dir) {
         int[] shifts = {0, -1, 1, -2, 2};
         int dirindex = 0;
@@ -514,9 +547,6 @@ public class PathShits {
 			return;
 		}
 		Globals.connected_components[x][y] = counter;
-		int karb = (int)Globals.map.initialKarboniteAt(loc);
-		if(karb > 0)
-			Globals.karb_vals.get(counter).add(karb);
 		connectedComponentsDFS(x-1, y-1, counter);
 		connectedComponentsDFS(x-1, y, counter);
 		connectedComponentsDFS(x-1, y+1, counter);
@@ -530,13 +560,6 @@ public class PathShits {
 		int counter = 1;
 		for(int x=0; x<Globals.width; x++) {
 			for(int y=0; y<Globals.height; y++) {
-				if(Globals.connected_components[x][y] != 0) continue;
-				MapLocation loc = new MapLocation(Globals.myPlanet, x, y);
-				if(Globals.map.isPassableTerrainAt(loc) == 0) { // not passable
-					Globals.connected_components[x][y] = -1;
-					continue;
-				}
-				Globals.karb_vals.put(counter, new ArrayList<Integer>());
 				connectedComponentsDFS(x, y, counter);
 				counter++;
 			}
