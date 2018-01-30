@@ -172,7 +172,7 @@ public class Worker {
         if(numworkers==0) {
             numworkers=1;
         }
-        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>20L) {
+        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/3)>30L) {
             //if(Globals.distance_field[myLoc.getX()][myLoc.getY()]<20) {
                 return true;
             //}
@@ -514,7 +514,6 @@ public class Worker {
         if(Globals.current_round<(Globals.width+Globals.height)/2) {
             if(unit.abilityHeat()<50L) {
                 if(Globals.distance_field[myLoc.getX()][myLoc.getY()]>Globals.home_field[myLoc.getX()][myLoc.getY()]) { //distance to enemy > distance to home, move to enemy
-                    System.out.println("Its true");
                     PathShits.moveOnVectorField(unit, myLoc);
                     return;
                 }

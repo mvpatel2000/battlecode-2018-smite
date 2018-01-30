@@ -35,6 +35,33 @@ public class Player {
         PathShits.buildHomeField();
 		PathShits.createConnectedComponents();
 
+		for(Integer component : Globals.karb_vals.keySet()) {
+			ArrayList<Integer> vals = Globals.karb_vals.get(component);
+			Collections.sort(vals);
+			int heuristic1 = vals.size();
+			if(heuristic1 <= 100) heuristic1 /= 4;
+			else if(heuristic1 <= 300) heuristic1 /= 4.5;
+			else if(heuristic1 <= 500) heuristic1 /= 5;
+			else if(heuristic1 <= 700) heuristic1 /= 5.5;
+			else if(heuristic1 <= 1000) heuristic1 /= 6;
+			else heuristic1 /= 6.5;
+
+			int num = 0;
+			double tot = 0;
+			for(int x=(vals.size()/2)-2; x<=(vals.size()/2)+3; x++) {
+				if(x < 0 || x >= vals.size()) continue;
+				num++;
+				tot += vals.get(x);
+			}
+			if(num == 0) tot = 0;
+			else tot /= num;
+
+			// [0.5, 1]
+			double heuristic2 = (tot/50.0 * .5) + .5;
+
+			Globals.max_workers.put(component, (int)Math.min(175, Math.max(4, heuristic1 * heuristic2)));
+		}
+
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(Globals.ally==unit.team()) {
@@ -47,26 +74,6 @@ public class Player {
             }
         }
 
-        // if(true) {
-        //     UnitType[] rarray = {UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Mage, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket}; //research queue
-        //     for(int i=0; i<rarray.length; i++)
-        //         Globals.gc.queueResearch(rarray[i]);
-        // }
-        if(Globals.myPlanet==Planet.Earth && Globals.doesPathExist==false) { //research
-            //50 75 175 275 300 375 //475 550 575 675 775 975
-            UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage,
-                                    UnitType.Mage, UnitType.Mage, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
-            for(int i=0; i<rarray.length; i++)
-                Globals.gc.queueResearch(rarray[i]);
-        }
-        else if(Globals.myPlanet==Planet.Earth) {
-            //25 125 225 250 325 425 //500 550 575 675 775 975
-            UnitType[] rarray = {UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage, UnitType.Mage,
-                                    UnitType.Mage, UnitType.Rocket, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
-            for(int i=0; i<rarray.length; i++)
-                Globals.gc.queueResearch(rarray[i]);
-        }
-
         Globals.paths = new HashMap<>();
         Globals.minworkers = Worker.workerReplicateRatio();
         Globals.rand_permutation = randomPermutation(9);
@@ -76,6 +83,12 @@ public class Player {
             if(Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0) Globals.map_memo[x][y] = -1;
             else Globals.map_memo[x][y] = (int)Globals.map.initialKarboniteAt(new MapLocation(Globals.myPlanet, x, y));
         }
+		boolean on_mars = false;
+		for(UnitType t : UnitType.values()) {
+			Globals.enemy_unit_counts.put(t, 0);
+		}
+
+        researchPath();
 
         while (true) {
             //try {
@@ -94,6 +107,14 @@ public class Player {
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
                 Ranger.buildSnipeTargets(); //build snipe targets
+				while(!Globals.snipe_queue.isEmpty()) {
+					if(Globals.snipe_queue.peek().round_hits <= Globals.current_round) {
+						SnipeTarget t = Globals.snipe_queue.poll();
+						if(!Globals.gc.hasUnitAtLocation(t.loc)) continue;
+						Unit at = Globals.gc.senseUnitAtLocation(t.loc);
+						Helpers.decreaseUnitCounts(at, t.me.damage());
+					} else break;
+				}
 
 				if(Globals.current_round % 2 == 1) {
 					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
@@ -101,15 +122,18 @@ public class Player {
 						PathShits.updateFactoryField();
 					}
 					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
-							(Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
+							(Globals.myPlanet == Planet.Mars && Globals.gc.myUnits().size() > 0)) {
 						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
 					}
 				}
-				
+
                 //TODO: Tune this variable
                 VecUnit unsorted_units = Globals.gc.myUnits();
                 ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
                 ArrayList<Unit> units = timeCheckWorkers(sorted_units);
+
+                ArrayList<Unit> sortedWorkers = new ArrayList<Unit>();
+
 
                 // TODO: check for next asteroids within ~50 rounds
                 if(Globals.myPlanet == Planet.Mars) {
@@ -127,7 +151,8 @@ public class Player {
                 Globals.num_workers = 0;
                 Globals.num_mages = 0;
                 for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
-                    UnitType unit_type = units.get(i).unitType();
+                    Unit meUnit = units.get(i);
+                    UnitType unit_type = meUnit.unitType();
                     if(unit_type==UnitType.Ranger)
                         Globals.num_rangers++;
                     else if(unit_type==UnitType.Healer)
@@ -138,6 +163,7 @@ public class Player {
                         Globals.num_mages++;
                     else if(unit_type==UnitType.Worker) {
                         Globals.num_workers++;
+                        sortedWorkers.add(meUnit);
                         Globals.workers.put(units.get(i).id(), units.get(i).id());
                     }
                 }
@@ -147,9 +173,17 @@ public class Player {
                 Globals.total_workers+=Globals.num_workers;
                 Globals.total_mages+=Globals.num_mages;
 
+                //sort workers by distance
+                if(num_workers<15) {
+                    Collections.sort(sortedWorkers, new Comparator<Unit>() {
+                        public int compare(Unit u, Unit v) {
+                            MapLocation uLoc = u.location().mapLocation();
+                            MapLocation vLoc = v.location().mapLocation();
+                            return (Globals.distance_field[uLoc.getX()][uLoc.getY()] - Globals.distance_field[vLoc.getX()][vLoc.getY()]);
+                        }
+                    });
+                }
                 //primary loop
-				long timeWorkers = 0, timeKnights = 0, timeRangers = 0;
-				long timeMages = 0, timeHealers = 0, timeFactories = 0;
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                     //try {
                         Unit unit = units.get(unit_counter);
@@ -162,9 +196,8 @@ public class Player {
                         //TODO: replication needs to be more aggressive
                         if(unit.unitType()==UnitType.Worker) {
                             //try {
-							long t = System.nanoTime();
-                                Worker.runWorker(unit, myloc, units);
-								timeWorkers += System.nanoTime() - t;
+                                continue;
+                                //Worker.runWorker(unit, myloc, units);
                             //} catch(Exception e) {
                             //    System.out.println("Worker Error: "+e);
                             //}
@@ -174,9 +207,7 @@ public class Player {
                         //TODO: make rangerAttack not a sort
                         else if(unit.unitType()==UnitType.Ranger && unit.rangerIsSniping()==0) {
                             //try {
-							long t = System.nanoTime();
                                 Ranger.runRanger(unit, myloc);
-								timeRangers += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Ranger Error: "+e);
                             //}
@@ -188,9 +219,7 @@ public class Player {
                         //TODO: Figure javelin
                         else if(unit.unitType()==UnitType.Knight) {
                             //try {
-							long t = System.nanoTime();
                                 Knight.runKnight(unit, myloc);
-								timeKnights += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Knight Error: "+e);
                             //}
@@ -203,9 +232,7 @@ public class Player {
                         //TODO: Figure out blink
                         else if(unit.unitType()==UnitType.Mage) {
                             //try {
-							long t = System.nanoTime();
                                 Mage.runMage(unit, myloc);
-								timeMages += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Mage Error: "+e);
                             //}
@@ -213,10 +240,8 @@ public class Player {
 
                         // HEALER CODE //
                         else if(unit.unitType()==UnitType.Healer) {
-                            //try {
-							long t = System.nanoTime();
+                            //ry {
                                 Healer.runHealer(unit, myloc);
-								timeHealers += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Healer Error: "+e);
                             //}
@@ -226,9 +251,7 @@ public class Player {
                         //TODO: Anti-samosa unloading
                         else if(unit.unitType()==UnitType.Factory && unit.structureIsBuilt()!=0) {
                             //try {
-							long t = System.nanoTime();
                                 Factory.runFactory(unit, myloc);
-								timeFactories += System.nanoTime() - t;
                             //} catch(Exception e) {
                             //    System.out.println("Factory Error: "+e);
                             //}
@@ -246,11 +269,31 @@ public class Player {
                             //}
                         }
                     //} catch(Exception e) {
-                    //    System.out.println("Unit Loop Error: "+e);
+                    //   System.out.println("Unit Loop Error: "+e);
                     //}
                 }
+                //Run on sortedWorkers
+                for (int swcounter = 0; swcounter < sortedWorkers.size(); swcounter++) {
+                    //try {
+                        Unit unit = sortedWorkers.get(swcounter);
+                        if(unit.location().isInGarrison() || unit.location().isInSpace())
+                            continue;
+                        MapLocation myloc = unit.location().mapLocation();
 
-				long timeAfter = System.nanoTime();
+                        // WORKER CODE //
+                        //TODO: u can do actions before replication but not after
+                        //TODO: replication needs to be more aggressive
+                        if(unit.unitType()==UnitType.Worker) {
+                            //try {
+                                Worker.runWorker(unit, myloc, units);
+                            //} catch(Exception e) {
+                            //    System.out.println("Worker Error: "+e);
+                            //}
+                        }
+                        //} catch(Exception e) {
+                        //   System.out.println("Unit Loop Error: "+e);
+                        //}
+                }
                 //RunWorker on replicated units
                 VecUnit unsorted_afterunits = Globals.gc.myUnits();
                 ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
@@ -279,21 +322,46 @@ public class Player {
                     //    System.out.println("Replicated Worker Error: "+e);
                     //}
                 }
-				if(Globals.current_round % 15 == 0) {
-					System.out.println("ROUND: "+Globals.current_round);
-				timeAfter = System.nanoTime()-timeAfter;
-				System.out.println("Time knight: "+timeKnights);
-				System.out.println("Time worker: "+timeWorkers);
-				System.out.println("Time mage: "+timeMages);
-				System.out.println("Time healer: "+timeHealers);
-				System.out.println("Time ranger: "+timeRangers);
-				System.out.println("Time factory: "+timeFactories);
-				System.out.println("Time after: "+timeAfter);
-				}
             //} catch(Exception e) {
+			//	e.printStackTrace();
             //    System.out.println("Turn Error: "+e);
             //}
             Globals.gc.nextTurn(); // Submit the actions we've done, and wait for our next turn.
+        }
+    }
+
+    public static void researchPath() {
+        if(Globals.myPlanet==Planet.Mars)
+            return;
+        int dist = 0;
+        for(int i=0; i<Globals.ally_locations.size(); i++) {
+            int[] ally_loc = Globals.ally_locations.get(i);
+            dist+=Globals.distance_field[ally_loc[0]][ally_loc[1]];
+        }
+        dist = dist / Globals.ally_locations.size();
+
+        if(Globals.doesPathExist==false) { //research
+            //50 75 175 275 300 400 //500 575 600 675 775 850 //950 975
+            UnitType[] rarray = {UnitType.Rocket, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Rocket,
+                                    UnitType.Rocket, UnitType.Mage, UnitType.Ranger, UnitType.Mage, UnitType.Mage, UnitType.Mage,
+                                    UnitType.Ranger, UnitType.Knight}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                Globals.gc.queueResearch(rarray[i]);
+        }
+        else if(dist<20) {
+            //25 50 75 175 275 300 //375 425 525 625 725 800 //900 975
+            UnitType[] rarray = {UnitType.Mage, UnitType.Knight, UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Ranger,
+                                    UnitType.Mage, UnitType.Rocket, UnitType.Rocket, UnitType.Rocket, UnitType.Mage, UnitType.Mage,
+                                    UnitType.Ranger, UnitType.Knight}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                Globals.gc.queueResearch(rarray[i]);
+        }
+        else {
+            //25 125 225 250 325 425 //500 550 575 675 775 975
+            UnitType[] rarray = {UnitType.Healer, UnitType.Healer, UnitType.Healer, UnitType.Mage, UnitType.Mage, UnitType.Mage,
+                                    UnitType.Mage, UnitType.Rocket, UnitType.Ranger, UnitType.Rocket, UnitType.Ranger, UnitType.Ranger}; //research queue
+            for(int i=0; i<rarray.length; i++)
+                Globals.gc.queueResearch(rarray[i]);
         }
     }
 
