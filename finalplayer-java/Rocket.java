@@ -174,6 +174,7 @@ public class Rocket {
             if(x==enem_loc[0] && y==enem_loc[1]) {
                 Globals.enemy_locations.remove(i);
                 Globals.rocket_homing--;
+                PathShits.buildFieldBFS();
                 return;
             }
         }
