@@ -34,7 +34,34 @@ public class Player {
         PathShits.buildFactoryField();
         PathShits.buildHomeField();
 		PathShits.createConnectedComponents();
+		
+		for(Integer component : Globals.karb_vals.keySet()) {
+			ArrayList<Integer> vals = Globals.karb_vals.get(component);
+			Collections.sort(vals);
+			int heuristic1 = vals.size();
+			if(heuristic1 <= 100) heuristic1 /= 4;
+			else if(heuristic1 <= 300) heuristic1 /= 4.5;
+			else if(heuristic1 <= 500) heuristic1 /= 5;
+			else if(heuristic1 <= 700) heuristic1 /= 5.5;
+			else if(heuristic1 <= 1000) heuristic1 /= 6;
+			else heuristic1 /= 6.5;
 
+			int num = 0;
+			double tot = 0;
+			for(int x=(vals.size()/2)-2; x<=(vals.size()/2)+3; x++) {
+				if(x < 0 || x >= vals.size()) continue;
+				num++;
+				tot += vals.get(x);
+			}
+			if(num == 0) tot = 0;
+			else tot /= num;
+
+			// [0.5, 1]
+			double heuristic2 = (tot/50.0 * .5) + .5;
+
+			Globals.max_workers.put(component, (int)Math.min(175, Math.max(4, heuristic1 * heuristic2)));
+		}
+		
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(Globals.ally==unit.team()) {
