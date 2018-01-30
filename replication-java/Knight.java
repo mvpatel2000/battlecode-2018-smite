@@ -15,6 +15,7 @@ public class Knight {
 	}
 
 	public static void runKnight(Unit unit, MapLocation myloc)  {
+		knightJavelin(unit, Globals.gc.senseNearbyUnitsByTeam(myloc, 10, Globals.enemy));
 		VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
 		if(enemies_in_range.size()>0) {
 			knightAttack(unit, enemies_in_range);
@@ -28,18 +29,22 @@ public class Knight {
 			}
 		}
 	 																/* TODO: tune this number */
-		int detour_size = 5;
+		int detour_size = 9;
 		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
 		if(close_enemies.size() > 0) {
 			// if enemy is close enough, detour and attack them
-			int m_val = -1000;
-			Unit to_follow = close_enemies.get(0);
+			int m_val = 0; // ignores workers
+			Unit to_follow = null;
 			for(int x=0; x<close_enemies.size(); x++) {
 				Unit t = close_enemies.get(x);
 				int val = 0;
 				if(t.unitType() == UnitType.Ranger)
+					val += 6;
+				else if(t.unitType() == UnitType.Mage)
 					val += 5;
-				else if(t.unitType() == UnitType.Knight || t.unitType() == UnitType.Mage)
+				else if(t.unitType() == UnitType.Knight && unit.attackHeat() < 20)
+					val += 5;
+				else if(t.unitType() == UnitType.Factory || t.unitType() == UnitType.Rocket)
 					val += 4;
 				else if(t.unitType() == UnitType.Healer)
 					val += 3;
@@ -48,15 +53,21 @@ public class Knight {
 					to_follow = t;
 				}
 			}
-			MapLocation loc = to_follow.location().mapLocation();
-			/*Queue<Direction> path =
-				Helpers.astar(unit, loc, true);*/
+			if(to_follow != null) {
+				MapLocation loc = to_follow.location().mapLocation();
 
-			//if(path.size() < detour_size+4) {
-			if(Globals.map.isPassableTerrainAt(myloc.add(myloc.directionTo(loc))) != 0) {
-				PathShits.fuzzyMove(unit, myloc.directionTo(loc));
-				Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
-				return;
+				MapLocation adj_loc = myloc.add(myloc.directionTo(loc));
+				Unit adj = null;
+
+				if(Globals.gc.hasUnitAtLocation(adj_loc))
+					adj = Globals.gc.senseUnitAtLocation(adj_loc);
+
+				if(Globals.map.isPassableTerrainAt(adj_loc) != 0 &&
+					(adj == null || adj.team() == Globals.enemy)) {
+					PathShits.fuzzyMove(unit, myloc.directionTo(loc));
+					Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
+					return;
+				}
 			}
 		}
 		
@@ -153,6 +164,20 @@ public class Knight {
 		}*/
 	}
 
+	public static void knightJavelin(Unit unit, VecUnit enemies_in_range) {
+		if(!Globals.gc.isJavelinReady(unit.id())) return;
+		Unit best_eligible = knightHeuristic(unit, enemies_in_range);
+		if(best_eligible == null) return;
+		if(!Globals.gc.canJavelin(unit.id(), best_eligible.id())) {
+			System.out.println("Knight error: trying to javelin ineligible unit");
+			return;
+		}
+		Helpers.decreaseUnitCounts(unit, best_eligible);
+		Globals.gc.javelin(unit.id(), best_eligible.id());
+	}
+
+
+
 	//knight attack prioritization
 	//1. anything that u can kill
 	//2. attack factories then rockets
@@ -161,6 +186,13 @@ public class Knight {
 	public static void knightAttack(Unit unit, VecUnit enemies_in_range) {
 		if(!Globals.gc.isAttackReady(unit.id()))
 			return;
+		Unit best_eligible = knightHeuristic(unit, enemies_in_range);
+		if(best_eligible == null) return;
+		Helpers.decreaseUnitCounts(unit, best_eligible);
+		Globals.gc.attack(unit.id(), best_eligible.id());
+	}
+
+	public static Unit knightHeuristic(Unit unit, VecUnit enemies_in_range) {
 		boolean hasFactory = false;
 		boolean hasRocket = false;
 		for(int x=0; x<enemies_in_range.size(); x++) {
@@ -211,7 +243,7 @@ public class Knight {
 				best_eligible = myenemy;
 			}
 		}
-		if(best_eligible == null) return;
-		Globals.gc.attack(unit.id(), best_eligible.id());
+		return best_eligible;
 	}
+
 }

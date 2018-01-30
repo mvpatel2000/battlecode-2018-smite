@@ -23,11 +23,11 @@ public class Ranger {
             else if(UnitType.Worker!=enemy.unitType())
                 hval += (10-((int)enemy.health())/(unit.damage()))*100; //weakest unit
             else
-                hval += (10-((int)enemy.health())/(unit.damage()))*10;
+                hval += (10-((int)enemy.health())/(unit.damage()))*1;
             UnitType[] priorities = {UnitType.Worker, UnitType.Knight, UnitType.Ranger, UnitType.Mage, UnitType.Healer}; //unit priorities
             for(int utctr=0; utctr<priorities.length; utctr++) {
                 if(enemyType == priorities[utctr]) {
-                    hval+=10*utctr; //later units have higher priorities because weight based on index
+                    hval+=1*utctr; //later units have higher priorities because weight based on index
                     break;
                 }
             }
@@ -41,6 +41,7 @@ public class Ranger {
         });
         for(int i=0; i<heuristics.length; i++) {
             if(Globals.gc.canAttack(unit.id(), enemies_in_range.get(heuristics[i][1]).id())) {
+				Helpers.decreaseUnitCounts(unit, enemies_in_range.get(heuristics[i][1]));
                 Globals.gc.attack(unit.id(), enemies_in_range.get(heuristics[i][1]).id());
                 return;
             }
@@ -59,7 +60,7 @@ public class Ranger {
             if(enemies_in_range.size()==0) {    //move towards Globals.enemy since nothing in attack range
                 Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight);
                 MapLocation nearloc = nearestUnit.location().mapLocation();
-                PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+                PathShits.fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc)); //TODO: fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc))
             }
             enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
 
@@ -89,6 +90,7 @@ public class Ranger {
                 MapLocation snipetarget = new MapLocation(Globals.myPlanet, target[1], target[2]);
                 if(Globals.gc.canBeginSnipe(unit.id(), snipetarget)) {
                     Globals.gc.beginSnipe(unit.id(), snipetarget);
+					Globals.snipe_queue.add(new SnipeTarget(unit, snipetarget, Globals.current_round+5));
                 }
                 target[0]--;
                 if(target[0]==0)
@@ -103,6 +105,7 @@ public class Ranger {
         if(Globals.current_round%10==0)
             Globals.enemy_buildings.clear();
         VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+		Helpers.increaseUnitCounts(total_enemies);
         for(int i = 0; i<total_enemies.size(); i++) {
             Unit enemy_unit = total_enemies.get(i);
             boolean isDuplicate = false;
