@@ -514,7 +514,6 @@ public class Worker {
         if(Globals.current_round<(Globals.width+Globals.height)/2) {
             if(unit.abilityHeat()<50L) {
                 if(Globals.distance_field[myLoc.getX()][myLoc.getY()]>Globals.home_field[myLoc.getX()][myLoc.getY()]) { //distance to enemy > distance to home, move to enemy
-                    System.out.println("Its true");
                     PathShits.moveOnVectorField(unit, myLoc);
                     return;
                 }
