@@ -150,12 +150,6 @@ public class Worker {
 
 
     public static boolean replicatingrequirements(Unit myunit, MapLocation myLoc) {
-        //calculations from global hashmaps
-        int my_connected_comp = Globals.connected_components[myLoc.getX()][myLoc.getY()];
-        int num_karb_squares = Globals.karb_vals.get(my_connected_comp).size();
-        double med_karb = Globals.median_karb.get(my_connected_comp);
-        int area = Globals.width*Globals.height;
-        //nearby karbonite and worker calculations
         int numworkers = nearbyWorkersFactory(myunit, myLoc, 4L).size();
         long totalkarb=0L;
         Direction[] dirs = {Direction.East, Direction.Northeast, Direction.North, Direction.Northwest,
@@ -178,18 +172,10 @@ public class Worker {
         if(numworkers==0) {
             numworkers=1;
         }
-        //This line below determines under which circumstances we replicate.
-        //If we wish to replicate, return true. Else, return false.
-        //Variables to consider: totalkarb - amount of karbonite around me that I can reach in two steps
-        //                       numworkers - the number of ally workers within a certain range (4L)
-        //                       Globals.nikhil_num_workers - the number of total workers on the Team
-        //                       med_karb - median amount of karbonite per square, initially (does not update)
-        //                       num_karb_squares - number of squares with karbonite on them initially
-        if(totalkarb/(long)numworkers>30L) {
+        if(totalkarb/((long)numworkers)-(Globals.nikhil_num_workers/2)>30L) {
+            //if(Globals.distance_field[myLoc.getX()][myLoc.getY()]<20) {
                 return true;
-        }
-        if(med_karb>20 && num_karb_squares>(3*Globals.nikhil_num_workers)) {
-            return true;
+            //}
         }
         return false;
     }
