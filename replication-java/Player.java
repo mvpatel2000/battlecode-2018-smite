@@ -34,17 +34,17 @@ public class Player {
         PathShits.buildFactoryField();
         PathShits.buildHomeField();
 		PathShits.createConnectedComponents();
-
+		
 		for(Integer component : Globals.karb_vals.keySet()) {
 			ArrayList<Integer> vals = Globals.karb_vals.get(component);
 			Collections.sort(vals);
-			int heuristic1 = vals.size();
+/*			int heuristic1 = vals.size();
 			if(heuristic1 <= 100) heuristic1 /= 4;
 			else if(heuristic1 <= 300) heuristic1 /= 4.5;
 			else if(heuristic1 <= 500) heuristic1 /= 5;
 			else if(heuristic1 <= 700) heuristic1 /= 5.5;
 			else if(heuristic1 <= 1000) heuristic1 /= 6;
-			else heuristic1 /= 6.5;
+			else heuristic1 /= 6.5;*/
 
 			int num = 0;
 			double tot = 0;
@@ -56,12 +56,14 @@ public class Player {
 			if(num == 0) tot = 0;
 			else tot /= num;
 
+			Globals.median_karb.put(component, tot);
+
 			// [0.5, 1]
-			double heuristic2 = (tot/50.0 * .5) + .5;
+/*			double heuristic2 = (tot/50.0 * .5) + .5;
 
-			Globals.max_workers.put(component, (int)Math.min(175, Math.max(4, heuristic1 * heuristic2)));
+			Globals.max_workers.put(component, (int)Math.min(175, Math.max(4, heuristic1 * heuristic2)));*/
 		}
-
+		
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
             if(Globals.ally==unit.team()) {
@@ -72,7 +74,7 @@ public class Player {
                     break;
                 }
             }
-        }
+        }        
 
         Globals.paths = new HashMap<>();
         Globals.minworkers = Worker.workerReplicateRatio();
@@ -132,9 +134,6 @@ public class Player {
                 ArrayList<Unit> sorted_units = sortUnits(unsorted_units);
                 ArrayList<Unit> units = timeCheckWorkers(sorted_units);
 
-                ArrayList<Unit> sortedWorkers = new ArrayList<Unit>();
-
-
                 // TODO: check for next asteroids within ~50 rounds
                 if(Globals.myPlanet == Planet.Mars) {
                     if(Globals.asteroid_pattern.hasAsteroid(Globals.current_round)) {
@@ -151,8 +150,7 @@ public class Player {
                 Globals.num_workers = 0;
                 Globals.num_mages = 0;
                 for(int i=0; i<units.size(); i++) { //Updates num_units. Anything not written here is treated differently and should not be added!!!
-                    Unit meUnit = units.get(i);
-                    UnitType unit_type = meUnit.unitType();
+                    UnitType unit_type = units.get(i).unitType();
                     if(unit_type==UnitType.Ranger)
                         Globals.num_rangers++;
                     else if(unit_type==UnitType.Healer)
@@ -163,7 +161,6 @@ public class Player {
                         Globals.num_mages++;
                     else if(unit_type==UnitType.Worker) {
                         Globals.num_workers++;
-                        sortedWorkers.add(meUnit);
                         Globals.workers.put(units.get(i).id(), units.get(i).id());
                     }
                 }
@@ -173,16 +170,6 @@ public class Player {
                 Globals.total_workers+=Globals.num_workers;
                 Globals.total_mages+=Globals.num_mages;
 
-                //sort workers by distance
-                if(num_workers<15) {
-                    Collections.sort(sortedWorkers, new Comparator<Unit>() {
-                        public int compare(Unit u, Unit v) {
-                            MapLocation uLoc = u.location().mapLocation();
-                            MapLocation vLoc = v.location().mapLocation();
-                            return (Globals.distance_field[uLoc.getX()][uLoc.getY()] - Globals.distance_field[vLoc.getX()][vLoc.getY()]);
-                        }
-                    });
-                }
                 //primary loop
                 for (int unit_counter = 0; unit_counter < units.size(); unit_counter++) {
                     //try {
@@ -196,8 +183,7 @@ public class Player {
                         //TODO: replication needs to be more aggressive
                         if(unit.unitType()==UnitType.Worker) {
                             //try {
-                                continue;
-                                //Worker.runWorker(unit, myloc, units);
+                                Worker.runWorker(unit, myloc, units);
                             //} catch(Exception e) {
                             //    System.out.println("Worker Error: "+e);
                             //}
@@ -272,28 +258,7 @@ public class Player {
                     //   System.out.println("Unit Loop Error: "+e);
                     //}
                 }
-                //Run on sortedWorkers
-                for (int swcounter = 0; swcounter < sortedWorkers.size(); swcounter++) {
-                    //try {
-                        Unit unit = sortedWorkers.get(swcounter);
-                        if(unit.location().isInGarrison() || unit.location().isInSpace())
-                            continue;
-                        MapLocation myloc = unit.location().mapLocation();
 
-                        // WORKER CODE //
-                        //TODO: u can do actions before replication but not after
-                        //TODO: replication needs to be more aggressive
-                        if(unit.unitType()==UnitType.Worker) {
-                            //try {
-                                Worker.runWorker(unit, myloc, units);
-                            //} catch(Exception e) {
-                            //    System.out.println("Worker Error: "+e);
-                            //}
-                        }
-                        //} catch(Exception e) {
-                        //   System.out.println("Unit Loop Error: "+e);
-                        //}
-                }
                 //RunWorker on replicated units
                 VecUnit unsorted_afterunits = Globals.gc.myUnits();
                 ArrayList<Unit> afterunits = sortUnits(unsorted_afterunits);
