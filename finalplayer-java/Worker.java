@@ -387,7 +387,7 @@ public class Worker {
         ArrayList<Unit> closeWorkers = nearbyWorkersFactory(unit, myLoc, rad);
         if(closeWorkers.size()>2) { //includes the original worker, we want three Globals.workers per factory
             Direction blueprintDirection = optimalDirectionFactory(unit, myLoc, closeWorkers);
-            if(blueprintDirection!=null) {
+            if(blueprintDirection!=null && Globals.factory_field[myLoc.getX()][myLoc.getY()]>=3) {
                 if(PathShits.getNearestNonWorkerEnemy(myLoc, Globals.gc.senseNearbyUnitsByTeam(myLoc, unit.visionRange(), Globals.enemy))>50) {
                     Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
                     return 1;
