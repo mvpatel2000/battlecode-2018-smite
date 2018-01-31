@@ -185,10 +185,10 @@ public class Worker {
         //                       Globals.nikhil_num_workers - the number of total workers on the Team
         //                       med_karb - median amount of karbonite per square, initially (does not update)
         //                       num_karb_squares - number of squares with karbonite on them initially
-        if(totalkarb/(long)numworkers>40L) {
+        if(totalkarb/(long)numworkers>30L) {
                 return true;
         }
-        if(med_karb>20 && num_karb_squares>(2*Globals.nikhil_num_workers)) {
+        if(med_karb>20 && num_karb_squares>(3*Globals.nikhil_num_workers)) {
             return true;
         }
         return false;
