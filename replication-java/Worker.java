@@ -312,7 +312,7 @@ public class Worker {
         workerharvest(unit, toKarb, myKarbs);
         workermove(unit, toKarb, myKarbs);
         MapLocation myLoc = unit.location().mapLocation();
-        if(Globals.nikhil_num_workers<150) {
+        if(Globals.nikhil_num_workers<500) {
             if(Globals.current_round<(Globals.width+Globals.height)/2) {
                 if(Globals.movement_field[myLoc.getX()][myLoc.getY()].size()>0) {
                     Direction optimalDir = Globals.movement_field[myLoc.getX()][myLoc.getY()].get(0);
