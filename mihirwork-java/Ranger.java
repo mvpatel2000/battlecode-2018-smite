@@ -60,7 +60,10 @@ public class Ranger {
             if(enemies_in_range.size()==0) {    //move towards Globals.enemy since nothing in attack range
                 Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight);
                 MapLocation nearloc = nearestUnit.location().mapLocation();
-                PathShits.fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc)); //TODO: fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc))
+                if(Globals.num_rangers<10)
+                    PathShits.fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc)); //TODO: fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc))
+                else
+                    PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
             }
             enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
 

@@ -29,9 +29,14 @@ public class Knight {
 			}
 		}
 	 																/* TODO: tune this number */
-		int detour_size = 9;
+		int detour_size = 20;
 		VecUnit close_enemies = Globals.gc.senseNearbyUnitsByTeam(myloc, detour_size, Globals.enemy);
-		if(close_enemies.size() > 0) {
+		if(!Globals.knight_dont_follow.containsKey(unit.id()))
+			Globals.knight_dont_follow.put(unit.id(), 0);
+		int skip_follow = Globals.knight_dont_follow.get(unit.id());
+		if(skip_follow > 0) {
+			Globals.knight_dont_follow.put(unit.id(), skip_follow-1);
+		} else if(close_enemies.size() > 0) {
 			// if enemy is close enough, detour and attack them
 			int m_val = 0; // ignores workers
 			Unit to_follow = null;
@@ -65,8 +70,10 @@ public class Knight {
 				if(Globals.map.isPassableTerrainAt(adj_loc) != 0 &&
 					(adj == null || adj.team() == Globals.enemy)) {
 					PathShits.fuzzyMove(unit, myloc.directionTo(loc));
-					Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
+					//Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
 					return;
+				} else {
+					Globals.knight_dont_follow.put(unit.id(), (int)Math.sqrt(detour_size)+1);
 				}
 			}
 		}
@@ -214,21 +221,21 @@ public class Knight {
 				hval+=10000;
 			else if(unit.damage()>(int)myenemy.health()) //can kill
 				hval+=10000;
-			if(enemyType==UnitType.Rocket)
+			if(enemyType==UnitType.Rocket && Globals.myPlanet == Planet.Earth)
 				hval+=8000;
 			if(enemyType==UnitType.Factory)
-				hval+=7000;
-			if(enemyType==UnitType.Worker && hasRocket) // workers that are repairing a rocket
+				hval+=6000;
+			if(enemyType==UnitType.Worker && hasRocket && Globals.myPlanet == Planet.Earth) // workers that are repairing a rocket
 				hval+=8500;
 			else if(enemyType==UnitType.Worker && hasFactory) // workers that are repairing a factory
-				hval+=7500;
+				hval+=6500;
 			if(UnitType.Knight==myenemy.unitType()) {
 				hval += (10-((int)myenemy.health())/(unit.damage()-(int)myenemy.knightDefense()))*1000; //is knight and weakest unit
 			}
 			else if(myenemy.unitType() == UnitType.Mage) {
 				hval += (10-((int)myenemy.health())/(unit.damage()))*500;
 			} else if(myenemy.unitType() == UnitType.Ranger) {
-				hval += (10-((int)myenemy.health())/(unit.damage()))*400; //weakest unit
+				hval += (10-((int)myenemy.health())/(unit.damage()))*900; //weakest unit
 			} else {
 				hval += (10-((int)myenemy.health())/(unit.damage()))*200; //weakest unit
 			}
