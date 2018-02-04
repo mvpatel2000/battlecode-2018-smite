@@ -3,18 +3,18 @@ import bc.*;
 
 /* moving and path related shits */
 
-public class PathShits {
+public class PathFinding {
 
     public static void updateFactoryField() {
-        VecUnit total_enemies = Globals.gc.senseNearbyUnitsByTeam(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, Globals.enemy); //all enemies
+		VecUnit factories = Globals.gc.senseNearbyUnitsByType(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, UnitType.Factory);
         Globals.enemy_factories = new ArrayList<int[]>();
-        for(int i = 0; i<total_enemies.size(); i++) {
-            Unit enemy_unit = total_enemies.get(i);
-            if(enemy_unit.unitType()==UnitType.Factory) { //if factory
-                MapLocation enem_loc = enemy_unit.location().mapLocation();         
+        for(int i = 0; i<factories.size(); i++) {
+            Unit factory = factories.get(i);
+            if(factory.team() == Globals.enemy) {
+                MapLocation enem_loc = factory.location().mapLocation();
                 int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
                 Globals.enemy_factories.add(building_info);
-            }                
+            }
         }
         buildFactoryField();
     }
@@ -35,13 +35,34 @@ public class PathShits {
                     }
                 }
                 if(isDuplicate)
-                    continue;                
+                    continue;
                 int[] building_info = {enem_loc.getX(), enem_loc.getY(), 0, 0};
                 Globals.enemy_locations.add(building_info);
-            }                
+            }
         }
         if(initsize==Globals.enemy_locations.size())
             buildFieldBFS(); //check if size changed
+    }
+
+    public static int getNearestNonWorkerEnemy(MapLocation myloc, VecUnit other_units) {
+        Unit nearestUnit = null;
+        MapLocation nearloc = null;
+        int mindist = 50*50+1;
+        for(int i=0; i<other_units.size(); i++) {
+            Unit testUnit = other_units.get(i);
+            if(testUnit.unitType()!=UnitType.Worker && testUnit.unitType()!=UnitType.Factory && testUnit.unitType()!=UnitType.Rocket) {
+                MapLocation testloc = testUnit.location().mapLocation();
+                int testdist = (int)testloc.distanceSquaredTo(myloc);
+                if(testdist<mindist) {
+                    nearestUnit = testUnit;
+                    nearloc = testloc;
+                    mindist = testdist;
+                }
+            }
+        }
+        if(nearestUnit!=null)
+            return mindist;
+        return 10000000;
     }
 
     public static Direction getNearestNonWorkerOppositeDirection(MapLocation myloc, VecUnit other_units) {
@@ -93,7 +114,7 @@ public class PathShits {
             }
         }
         return nearestUnit;
-    }    
+    }
 
     public static void checkVectorField(Unit unit, MapLocation mapLocation) {
         UnitType myUnitType = unit.unitType();
@@ -510,6 +531,60 @@ public class PathShits {
 				counter++;
 			}
 		}
+	}
+
+	public static void buildHomeField() {
+        Direction[] dirs = {Direction.Center, Direction.East, Direction.Northeast, Direction.North, Direction.Northwest, Direction.West, Direction.Southwest, Direction.South, Direction.Southeast};
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        for(int i=0; i<Globals.map.getInitial_units().size(); i++) {
+            Unit unit = Globals.map.getInitial_units().get(i);
+            if(Globals.ally == unit.team()) {
+				MapLocation loc = unit.location().mapLocation();
+				int[] t = {loc.getX(), loc.getY(), 0, 0};
+				queue.add(t);
+			}
+		}
+
+        for(int w=0; w<Globals.width; w++) {
+            for(int h=0; h<Globals.height; h++) {
+                Globals.home_field[w][h] = (50*50+1);
+            }
+        }
+
+        while(queue.peek()!=null) {
+            int[] lcc = queue.poll();
+            int x = lcc[0];
+            int y = lcc[1];
+            int dir = lcc[2];
+            int depth = lcc[3];
+
+            if(x<0 || y<0 || x>=Globals.width || y>=Globals.height ||  //border checks
+                    Globals.map.isPassableTerrainAt(new MapLocation(Globals.myPlanet, x, y))==0 || //is not passable
+                    Globals.home_field[x][y]<=depth) { //is an inferior move
+                continue;
+            }
+            else if(Globals.home_field[x][y]>depth) { //replace old Directions with more optimal ones
+                Globals.home_field[x][y] = depth;
+                int[] lc2 = {x+1,y,  5,depth+1};
+                queue.add(lc2);
+                int[] lc3 = {x+1,y+1,6,depth+1};
+                queue.add(lc3);
+                int[] lc4 = {x,y+1,  7,depth+1};
+                queue.add(lc4);
+                int[] lc5 = {x-1,y+1,8,depth+1};
+                queue.add(lc5);
+                int[] lc6 = {x-1,y,  1,depth+1};
+                queue.add(lc6);
+                int[] lc7 = {x-1,y-1,2,depth+1};
+                queue.add(lc7);
+                int[] lc8 = {x,y-1,  3,depth+1};
+                queue.add(lc8);
+                int[] lc9 = {x+1,y-1,4,depth+1};
+                queue.add(lc9);
+            }
+        }
+
 	}
 
 }

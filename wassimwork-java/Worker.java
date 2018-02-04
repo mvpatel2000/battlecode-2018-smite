@@ -149,16 +149,16 @@ public class Worker {
             if(myKarbs.get(0).karb > 0L)
                 toKarb = myKarbs.get(0).dir;
             else if(distance > 5) {
-                toKarb = PathShits.fuzzyMoveDir(unit, toKarb);
+                toKarb = PathFinding.fuzzyMoveDir(unit, toKarb);
             } else {
                 if(toNearest == null)
                     toNearest = nearestKarboniteDir(unit, loc, 7);
                 if(toNearest != null) toKarb = toNearest;
                 else if(Globals.current_round < (Globals.width+Globals.height)/2) {
-                    toKarb = PathShits.fuzzyMoveDir(unit, loc.directionTo(new MapLocation(Globals.myPlanet,
+                    toKarb = PathFinding.fuzzyMoveDir(unit, loc.directionTo(new MapLocation(Globals.myPlanet,
                                 Globals.width/2, Globals.height/2)));
                 } else {
-                    toKarb = PathShits.moveOnRandomFieldDir(unit, loc);
+                    toKarb = PathFinding.moveOnRandomFieldDir(unit, loc);
                 }
             }
         }
@@ -300,7 +300,7 @@ public class Worker {
                 } else {
                     workerharvest(unit, toKarb);
                     Direction toRocket = unit.location().mapLocation().directionTo(nearbyRockets.get(0).location().mapLocation());
-                    PathShits.fuzzyMove(unit, toRocket);
+                    PathFinding.fuzzyMove(unit, toRocket);
                     return true;
                 }
             }
@@ -359,7 +359,7 @@ public class Worker {
                 Globals.gc.moveRobot(unit.id(), toKarb);
             }
         } else {
-            PathShits.fuzzyMove(unit, toKarb);
+            PathFinding.fuzzyMove(unit, toKarb);
         }
         return;
     }
@@ -368,7 +368,7 @@ public class Worker {
         ArrayList<KarbDir> myKarbs = karboniteSort(unit, unit.location());
         Direction toKarb = generateKarbDirection(myKarbs, loc, unit, Globals.rand_permutation);
         if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
-            PathShits.updateEnemies();
+            PathFinding.updateEnemies();
         }
         if(Globals.nikhil_num_workers>=Globals.minworkers && Globals.myPlanet==Planet.Earth) {
             //execute build order
@@ -444,7 +444,7 @@ public class Worker {
                 } else {
                     workerharvest(unit, toKarb);
                     Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
-                    PathShits.fuzzyMove(unit, toFactory);
+                    PathFinding.fuzzyMove(unit, toFactory);
                     return true;
                 }
             }

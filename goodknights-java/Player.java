@@ -29,11 +29,11 @@ public class Player {
             }
         }
 
-        PathShits.buildFieldBFS();       //pathing
-        PathShits.buildRandomField();
-        PathShits.buildFactoryField();
-        PathShits.buildHomeField();
-		PathShits.createConnectedComponents();
+        PathFinding.buildFieldBFS();       //pathing
+        PathFinding.buildRandomField();
+        PathFinding.buildFactoryField();
+        PathFinding.buildHomeField();
+		PathFinding.createConnectedComponents();
 
         for(int i=0; i<initial_units.size(); i++) { //verify pathing connectivity
             Unit unit = initial_units.get(i);
@@ -89,7 +89,7 @@ public class Player {
                     System.out.println("Current round: "+Globals.current_round+" Current time: "+Globals.gc.getTimeLeftMs());
                     System.runFinalization();
                     System.gc();
-                    PathShits.buildRandomField();
+                    PathFinding.buildRandomField();
                 }
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
@@ -97,12 +97,12 @@ public class Player {
 
 				if(Globals.current_round % 2 == 1) {
 					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
-						PathShits.updateFieldWithBuildings();
-						PathShits.updateFactoryField();
+						PathFinding.updateFieldWithBuildings();
+						PathFinding.updateFactoryField();
 					}
 					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
 							(Globals.myPlanet == Planet.Mars)) { // TODO: check if rocket has left
-						Globals.karbonite_path = PathShits.karbonitePath(new int[] {0, 20});
+						Globals.karbonite_path = PathFinding.karbonitePath(new int[] {0, 20});
 					}
 				}
 				

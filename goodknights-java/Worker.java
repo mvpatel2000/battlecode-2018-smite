@@ -70,7 +70,7 @@ public class Worker {
 
         boolean shouldReplicate = replicatingrequirements(unit, loc);
         if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
-            PathShits.updateEnemies();
+            PathFinding.updateEnemies();
         }
         if(shouldReplicate && distance_to_enemy>10 && Globals.myPlanet==Planet.Earth) {
             //System.out.println("Because shouldReplicate is true!");
@@ -275,16 +275,16 @@ public class Worker {
             }
             if(bob==false) {
                 if(distance > 5) {
-                    toKarb = PathShits.fuzzyMoveDir(unit, toKarb);
+                    toKarb = PathFinding.fuzzyMoveDir(unit, toKarb);
                 } else {
                     if(toNearest == null)
                         toNearest = nearestKarboniteDir(unit, loc, 7);
                     if(toNearest != null) toKarb = toNearest;
                     else if(Globals.current_round < (Globals.width+Globals.height)/2) {
-                        toKarb = PathShits.fuzzyMoveDir(unit, loc.directionTo(new MapLocation(Globals.myPlanet,
+                        toKarb = PathFinding.fuzzyMoveDir(unit, loc.directionTo(new MapLocation(Globals.myPlanet,
                                     Globals.width/2, Globals.height/2)));
                     } else {
-                        toKarb = PathShits.moveOnRandomFieldDir(unit, loc);
+                        toKarb = PathFinding.moveOnRandomFieldDir(unit, loc);
                     }
                 }
             }
@@ -386,7 +386,7 @@ public class Worker {
         if(closeWorkers.size()>2) { //includes the original worker, we want three Globals.workers per factory
             Direction blueprintDirection = optimalDirectionFactory(unit, myLoc, closeWorkers);
             if(blueprintDirection!=null) {
-                if(PathShits.getNearestNonWorkerEnemy(myLoc, Globals.gc.senseNearbyUnitsByTeam(myLoc, unit.visionRange(), Globals.enemy))>50) {
+                if(PathFinding.getNearestNonWorkerEnemy(myLoc, Globals.gc.senseNearbyUnitsByTeam(myLoc, unit.visionRange(), Globals.enemy))>50) {
                     Globals.gc.blueprint(unit.id(), UnitType.Factory, blueprintDirection);
                     return 1;
                 } else {
@@ -469,7 +469,7 @@ public class Worker {
                 } else {
                     workerharvest(unit, toKarb, myKarbs);
                     Direction toRocket = unit.location().mapLocation().directionTo(nearbyRockets.get(0).location().mapLocation());
-                    PathShits.fuzzyMove(unit, toRocket);
+                    PathFinding.fuzzyMove(unit, toRocket);
                     return true;
                 }
             }
@@ -528,9 +528,9 @@ public class Worker {
             }
         } else {
             if(toKarb!=Direction.Center) {
-                PathShits.fuzzyMove(unit, toKarb);
+                PathFinding.fuzzyMove(unit, toKarb);
             } else {
-                PathShits.moveOnRandomField(unit, myLoc);
+                PathFinding.moveOnRandomField(unit, myLoc);
             }
         }
         return;
@@ -557,7 +557,7 @@ public class Worker {
                 } else {
                     workerharvest(unit, toKarb, myKarbs);
                     Direction toFactory = unit.location().mapLocation().directionTo(nearbyFactories.get(0).location().mapLocation());
-                    PathShits.fuzzyMove(unit, toFactory);
+                    PathFinding.fuzzyMove(unit, toFactory);
                     return true;
                 }
             }

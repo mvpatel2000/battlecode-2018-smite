@@ -7,17 +7,17 @@ public class Healer
         VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, Globals.maxVisionRange, Globals.enemy);
         if(true && enemies_in_range.size()>0) {      //combat state //ADD CHARGE MECHANIC
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
-                PathShits.updateEnemies();
+                PathFinding.updateEnemies();
             }
-            Direction toMoveDir = PathShits.getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
-            PathShits.fuzzyMove(unit, toMoveDir);
+            Direction toMoveDir = PathFinding.getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
+            PathFinding.fuzzyMove(unit, toMoveDir);
         }
         else { //non-combat state
             if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-                PathShits.moveOnRandomField(unit, myloc);
+                PathFinding.moveOnRandomField(unit, myloc);
             }
             else {
-                PathShits.moveOnVectorField(unit, myloc);
+                PathFinding.moveOnVectorField(unit, myloc);
             }
         }
         healerHeal(unit, myloc);

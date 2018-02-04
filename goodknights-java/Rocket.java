@@ -196,7 +196,7 @@ public class Rocket {
             int[] rocket_loc = {x, y, 0, 0};
             Globals.enemy_locations.add(rocket_loc);
             Globals.rocket_homing++;
-            PathShits.buildFieldBFS();
+            PathFinding.buildFieldBFS();
         }
     }
 

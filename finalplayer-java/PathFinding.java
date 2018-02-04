@@ -3,7 +3,7 @@ import bc.*;
 
 /* moving and path related shits */
 
-public class PathShits {
+public class PathFinding {
 
     public static void updateFactoryField() {
 		VecUnit factories = Globals.gc.senseNearbyUnitsByType(new MapLocation(Globals.myPlanet, Globals.width/2, Globals.height/2), Globals.width*Globals.height/2, UnitType.Factory);

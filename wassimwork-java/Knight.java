@@ -22,7 +22,7 @@ public class Knight {
 				Unit t = enemies_in_range.get(x);
 				if(t.unitType() == UnitType.Knight) {
 					// move away
-					PathShits.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
+					PathFinding.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
 					return;
 				}
 			}
@@ -58,7 +58,7 @@ public class Knight {
 			Queue<Direction> path =
 				Helpers.astar(unit, loc, true);
 			if(path.size() < detour_size+4) {
-				PathShits.fuzzyMove(unit, myloc.directionTo(loc));
+				PathFinding.fuzzyMove(unit, myloc.directionTo(loc));
 				Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
 				return;
 			}
@@ -99,9 +99,9 @@ public class Knight {
 											// TODO: use Globals.enemy_locations
 			VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 			if(enemies_in_sight.size()>0) {      //combat state
-				Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+				Unit nearestUnit = PathFinding.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
 				MapLocation nearloc = nearestUnit.location().mapLocation();
-				PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+				PathFinding.fuzzyMove(unit, myloc.directionTo(nearloc));
 				return;
 			}
 		}
@@ -141,10 +141,10 @@ public class Knight {
 			}
 		} else { //non-combat state
 			if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-				PathShits.moveOnRandomField(unit, myloc);
+				PathFinding.moveOnRandomField(unit, myloc);
 			}
 			else
-				PathShits.moveOnVectorField(unit, myloc);
+				PathFinding.moveOnVectorField(unit, myloc);
 		}
 	}
 
