@@ -52,15 +52,15 @@ public class Ranger {
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
             if(Globals.enemy_locations.size()==0) { //add Globals.enemy locations
-                Pathfinding.updateEnemies();
+                PathFinding.updateEnemies();
             }
 
-            Pathfinding.checkVectorField(unit, myloc);
+            PathFinding.checkVectorField(unit, myloc);
             VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
             if(enemies_in_range.size()==0) {    //move towards Globals.enemy since nothing in attack range
-                Unit nearestUnit = Pathfinding.getNearestUnit(myloc, enemies_in_sight);
+                Unit nearestUnit = PathFinding.getNearestUnit(myloc, enemies_in_sight);
                 MapLocation nearloc = nearestUnit.location().mapLocation();
-                Pathfinding.fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc)); //TODO: fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc))
+                PathFinding.fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc)); //TODO: fuzzyMoveRanger(unit, myloc, myloc.directionTo(nearloc))
             }
             enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
 
@@ -68,21 +68,21 @@ public class Ranger {
                 rangerAttack(unit, myloc, enemies_in_range); //attack based on heuristic
                 if(Globals.gc.isMoveReady(unit.id())) {  //move away from nearest unit to survive
                     if(true)  { //retreat //ADD CHARGE MECHANIC HERE
-                        Direction toMoveDir = Pathfinding.getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
-                        Pathfinding.fuzzyMove(unit, toMoveDir);
+                        Direction toMoveDir = PathFinding.getNearestNonWorkerOppositeDirection(myloc, enemies_in_range);
+                        PathFinding.fuzzyMove(unit, toMoveDir);
                     }
                     else { //charge
-                        Pathfinding.moveOnVectorField(unit, myloc);
+                        PathFinding.moveOnVectorField(unit, myloc);
                     }
                 }
             }
         }
         else { //non-combat state
             if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-                Pathfinding.moveOnRandomField(unit, myloc);
+                PathFinding.moveOnRandomField(unit, myloc);
             }
             else {
-                Pathfinding.moveOnVectorField(unit, myloc);
+                PathFinding.moveOnVectorField(unit, myloc);
             }
 
             if(Globals.enemy_buildings.size()>0 && Globals.gc.isBeginSnipeReady(unit.id())) { //sniping

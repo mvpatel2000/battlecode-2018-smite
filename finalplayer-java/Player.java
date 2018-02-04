@@ -29,11 +29,11 @@ public class Player {
             }
         }
 
-        Pathfinding.buildFieldBFS();       //pathing
-        Pathfinding.buildRandomField();
-        Pathfinding.buildFactoryField();
-        Pathfinding.buildHomeField();
-		Pathfinding.createConnectedComponents();
+        PathFinding.buildFieldBFS();       //pathing
+        PathFinding.buildRandomField();
+        PathFinding.buildFactoryField();
+        PathFinding.buildHomeField();
+		PathFinding.createConnectedComponents();
 		
 		for(Integer component : Globals.karb_vals.keySet()) {
 			ArrayList<Integer> vals = Globals.karb_vals.get(component);
@@ -104,7 +104,7 @@ public class Player {
                     System.out.println("Current round: "+Globals.current_round+" Current time: "+Globals.gc.getTimeLeftMs());
                     System.runFinalization();
                     System.gc();
-                    Pathfinding.buildRandomField();
+                    PathFinding.buildRandomField();
                 }
                 if(Globals.myPlanet==Planet.Earth)
                     Rocket.updateLandingPriorities();
@@ -120,12 +120,12 @@ public class Player {
 
 				if(Globals.current_round % 2 == 1) {
 					if(Globals.myPlanet == Planet.Earth && Globals.current_round < 750) {
-						Pathfinding.updateFieldWithBuildings();
-						Pathfinding.updateFactoryField();
+						PathFinding.updateFieldWithBuildings();
+						PathFinding.updateFactoryField();
 					}
 					if((Globals.myPlanet == Planet.Earth && Globals.current_round < 750) ||
 							(Globals.myPlanet == Planet.Mars && Globals.gc.myUnits().size() > 0)) {
-						Globals.karbonite_path = Pathfinding.karbonitePath(new int[] {0, 20});
+						Globals.karbonite_path = PathFinding.karbonitePath(new int[] {0, 20});
 					}
 				}
 
