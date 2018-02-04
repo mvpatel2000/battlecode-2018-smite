@@ -5,7 +5,7 @@ public class Mage {
   public static void runMage(Unit unit, MapLocation myloc) {        
         VecUnit enemies_in_blink = Globals.gc.senseNearbyUnitsByTeam(myloc, 56L, Globals.enemy);
         if(enemies_in_blink.size()>0 && Globals.gc.isBlinkReady(unit.id())) {
-            Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_blink);
+            Unit nearestUnit = Pathfinding.getNearestUnit(myloc, enemies_in_blink);
             MapLocation nearloc = nearestUnit.location().mapLocation();
             if(nearestUnit.unitType()!=UnitType.Knight) {
                 Direction blinkdir = myloc.directionTo(nearloc);
@@ -18,7 +18,7 @@ public class Mage {
         }        
         VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.visionRange(), Globals.enemy);
         if(enemies_in_sight.size()>0) {      //combat state
-            Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
+            Unit nearestUnit = Pathfinding.getNearestUnit(myloc, enemies_in_sight); //get nearest unit
             MapLocation nearloc = nearestUnit.location().mapLocation();
             int distance = (int)myloc.distanceSquaredTo(nearloc);
 
@@ -27,7 +27,7 @@ public class Mage {
                 movedir = nearloc.directionTo(myloc);
             else 
                 movedir = myloc.directionTo(nearloc);
-            PathShits.fuzzyMove(unit, nearloc.directionTo(myloc));        
+            Pathfinding.fuzzyMove(unit, nearloc.directionTo(myloc));        
 
             VecUnit enemies_in_range = Globals.gc.senseNearbyUnitsByTeam(myloc, unit.attackRange(), Globals.enemy);
             if(enemies_in_range.size()>0) {
@@ -36,10 +36,10 @@ public class Mage {
         }
         else { //non-combat state
             if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-                PathShits.moveOnRandomField(unit, myloc);
+                Pathfinding.moveOnRandomField(unit, myloc);
             }
             else
-                PathShits.moveOnVectorField(unit, myloc);
+                Pathfinding.moveOnVectorField(unit, myloc);
         }
     }
 

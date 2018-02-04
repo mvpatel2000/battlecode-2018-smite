@@ -23,7 +23,7 @@ public class Knight {
 				Unit t = enemies_in_range.get(x);
 				if(t.unitType() == UnitType.Knight) {
 					// move away
-					PathShits.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
+					Pathfinding.fuzzyMove(unit, Helpers.opposite(myloc.directionTo(t.location().mapLocation())));
 					return;
 				}
 			}
@@ -69,7 +69,7 @@ public class Knight {
 
 				if(Globals.map.isPassableTerrainAt(adj_loc) != 0 &&
 					(adj == null || adj.team() == Globals.enemy)) {
-					PathShits.fuzzyMove(unit, myloc.directionTo(loc));
+					Pathfinding.fuzzyMove(unit, myloc.directionTo(loc));
 					//Globals.paths.put(unit.id(), new LinkedList<Direction>()); // re-run A* later
 					return;
 				} else {
@@ -107,7 +107,7 @@ public class Knight {
 				}
 			}
 			if(value < 100000) {
-				PathShits.fuzzyMove(unit, bestDir);
+				Pathfinding.fuzzyMove(unit, bestDir);
 				return;
 			}
 		}
@@ -115,16 +115,16 @@ public class Knight {
 										// TODO: use Globals.enemy_locations
 		VecUnit enemies_in_sight = Globals.gc.senseNearbyUnitsByTeam(myloc, 1000, Globals.enemy);
 		if(enemies_in_sight.size()>0) {      //combat state
-			Unit nearestUnit = PathShits.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
+			Unit nearestUnit = Pathfinding.getNearestUnit(myloc, enemies_in_sight); //move in a better fashion
 			MapLocation nearloc = nearestUnit.location().mapLocation();
-			PathShits.fuzzyMove(unit, myloc.directionTo(nearloc));
+			Pathfinding.fuzzyMove(unit, myloc.directionTo(nearloc));
 			return;
 		}
 		if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-				PathShits.moveOnRandomField(unit, myloc);
+				Pathfinding.moveOnRandomField(unit, myloc);
 			}
 			else
-				PathShits.moveOnVectorField(unit, myloc);
+				Pathfinding.moveOnVectorField(unit, myloc);
 		
 	
 
@@ -164,10 +164,10 @@ public class Knight {
 			}
 		} else { //non-combat state
 			if( (Globals.doesPathExist==false && Globals.myPlanet==Planet.Earth && Globals.rocket_homing==0) || Globals.enemy_locations.size()==0) {
-				PathShits.moveOnRandomField(unit, myloc);
+				Pathfinding.moveOnRandomField(unit, myloc);
 			}
 			else
-				PathShits.moveOnVectorField(unit, myloc);
+				Pathfinding.moveOnVectorField(unit, myloc);
 		}*/
 	}
 
