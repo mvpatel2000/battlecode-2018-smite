@@ -1,7 +1,7 @@
 import java.util.*;
 import bc.*;
 
-/* moving and path related shits */
+/* moving and path related methods */
 
 public class PathFinding {
 
