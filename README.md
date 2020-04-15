@@ -25,4 +25,4 @@ These two oversights affected our performance greatly since they both harmed our
 Next year, we'll look into the specs a bit more closely, and makes sure to exploit any (intended or unintended) API features. We've had fun writing our bots through the hectic January, and we appreciate Teh Devs flying us out to MIT for the final tournament. We had a blast at the finalist dinner, meeting other competitors as well as former classmates. We look forward to Battlecode 2019!
 
 # Previous Years
-* Mihir and Nikhil were part of Team Segault in [2017](https://github.com/nthistle/battlecode-2017-segfault)
+* Mihir and Nikhil were part of Team Segfault in [2017](https://github.com/nthistle/battlecode-2017-segfault).
